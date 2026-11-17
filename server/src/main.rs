@@ -33,7 +33,7 @@ fn cors() -> CorsLayer {
     if public.is_empty() {
         return CorsLayer::permissive();
     }
-    let mut origins: Vec<String> = vec![public, "tauri://localhost".into(), "http://tauri.localhost".into(), "https://tauri.localhost".into()];
+    let mut origins: Vec<String> = vec![public, "tauri://localhost".into(), "http://tauri.localhost".into(), "https://tauri.localhost".into(), "app://hearth".into()];
     origins.extend(env::var("CORS_ORIGINS").unwrap_or_default().split(',').map(|o| o.trim().trim_end_matches('/').to_string()).filter(|o| !o.is_empty()));
     let origins: Vec<HeaderValue> = origins.iter().filter_map(|o| HeaderValue::from_str(o).ok()).collect();
     CorsLayer::new()

@@ -6,3 +6,4 @@ web/src-tauri
 deploy/.env
 deploy/livekit.generated.yaml
 uploads
+desktop

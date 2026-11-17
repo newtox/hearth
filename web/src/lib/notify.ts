@@ -1,7 +1,7 @@
-import { isApp } from './api';
+import { isApp, isTauri } from './api';
 
 type Invoke = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
-const invoke: Invoke | null = isApp ? (window as any).__TAURI_INTERNALS__.invoke : null;
+const invoke: Invoke | null = isTauri ? (window as any).__TAURI_INTERNALS__.invoke : null;
 
 export const notifications = {
   supported: isApp || 'Notification' in window,

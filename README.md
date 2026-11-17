@@ -43,7 +43,6 @@ Or add [`deploy/docker-compose.yml`](deploy/docker-compose.yml) as a stack in Po
 
 ## Known limits
 
-- The Linux app needs a WebKitGTK with WebRTC for voice. Ubuntu and Debian build it without, so the app offers to open the browser instead.
 - Every member of a server is loaded at once. That is fine for friend groups, not for servers with many thousands of members.
 
 ## License

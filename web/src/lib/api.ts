@@ -1,6 +1,8 @@
 import { serverError, t } from './i18n.svelte';
 
-export const isApp = '__TAURI_INTERNALS__' in window;
+export const isTauri = '__TAURI_INTERNALS__' in window;
+export const isElectron = 'hearthDesktop' in window;
+export const isApp = isTauri || isElectron;
 
 export function base(): string {
   return (localStorage.getItem('hearth_server') ?? import.meta.env.VITE_SERVER_URL ?? '').replace(/\/+$/, '');

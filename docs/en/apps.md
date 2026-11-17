@@ -2,7 +2,7 @@
 
 [Deutsch](../de/apps.md) · [All docs](../README.md)
 
-The apps are the Hearth web interface inside a small native shell (Tauri). On first start they ask for the server address, for example `https://chat.example.com`.
+The apps are the Hearth web interface inside a native shell: Tauri on Windows and Android, Electron on Linux. Electron brings its own Chromium, so voice, screen sharing and the sound of a shared screen work on every Linux distribution, like Discord. On first start the apps ask for the server address, for example `https://chat.example.com`.
 
 ## Download
 
@@ -11,9 +11,10 @@ Every version is on the [Releases](https://github.com/newtox/hearth/releases) pa
 | File | For | Install |
 |---|---|---|
 | `Hearth_<version>_windows_x64_setup.exe` | Windows 10 and 11 | Run it. The app is not signed, so Windows shows "Windows protected your PC": **More info → Run anyway**. |
-| `Hearth_<version>_linux_x86_64.flatpak` | Linux | `flatpak install --user Hearth_<version>_linux_x86_64.flatpak`, then `flatpak run de.newtox.hearth`. Needs the Flathub remote for the GNOME runtime. |
+| `Hearth_<version>_linux_x86_64.flatpak` | Linux | `flatpak install --user Hearth_<version>_linux_x86_64.flatpak`, then `flatpak run de.newtox.hearth`. Needs the Flathub remote for the Freedesktop runtime and the Electron base. |
 | `Hearth_<version>_linux_x86_64.AppImage` | Linux | `chmod +x` the file and start it. |
 | `Hearth_<version>_linux_amd64.deb` | Debian, Ubuntu | `sudo apt install ./Hearth_<version>_linux_amd64.deb` |
+| `Hearth_<version>_linux_x86_64.rpm` | Fedora, Nobara, openSUSE | `sudo dnf install ./Hearth_<version>_linux_x86_64.rpm` |
 | `Hearth_<version>_android.apk` | Android 7 and newer | Open the file on the phone and allow installing from this source once. |
 
 ## Publishing a new version
@@ -30,12 +31,23 @@ The "Apps" workflow builds every file and attaches them to a new release named a
 - The APK is a debug build. It installs fine but cannot go to the Play Store without a signing key.
 - Android only connects to HTTPS servers.
 - Screen sharing is not available on Android because the system WebView does not offer it. Watching a share works.
-- On Linux, voice needs a WebKitGTK built with WebRTC. Ubuntu and Debian build it without, so the app shows a note and opens Hearth in the browser instead. In Chrome you can install the web page as an app, which then works like a desktop app including voice and screen sharing.
+- On Linux the sound of a shared screen needs PipeWire, which current distributions use by default. All sound except Hearth's own is shared.
 - Windows and Linux builds are not code-signed.
 
 ## Building yourself
 
-Linux, needs Rust, Node 22 and `libwebkit2gtk-4.1-dev`:
+Linux, needs Node 22, plus `rpm` for the RPM package:
+
+```sh
+cd desktop
+npm install
+npm run web
+npx electron-builder --linux AppImage deb rpm
+```
+
+The files land in `desktop/dist/`.
+
+Windows, needs Rust and Node 22:
 
 ```sh
 cd web
@@ -43,4 +55,4 @@ npm install
 npx tauri build
 ```
 
-The files land in `web/src-tauri/target/release/bundle/`.
+The installer lands in `web/src-tauri/target/release/bundle/nsis/`.

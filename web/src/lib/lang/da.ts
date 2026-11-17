@@ -640,6 +640,7 @@ export const DA: Record<string, string> = {
   voice_screen_sharing_was_cancelled_not: 'Skærmdeling blev annulleret eller ikke tilladt',
   voice_share_no_audio: 'Der deles ingen lyd. Sæt flueben ved “Del systemlyd” for hele skærmen eller “Del fanelyd” for en fane.',
   voice_share_no_audio_linux: 'Der deles ingen lyd. På Linux virker lyd kun, når du deler en browserfane.',
+  voice_share_no_audio_pipewire: 'Der deles ingen lyd. Systemlyd kræver PipeWire, som ikke blev fundet på dit system.',
   voice_stage_microphone: 'Mikrofon til',
   voice_stage_muted: 'Lydløs',
   voice_stage_nobody_here_right_now: 'Her er ingen lige nu.',

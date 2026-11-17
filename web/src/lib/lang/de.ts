@@ -640,6 +640,7 @@ export const DE: Record<string, string> = {
   voice_screen_sharing_was_cancelled_not: 'Bildschirmfreigabe abgebrochen oder nicht erlaubt',
   voice_share_no_audio: 'Es wird kein Ton geteilt. Beim ganzen Bildschirm „Systemaudio teilen“ anhaken, bei einem Tab „Tab-Audio teilen“.',
   voice_share_no_audio_linux: 'Es wird kein Ton geteilt. Unter Linux geht Ton nur beim Teilen eines Browser-Tabs.',
+  voice_share_no_audio_pipewire: 'Es wird kein Ton geteilt. Systemton braucht PipeWire, das auf deinem System nicht gefunden wurde.',
   voice_stage_microphone: 'Mikrofon an',
   voice_stage_muted: 'Stumm',
   voice_stage_nobody_here_right_now: 'Gerade ist niemand hier.',

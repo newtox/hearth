@@ -640,6 +640,7 @@ export const EN: Record<string, string> = {
   voice_screen_sharing_was_cancelled_not: 'Screen sharing was cancelled or not allowed',
   voice_share_no_audio: 'No sound is being shared. For the whole screen tick “Share system audio”, for a tab “Share tab audio”.',
   voice_share_no_audio_linux: 'No sound is being shared. On Linux, sound only works when sharing a browser tab.',
+  voice_share_no_audio_pipewire: 'No sound is being shared. System sound needs PipeWire, which was not found on your system.',
   voice_stage_microphone: 'Microphone on',
   voice_stage_muted: 'Muted',
   voice_stage_nobody_here_right_now: 'Nobody is here right now.',

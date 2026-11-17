@@ -1,7 +1,8 @@
-import { base, isApp } from './api';
+import { base, isApp, isElectron } from './api';
 
 export function openExternal(url: string) {
-  if (isApp) (window as any).__TAURI_INTERNALS__.invoke('plugin:opener|open_url', { url }).catch(() => window.open(url, '_blank', 'noopener'));
+  if (isElectron) (window as any).hearthDesktop.openExternal(url);
+  else if (isApp) (window as any).__TAURI_INTERNALS__.invoke('plugin:opener|open_url', { url }).catch(() => window.open(url, '_blank', 'noopener'));
   else window.open(url, '_blank', 'noopener');
 }
 
