@@ -5,6 +5,7 @@
   import { PERMISSIONS, has } from '../lib/perms';
   import { app, attempt, can, canModerate, guild, toast, topPosition, P, type Role } from '../lib/store.svelte';
   import { w } from '../lib/theme.svelte';
+  import { docs } from '../lib/docs';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
@@ -323,7 +324,7 @@
               </div>
             {/each}
             <button class="btn small" onclick={addRole}><Icon name="plus" size={14} /> {t('Rolle anlegen')}</button>
-            <p class="muted note">{t('Weiter oben stehende Rollen haben Vorrang und können niedrigere verwalten.')}</p>
+            <p class="muted note">{t('Weiter oben stehende Rollen haben Vorrang und können niedrigere verwalten.')} <a href={docs('permissions')} target="_blank" rel="noopener noreferrer">{t('Alle Rechte erklärt')}</a></p>
           </div>
           {#if role}
             <form class="stack" onsubmit={saveRole}>
@@ -469,7 +470,7 @@
         </div>
       {:else if tab === 'integrations'}
         <div class="stack">
-          <p class="muted">{t('Mitglieder, die ihr Konto unter Einstellungen verbunden haben, bekommen automatisch eine Rolle, solange sie deinen Kanal unterstützen. Der Abgleich läuft alle 10 Minuten.')}</p>
+          <p class="muted">{t('Mitglieder, die ihr Konto unter Einstellungen verbunden haben, bekommen automatisch eine Rolle, solange sie deinen Kanal unterstützen. Der Abgleich läuft alle 10 Minuten.')} <a href={docs('connections')} target="_blank" rel="noopener noreferrer">{t('Mehr dazu')}</a></p>
           {#each integ.available as p (p.id)}
             {@const link = integ.linked.find((l) => l.provider === p.id)}
             {@const r = link ? g.roles.find((x) => x.id === link.role_id) : null}
@@ -497,7 +498,7 @@
               {/if}
             </section>
           {:else}
-            <p class="muted">{t('Auf diesem Server ist weder Twitch noch YouTube eingerichtet. Wie das geht, steht in der README.')}</p>
+            <p class="muted">{t('Auf diesem Server ist weder Twitch noch YouTube eingerichtet.')} <a href={docs('connections')} target="_blank" rel="noopener noreferrer">{t('So richtest du es ein')}</a></p>
           {/each}
         </div>
       {:else if tab === 'audit'}

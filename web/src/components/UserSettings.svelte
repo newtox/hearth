@@ -7,6 +7,7 @@
   import BadgeIcon from './BadgeIcon.svelte';
   import { app, attempt, logout, toast, type Badge, type Connection, type User } from '../lib/store.svelte';
   import { THEMES, applyTheme, theme } from '../lib/theme.svelte';
+  import { docs, releases } from '../lib/docs';
   import Avatar from './Avatar.svelte';
   import Modal from './Modal.svelte';
 
@@ -188,6 +189,13 @@
         {/each}
       </div>
 
+      <h3>{t('Hilfe')}</h3>
+      <div class="row wrap help">
+        <a class="btn small" href={docs('guide')} target="_blank" rel="noopener noreferrer">{t('Anleitung')}</a>
+        <a class="btn small" href={releases} target="_blank" rel="noopener noreferrer">{t('Apps herunterladen')}</a>
+        {#if me.is_admin}<a class="btn small" href={docs('installation')} target="_blank" rel="noopener noreferrer">{t('Server einrichten')}</a>{/if}
+      </div>
+
       <h3>{t('Konto')}</h3>
       <p class="muted">{me.email}</p>
       <button class="btn danger" onclick={logout}>{t('Abmelden')}</button>
@@ -211,7 +219,7 @@
           {/each}
         </div>
         <input class="input name" bind:value={badge.name} maxlength="32" placeholder={t('Name')} required />
-        <input class="input grow" bind:value={badge.description} maxlength="120" placeholder={t('Beschreibung')} />
+        <input class="input grow" bind:value={badge.description} maxlength="120" placeholder={t('Beschreibung (optional)')} />
         <input type="color" bind:value={badge.color} aria-label={t('Farbe')} />
         <button class="btn">{t('Abzeichen anlegen')}</button>
       </form>
