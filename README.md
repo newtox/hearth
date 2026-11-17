@@ -1,6 +1,6 @@
 # Hearth
 
-Self-hosted chat for communities: servers, channels, roles, direct messages, group chats, voice channels with screen sharing. Runs in the browser and as an app for Windows, Linux and Android. Interface in German and English.
+Self-hosted chat for communities: servers, channels, roles, direct messages, group chats, voice channels with screen sharing. Runs in the browser and as an app for Windows, Linux and Android. Interface in German, English and Danish.
 
 **Documentation / Dokumentation:** [docs](docs/README.md)
 
@@ -36,6 +36,7 @@ Or add [`deploy/docker-compose.yml`](deploy/docker-compose.yml) as a stack in Po
 - Friends, direct messages, group chats with up to 10 people, three group roles and per-group permissions, blocking
 - Voice channels and calls with screen sharing, watched on demand with a viewer list, and sounds
 - Profiles with avatar, banner, bio, accent colour, badges with built-in icons and linked accounts
+- Status online, idle (also automatic), do not disturb and invisible
 - Activity status set by hand, detected from running games in the desktop app, or taken from Spotify
 - Badges earned from playtime, stream time, voice time and account age in ten colour levels
 - Moderation: timeouts, kicks, bans, audit log, rate limits

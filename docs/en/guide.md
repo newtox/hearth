@@ -27,10 +27,21 @@ Click a voice channel to join. Screen shares appear as tiles; you start watching
 
 Profiles have avatar, banner, bio, accent colour, activity and linked accounts. Badges come in two kinds: badges the instance admin gives (no description needed), and earned badges for playtime, stream time, voice time and account age in ten colour levels. Click an earned badge to see your progress.
 
+## Status
+
+Click your own avatar to pick a status:
+
+- **Online**
+- **Idle**, also set automatically after 10 minutes without input and cleared as soon as you are back
+- **Do not disturb**: no sounds for messages and calls
+- **Invisible**: others see you as offline and without activity, you can still use everything
+
+The status is saved and stays after a restart.
+
 ## Friends and groups
 
 Add friends by username. Direct messages work between friends and between members of a shared server. Group chats hold up to 10 people with a picture, roles and calls. Blocked users cannot message or call you.
 
 ## Language and theme
 
-In Settings, **Appearance** picks the theme (Light, Ash, Dark, Onyx, Midnight, Parchment) and **Language** switches between German and English.
+In Settings, **Appearance** picks the theme (Light, Ash, Dark, Onyx, Midnight, Parchment) and **Language** switches between German, English and Danish.

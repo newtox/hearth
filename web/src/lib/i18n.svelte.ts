@@ -1,12 +1,17 @@
-export type Lang = 'de' | 'en';
+import { DA } from './i18n-da';
+
+export type Lang = 'de' | 'en' | 'da';
 
 const stored = localStorage.getItem('hearth_lang');
 
-export const lang: Lang = stored === 'de' || stored === 'en' ? stored : navigator.language.toLowerCase().startsWith('de') ? 'de' : 'en';
+const browser = navigator.language.toLowerCase();
+
+export const lang: Lang = stored === 'de' || stored === 'en' || stored === 'da' ? stored : browser.startsWith('de') ? 'de' : browser.startsWith('da') ? 'da' : 'en';
 
 export const LANGS: { id: Lang; name: string }[] = [
   { id: 'de', name: 'Deutsch' },
   { id: 'en', name: 'English' },
+  { id: 'da', name: 'Dansk' },
 ];
 
 export function setLang(id: Lang) {
@@ -15,7 +20,7 @@ export function setLang(id: Lang) {
 }
 
 export function locale() {
-  return lang === 'de' ? 'de-DE' : 'en-GB';
+  return lang === 'de' ? 'de-DE' : lang === 'da' ? 'da-DK' : 'en-GB';
 }
 
 document.documentElement.lang = lang;
@@ -300,6 +305,14 @@ const EN: Record<string, string> = {
   Verbindungen: 'Connections',
   Verbinden: 'Connect',
   'Konto verbunden': 'Account connected',
+  Sticker: 'Stickers',
+  'Abwesend': 'Idle',
+  'Bitte nicht stören': 'Do not disturb',
+  'Unsichtbar': 'Invisible',
+  'Status und Einstellungen': 'Status and settings',
+  'Kommt auch automatisch nach 10 Minuten ohne Eingabe': 'Also set automatically after 10 minutes without input',
+  'Keine Töne für Nachrichten und Anrufe': 'No sounds for messages and calls',
+  'Du wirst als offline angezeigt, kannst aber alles nutzen': 'You appear offline but can still use everything',
   'Mehr dazu': 'Learn more',
   'So richtest du es ein': 'How to set it up',
   'Alle Rechte erklärt': 'All permissions explained',
@@ -549,7 +562,7 @@ const EN: Record<string, string> = {
 };
 
 export function t(de: string, vars?: Record<string, string | number>) {
-  let s = lang === 'de' ? de : (EN[de] ?? de);
+  let s = lang === 'de' ? de : lang === 'da' ? (DA[de] ?? EN[de] ?? de) : (EN[de] ?? de);
   if (vars) for (const k in vars) s = s.replaceAll(`{${k}}`, String(vars[k]));
   return s;
 }
@@ -557,11 +570,23 @@ export function t(de: string, vars?: Record<string, string | number>) {
 const DE: Record<string, string> = Object.fromEntries(Object.entries(EN).map(([de, en]) => [en, de]));
 
 export function fromEnglish(text: string) {
-  return lang === 'de' ? (DE[text] ?? text) : text;
+  if (lang === 'de') return DE[text] ?? text;
+  if (lang === 'da') return DE[text] ? (DA[DE[text]] ?? text) : text;
+  return text;
 }
 
 export function serverError(message: string) {
   if (lang === 'en') return message;
+  if (lang === 'da') {
+    if (DE[message]) return DA[DE[message]] ?? message;
+    let d = message.match(/^(.+): 1–(\d+) characters$/);
+    if (d) return `${fromEnglish(d[1])}: 1–${d[2]} tegn`;
+    d = message.match(/^(.+): at most (\d+) characters$/);
+    if (d) return `${fromEnglish(d[1])}: højst ${d[2]} tegn`;
+    d = message.match(/^The image is too large \(max\. (\d+) MB\)$/);
+    if (d) return `Billedet er for stort (maks. ${d[1]} MB)`;
+    return message;
+  }
   if (DE[message]) return DE[message];
   let m = message.match(/^(.+): 1–(\d+) characters$/);
   if (m) return `${fromEnglish(m[1])}: 1–${m[2]} Zeichen`;
@@ -573,5 +598,7 @@ export function serverError(message: string) {
 }
 
 export function auditDetail(detail: string) {
-  return lang === 'de' ? detail.replace(/^(\d+) minutes$/, '$1 Minuten') : detail;
+  if (lang === 'de') return detail.replace(/^(\d+) minutes$/, '$1 Minuten');
+  if (lang === 'da') return detail.replace(/^(\d+) minutes$/, '$1 minutter');
+  return detail;
 }

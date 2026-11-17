@@ -27,10 +27,21 @@ Ein Klick auf einen Sprachkanal tritt bei. Geteilte Bildschirme erscheinen als K
 
 Profile haben Avatar, Banner, Bio, Akzentfarbe, Aktivität und verbundene Konten. Abzeichen gibt es in zwei Arten: solche, die der Instanz-Admin vergibt (Beschreibung optional), und verdiente für Spielzeit, Streamzeit, Sprachzeit und Kontoalter in zehn Farbstufen. Ein Klick auf ein verdientes Abzeichen zeigt den Fortschritt.
 
+## Status
+
+Ein Klick auf deinen eigenen Avatar öffnet die Statusauswahl:
+
+- **Online**
+- **Abwesend**, kommt auch automatisch nach 10 Minuten ohne Eingabe und verschwindet, sobald du wieder da bist
+- **Bitte nicht stören**: keine Töne für Nachrichten und Anrufe
+- **Unsichtbar**: andere sehen dich offline und ohne Aktivität, du kannst trotzdem alles nutzen
+
+Der Status wird gespeichert und bleibt nach einem Neustart erhalten.
+
 ## Freunde und Gruppen
 
 Freunde fügst du über den Benutzernamen hinzu. Direktnachrichten gehen zwischen Freunden und zwischen Mitgliedern eines gemeinsamen Servers. Gruppenchats fassen bis zu 10 Leute, mit Bild, Rollen und Anrufen. Blockierte Nutzer können dir weder schreiben noch dich anrufen.
 
 ## Sprache und Design
 
-In den Einstellungen wählst du unter **Darstellung** das Design (Hell, Asche, Dunkel, Onyx, Mitternacht, Pergament) und unter **Sprache** Deutsch oder Englisch.
+In den Einstellungen wählst du unter **Darstellung** das Design (Hell, Asche, Dunkel, Onyx, Mitternacht, Pergament) und unter **Sprache** Deutsch, Englisch oder Dänisch.

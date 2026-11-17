@@ -16,20 +16,20 @@ const stored = localStorage.getItem('hearth_theme');
 export const theme = $state({ id: (THEMES.some((t) => t.id === stored) ? stored : 'dunkel') as ThemeId });
 
 const WORDS: Record<string, Record<Lang, [string, string]>> = {
-  server: { de: ['Server', 'Gilde'], en: ['server', 'guild'] },
-  servers: { de: ['Server', 'Gilden'], en: ['Servers', 'Guilds'] },
-  channels: { de: ['Kanäle', 'Hallen'], en: ['Channels', 'Halls'] },
-  members: { de: ['Mitglieder', 'Gefährten'], en: ['Members', 'Companions'] },
-  dms: { de: ['Direktnachrichten', 'Briefe'], en: ['Direct messages', 'Letters'] },
-  message: { de: ['Nachricht', 'Botschaft'], en: ['Message', 'Missive'] },
-  send: { de: ['Senden', 'Verkünden'], en: ['Send', 'Proclaim'] },
-  roles: { de: ['Rollen', 'Ränge'], en: ['Roles', 'Ranks'] },
-  invite: { de: ['Einladung', 'Geleitbrief'], en: ['invite', 'letter of passage'] },
-  invites: { de: ['Einladungen', 'Geleitbriefe'], en: ['Invites', 'Letters of passage'] },
-  online: { de: ['Online', 'Anwesend'], en: ['Online', 'Present'] },
-  offline: { de: ['Offline', 'Auf Reisen'], en: ['Offline', 'Travelling'] },
-  login: { de: ['Anmelden', 'Eintreten'], en: ['Sign in', 'Enter'] },
-  register: { de: ['Konto erstellen', 'In die Chronik eintragen'], en: ['Create account', 'Sign the chronicle'] },
+  server: { de: ['Server', 'Gilde'], en: ['server', 'guild'], da: ['server', 'laug'] },
+  servers: { de: ['Server', 'Gilden'], en: ['Servers', 'Guilds'], da: ['Servere', 'Laug'] },
+  channels: { de: ['Kanäle', 'Hallen'], en: ['Channels', 'Halls'], da: ['Kanaler', 'Haller'] },
+  members: { de: ['Mitglieder', 'Gefährten'], en: ['Members', 'Companions'], da: ['Medlemmer', 'Fæller'] },
+  dms: { de: ['Direktnachrichten', 'Briefe'], en: ['Direct messages', 'Letters'], da: ['Direkte beskeder', 'Breve'] },
+  message: { de: ['Nachricht', 'Botschaft'], en: ['Message', 'Missive'], da: ['Besked', 'Budskab'] },
+  send: { de: ['Senden', 'Verkünden'], en: ['Send', 'Proclaim'], da: ['Send', 'Forkynd'] },
+  roles: { de: ['Rollen', 'Ränge'], en: ['Roles', 'Ranks'], da: ['Roller', 'Rang'] },
+  invite: { de: ['Einladung', 'Geleitbrief'], en: ['invite', 'letter of passage'], da: ['invitation', 'lejdebrev'] },
+  invites: { de: ['Einladungen', 'Geleitbriefe'], en: ['Invites', 'Letters of passage'], da: ['Invitationer', 'Lejdebreve'] },
+  online: { de: ['Online', 'Anwesend'], en: ['Online', 'Present'], da: ['Online', 'Til stede'] },
+  offline: { de: ['Offline', 'Auf Reisen'], en: ['Offline', 'Travelling'], da: ['Offline', 'På rejse'] },
+  login: { de: ['Anmelden', 'Eintreten'], en: ['Sign in', 'Enter'], da: ['Log ind', 'Træd ind'] },
+  register: { de: ['Konto erstellen', 'In die Chronik eintragen'], en: ['Create account', 'Sign the chronicle'], da: ['Opret konto', 'Skriv dig i krøniken'] },
 };
 
 export function w(key: string) {
