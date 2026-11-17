@@ -17,6 +17,7 @@ pub async fn public_user(st: &AppState, id: Uuid) -> Result<PublicUser> {
     let (badges, progress) = super::stats::tracked(st, id).await?;
     u.badges.0.extend(badges);
     u.progress = Some(progress);
+    u.connections = Some(super::connections::of_user(st, id).await?);
     Ok(u)
 }
 

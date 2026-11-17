@@ -52,6 +52,19 @@ Optional. Create an app at https://developer.spotify.com/dashboard, add `https:/
 Users then link their account under Settings, and the track they are playing shows as their activity. A game or a manually set activity takes precedence.
 While a Spotify app is in development mode, Spotify only lets accounts you have added to the app's user list link.
 
+## Account connections
+
+Optional. Users can link outside accounts under Settings and show them on their profile. Each platform appears once its credentials are set; `PUBLIC_URL` must be set too.
+
+| Platform | Variables | Redirect URI to register |
+|---|---|---|
+| Twitch | `CONNECT_TWITCH_ID`, `CONNECT_TWITCH_SECRET` | `<PUBLIC_URL>/api/connections/twitch/callback` |
+| YouTube | `CONNECT_YOUTUBE_ID`, `CONNECT_YOUTUBE_SECRET` | `<PUBLIC_URL>/api/connections/youtube/callback` |
+| Steam | `STEAM_API_KEY` | none, Steam uses OpenID |
+| Spotify | see above | see above |
+
+On a deployed server, add the variables to `deploy/.env` and run `deploy.sh` again.
+
 ## Apps
 
 The apps are the same interface inside a Tauri shell. They ask for the server address at sign-in.
@@ -83,7 +96,7 @@ Limitations:
 - Sounds for messages, calls and voice channels
 - Calls with screen sharing in direct messages and groups, with an incoming-call banner
 - Screen shares are watched on demand, with a viewer list
-- Profiles with avatar, banner, bio, accent colour, global badges with built-in icons
+- Profiles with avatar, banner, bio, accent colour, global badges with built-in icons, linked accounts
 - Activity status (playing, listening, watching, custom text), set by hand, detected from running games in the desktop app, or taken from Spotify
 - Badges earned automatically from tracked playtime, stream time, voice time and account age, in ten colour levels with a progress view
 - Moderation: timeouts, kicks, bans, audit log, rate limits

@@ -103,11 +103,26 @@ pub async fn callback(State(st): State<AppState>, Query(q): Query<Callback>) -> 
     )
     .bind(uid)
     .bind(refresh)
-    .bind(t.access_token)
+    .bind(&t.access_token)
     .bind(Utc::now() + Duration::seconds(t.expires_in))
     .execute(&st.db)
     .await;
-    if saved.is_err() { failed } else { Redirect::to("/?spotify=linked") }
+    let access = t.access_token.clone();
+    if saved.is_err() {
+        return failed;
+    }
+    if let Some((id, name, url)) = me(sp, &access).await {
+        let _ = super::connections::save(&st, uid, "spotify", &id, &name, url.as_deref()).await;
+        let _ = super::users::announce(&st, uid).await;
+    }
+    Redirect::to("/?spotify=linked")
+}
+
+async fn me(sp: &Spotify, access: &str) -> Option<(String, String, Option<String>)> {
+    let v: Value = sp.http.get(format!("{}/v1/me", sp.api)).bearer_auth(access).send().await.ok()?.json().await.ok()?;
+    let id = v["id"].as_str()?.to_string();
+    let name = v["display_name"].as_str().unwrap_or(&id).to_string();
+    Some((id, name, v["external_urls"]["spotify"].as_str().map(str::to_string)))
 }
 
 async fn clear(st: &AppState, uid: Uuid) {
@@ -118,6 +133,8 @@ async fn clear(st: &AppState, uid: Uuid) {
 
 pub async fn unlink(State(st): State<AppState>, AuthUser(uid): AuthUser) -> Result<Json<Value>> {
     sqlx::query("DELETE FROM spotify_links WHERE user_id = $1").bind(uid).execute(&st.db).await?;
+    sqlx::query("DELETE FROM connections WHERE user_id = $1 AND provider = 'spotify'").bind(uid).execute(&st.db).await?;
+    super::users::announce(&st, uid).await?;
     clear(&st, uid).await;
     Ok(Json(json!({})))
 }

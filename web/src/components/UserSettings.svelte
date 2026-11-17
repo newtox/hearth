@@ -5,7 +5,7 @@
   import { play, sounds } from '../lib/sounds';
   import { BADGE_ICONS } from '../lib/badges';
   import BadgeIcon from './BadgeIcon.svelte';
-  import { app, attempt, logout, toast, type Badge, type User } from '../lib/store.svelte';
+  import { app, attempt, logout, toast, type Badge, type Connection, type User } from '../lib/store.svelte';
   import { THEMES, applyTheme, theme } from '../lib/theme.svelte';
   import Avatar from './Avatar.svelte';
   import Modal from './Modal.svelte';
@@ -26,16 +26,24 @@
 
   let badges = $state<Badge[]>([]);
   let badge = $state({ name: '', icon: 'svg:star', description: '', color: '#8b6cff' });
-  let spotifyLinked = $state(app.me!.spotify?.linked ?? false);
+  let available = $state<{ id: string; name: string }[]>([]);
+  let linked = $state<Connection[]>([]);
 
-  async function linkSpotify() {
-    const res = await attempt(api<{ url: string }>('GET', '/spotify'));
+  async function loadConnections() {
+    const res = await attempt(api<{ available: { id: string; name: string }[]; linked: Connection[] }>('GET', '/connections'));
+    if (res) ({ available, linked } = res);
+  }
+
+  async function connectAccount(provider: string) {
+    const res = await attempt(api<{ url: string }>('GET', provider === 'spotify' ? '/spotify' : `/connections/${provider}`));
     if (res) location.href = res.url;
   }
 
-  async function unlinkSpotify() {
-    if (await attempt(api('DELETE', '/spotify'))) spotifyLinked = false;
+  async function disconnect(provider: string) {
+    if (await attempt(api('DELETE', provider === 'spotify' ? '/spotify' : `/connections/${provider}`))) loadConnections();
   }
+
+  loadConnections();
 
   async function loadBadges() {
     badges = (await attempt(api<Badge[]>('GET', '/badges'))) ?? [];
@@ -154,15 +162,20 @@
         <button class="btn small" onclick={saveDetection}>{t('Erkennung speichern')}</button>
       {/if}
 
-      {#if me.spotify?.available}
-        <div class="row wrap">
-          {#if spotifyLinked}
-            <span class="muted">{t('Spotify ist verbunden')}</span>
-            <button class="btn small" onclick={unlinkSpotify}>{t('Trennen')}</button>
-          {:else}
-            <button class="btn small" onclick={linkSpotify}>{t('Mit Spotify verbinden')}</button>
-          {/if}
-        </div>
+      {#if available.length}
+        <h3>{t('Verbindungen')}</h3>
+        {#each available as p (p.id)}
+          {@const link = linked.find((x) => x.provider === p.id)}
+          <div class="row conn">
+            <strong>{p.name}</strong>
+            <span class="grow muted ellipsis">{link ? link.name : t('Nicht verbunden')}</span>
+            {#if link}
+              <button class="btn small" onclick={() => disconnect(p.id)}>{t('Trennen')}</button>
+            {:else}
+              <button class="btn small" onclick={() => connectAccount(p.id)}>{t('Verbinden')}</button>
+            {/if}
+          </div>
+        {/each}
       {/if}
 
       <h3>{t('Töne')}</h3>
@@ -223,6 +236,12 @@
     border: 1px solid var(--line);
     border-radius: var(--radius-s);
     background: none;
+  }
+  .conn {
+    padding: 4px 0;
+  }
+  .conn strong {
+    min-width: 84px;
   }
   .kind {
     width: 130px;

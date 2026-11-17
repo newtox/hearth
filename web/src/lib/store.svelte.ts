@@ -23,6 +23,12 @@ export interface User {
   streaming?: boolean;
   spotify?: { available: boolean; linked: boolean };
   progress?: Progress;
+  connections?: Connection[];
+}
+export interface Connection {
+  provider: string;
+  name: string;
+  url: string | null;
 }
 export interface Progress {
   colors: string[];
@@ -310,9 +316,12 @@ function patchUser(id: string, patch: Partial<User>) {
 }
 
 function spotifyNotice() {
-  const result = new URLSearchParams(location.search).get('spotify');
-  if (!result) return;
-  toast(result === 'linked' ? t('Spotify ist verbunden') : t('Spotify konnte nicht verbunden werden'));
+  const params = new URLSearchParams(location.search);
+  const result = params.get('spotify');
+  const connected = params.get('connected');
+  if (!result && !connected) return;
+  if (result) toast(result === 'linked' ? t('Spotify ist verbunden') : t('Spotify konnte nicht verbunden werden'));
+  else toast(connected === 'ok' ? t('Konto verbunden') : t('Das Konto konnte nicht verbunden werden'));
   history.replaceState(null, '', location.pathname);
 }
 
