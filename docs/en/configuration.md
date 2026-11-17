@@ -26,7 +26,9 @@ The app reads these directly. The stack sets the first group for you.
 |---|---|---|
 | `DATABASE_URL` | | PostgreSQL connection |
 | `BIND` | `0.0.0.0:8080` | Address the app listens on |
-| `PUBLIC_URL` | | Public address, needed for account connections |
+| `PUBLIC_URL` | | Public address. Used for links in emails, link previews and the allowed origins. Without it every origin is allowed, which is only meant for local development. |
+| `CORS_ORIGINS` | | Further allowed origins, comma separated. The web address and the apps are always allowed. |
+| `EMAIL_VERIFICATION` | `on` | With email set up, new accounts must confirm their address before they can write. `off` turns this off. |
 | `TRUST_PROXY` | `0` | `1` behind a reverse proxy, so rate limits use the real client address |
 | `UPLOAD_DIR` | `uploads` | Folder for uploaded files |
 | `WEB_DIR` | `../web/dist` | Folder of the built web interface |
@@ -46,6 +48,14 @@ Without these variables the sign-in page still offers â€œForgot your password?â€
 | `SMTP_TLS` | | `starttls` (default), `tls` (default on port 465) or `none` |
 
 The reset link is valid for one hour and works once. After a reset, every device is signed out.
+
+With email set up, new accounts and changed addresses get a confirmation link that is valid for 24 hours. Until then the account can read but not write, join servers or add friends. Accounts that existed before count as confirmed.
+
+Without email, an admin can create a reset link on the server. It is valid for 24 hours:
+
+```bash
+docker exec hearth /app/hearth-server reset-link "username or email"
+```
 
 ## Limits built into the server
 

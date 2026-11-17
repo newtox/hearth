@@ -18,9 +18,21 @@ def mails():
     return [json.loads(line) for line in open(MAILS)]
 
 
-before = len(mails())
+start = len(mails())
 address = f"lea{S}@example.com"
-tok = requests.post(BASE + "/auth/register", json={"username": "lea" + S, "email": address, "password": "geheim1234"}).json()["token"]
+tok = requests.post(BASE + "/auth/register", json={"username": "lea" + S, "email": address, "password": "geheim1234", "lang": "de"}).json()["token"]
+auth = {"Authorization": "Bearer " + tok}
+time.sleep(1.5)
+welcome = mails()[start:]
+check("verification mail sent", len(welcome) == 1 and welcome[0]["to"] == [address], welcome)
+check("account starts unconfirmed", requests.get(BASE + "/users/@me", headers=auth).json().get("email_verified") is False)
+check("unconfirmed account cannot post", requests.post(BASE + "/guilds", headers=auth, json={"name": "x"}).status_code == 400)
+text = email.message_from_string(welcome[0]["data"]).get_payload(decode=True).decode() if welcome else ""
+verify = re.search(r"/#/verify/([0-9a-f]{64})", text)
+check("verification link works", verify is not None and requests.post(BASE + "/auth/verify", json={"token": verify.group(1)}).status_code == 200, text[:300])
+check("account is confirmed", requests.get(BASE + "/users/@me", headers=auth).json().get("email_verified") is True)
+check("confirmed account can post", requests.post(BASE + "/guilds", headers=auth, json={"name": "x"}).status_code == 200)
+before = len(mails())
 check("reset is offered", requests.get(BASE + "/config").json()["password_reset"] is True)
 check("unknown account answers the same", requests.post(BASE + "/auth/forgot", json={"login": "niemand" + S}).status_code == 200)
 r = requests.post(BASE + "/auth/forgot", json={"login": address, "lang": "de"})

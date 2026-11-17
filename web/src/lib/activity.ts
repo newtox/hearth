@@ -89,7 +89,7 @@ async function scan() {
   const hit = [...customGames(), ...GAMES].find(([needle]) => names.some((n) => n.includes(needle)))?.[1] ?? null;
   if (hit === detected) return;
   detected = hit;
-  if (hit) await api('POST', '/users/@me/activity', { kind: 'playing', name: hit }).catch(() => (detected = null));
+  if (hit) await api('POST', '/users/@me/activity', { kind: 'playing', name: hit, detected: true }).catch(() => (detected = null));
   else await api('DELETE', '/users/@me/activity').catch(() => {});
 }
 

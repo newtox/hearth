@@ -1,4 +1,4 @@
-use super::{guilds::snapshot, refresh};
+use super::{guilds::snapshot, refresh_parts};
 use crate::{auth::AuthUser, error::{bad, AppError, Result}, perms, AppState};
 use axum::{extract::{Path, State}, Json};
 use chrono::{DateTime, Duration, Utc};
@@ -77,6 +77,7 @@ pub async fn preview(State(st): State<AppState>, AuthUser(_): AuthUser, Path(cod
 }
 
 pub async fn join(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(code): Path<String>) -> Result<Json<Value>> {
+    crate::routes::account::require_verified(&st, uid).await?;
     let gid = valid(&st, &code).await?;
     let banned: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM bans WHERE guild_id = $1 AND user_id = $2)").bind(gid).bind(uid).fetch_one(&st.db).await?;
     if banned {
@@ -91,6 +92,6 @@ pub async fn join(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(code
         }
     }
     tx.commit().await?;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["members"]).await?;
     Ok(Json(snapshot(&st, gid, uid).await?))
 }

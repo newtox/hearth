@@ -71,6 +71,7 @@ pub struct Register {
     username: String,
     email: String,
     password: String,
+    lang: Option<String>,
 }
 
 pub async fn register(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b): Json<Register>) -> Result<Json<Value>> {
@@ -105,6 +106,11 @@ pub async fn register(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b
     .bind(hash)
     .fetch_one(&st.db)
     .await?;
+    if st.mailer.is_none() {
+        sqlx::query("UPDATE users SET email_verified = true WHERE id = $1").bind(id).execute(&st.db).await?;
+    } else {
+        crate::routes::account::send_verification(&st, id, b.lang.as_deref().unwrap_or("en")).await?;
+    }
     if first {
         sqlx::query("INSERT INTO user_badges (user_id, badge_id) SELECT $1, id FROM badges WHERE id = '00000000-0000-7000-8000-000000000002'").bind(id).execute(&st.db).await?;
     }

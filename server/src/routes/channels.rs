@@ -1,4 +1,4 @@
-use super::{audit, clean_name, refresh};
+use super::{audit, clean_name, refresh_parts};
 use crate::{auth::AuthUser, error::{bad, AppError, Result}, models::{Channel, CHANNEL_COLS}, perms::{self, Overwrite}, AppState};
 use axum::{extract::{Path, State}, Json};
 use serde::{Deserialize, Deserializer};
@@ -115,7 +115,7 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gi
     .fetch_one(&st.db)
     .await?;
     audit(&st, gid, uid, "channel_create", &channel.name, "").await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["channels"]).await?;
     Ok(Json(channel))
 }
 
@@ -146,7 +146,7 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
     .fetch_one(&st.db)
     .await?;
     audit(&st, gid, uid, "channel_update", &channel.name, "").await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["channels"]).await?;
     Ok(Json(channel))
 }
 
@@ -188,7 +188,7 @@ pub async fn reorder(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(g
     }
     tx.commit().await?;
     audit(&st, gid, uid, "channel_reorder", "", "").await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["channels"]).await?;
     Ok(Json(json!({})))
 }
 
@@ -201,7 +201,7 @@ pub async fn delete(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
     }
     st.hub.voice.retain(|_, c| *c != cid);
     audit(&st, gid, uid, "channel_delete", &ch.name, "").await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["channels"]).await?;
     Ok(Json(json!({})))
 }
 
@@ -247,7 +247,7 @@ pub async fn put_overwrite(State(st): State<AppState>, AuthUser(uid): AuthUser, 
     .execute(&st.db)
     .await?;
     audit(&st, gid, uid, "channel_rules", "", "").await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["channels"]).await?;
     Ok(Json(json!({})))
 }
 
@@ -265,7 +265,7 @@ pub async fn delete_overwrite(State(st): State<AppState>, AuthUser(uid): AuthUse
         }
     }
     sqlx::query("DELETE FROM overwrites WHERE channel_id = $1 AND target_id = $2").bind(cid).bind(target).execute(&st.db).await?;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["channels"]).await?;
     Ok(Json(json!({})))
 }
 

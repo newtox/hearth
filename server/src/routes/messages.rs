@@ -200,6 +200,7 @@ pub async fn upload(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
 }
 
 pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid): Path<Uuid>, Json(b): Json<MessageBody>) -> Result<Json<Value>> {
+    crate::routes::account::require_verified(&st, uid).await?;
     let a = access(&st, uid, cid, perms::SEND_MESSAGES).await?;
     if a.channel.kind == "category" || a.channel.kind == "voice" {
         return bad("You cannot write in this channel");

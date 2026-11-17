@@ -44,11 +44,9 @@ Or add [`deploy/docker-compose.yml`](deploy/docker-compose.yml) as a stack in Po
 
 ## Known limits
 
-- No email verification. Password reset needs an SMTP server.
-- CORS is open so the apps can connect. Sign-in uses bearer tokens, not cookies.
-- On structural changes every client reloads the server state. Very large servers will need something finer.
-- The server keeps track of who is in a voice channel in memory only.
-- Activity and playtime are reported by the client, so they can be faked.
+- Game detection runs on the user's computer. Playtime only counts for detected games, at most 16 hours a day, but a modified client could still claim a game.
+- The Linux app needs a WebKitGTK with WebRTC for voice. Ubuntu and Debian build it without, so the app offers to open the browser instead.
+- Every member of a server is loaded at once. That is fine for friend groups, not for servers with many thousands of members.
 
 ## License
 

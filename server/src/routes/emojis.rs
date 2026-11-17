@@ -1,4 +1,4 @@
-use super::{audit, read_form, refresh, remove_upload, store_image};
+use super::{audit, read_form, refresh_parts, remove_upload, store_image};
 use crate::{auth::AuthUser, error::{bad, Result}, models::Emoji, perms, AppState};
 use axum::{extract::{Multipart, Path, State}, Json};
 use serde_json::{json, Value};
@@ -44,7 +44,7 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gi
         .fetch_one(&st.db)
         .await?;
     audit(&st, gid, uid, if kind == "emoji" { "emoji_create" } else { "sticker_create" }, &name, "").await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["emojis"]).await?;
     Ok(Json(emoji))
 }
 
@@ -52,7 +52,7 @@ pub async fn delete(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((g
     perms::ctx(&st.db, gid, uid).await?.require(perms::MANAGE_EMOJIS)?;
     let (name, file): (String, String) = sqlx::query_as("DELETE FROM emojis WHERE id = $1 AND guild_id = $2 RETURNING name, file").bind(eid).bind(gid).fetch_one(&st.db).await?;
     audit(&st, gid, uid, "emoji_delete", &name, "").await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["emojis"]).await?;
     remove_upload(&st, Some(file)).await;
     Ok(Json(json!({})))
 }

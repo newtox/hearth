@@ -19,6 +19,8 @@
   import ModView from './components/ModView.svelte';
   import SidePanel from './components/SidePanel.svelte';
   import Dialog from './components/Dialog.svelte';
+  import { resendVerification } from './lib/verify';
+  import { lang } from './lib/i18n.svelte';
 </script>
 
 {#if !app.authed}
@@ -27,6 +29,12 @@
   <div class="loading"><p class="muted">{t('common_connecting')}</p></div>
 {:else}
   <div class="shell">
+    {#if app.me?.email_verified === false}
+      <div class="verify panel row" role="status">
+        <span class="grow">{t('verify_banner', { email: app.me.email ?? '' })}</span>
+        <button class="btn small" onclick={() => resendVerification(lang)}>{t('verify_resend')}</button>
+      </div>
+    {/if}
     <div class="window">
       <Dock />
       <div class="cols" data-pane={app.pane}>
@@ -111,5 +119,15 @@
       flex: 1;
       width: auto;
     }
+  }
+  .verify {
+    gap: 10px;
+    padding: 8px 12px;
+    margin-bottom: var(--gap);
+    font-size: 0.9em;
+    border-left: 3px solid var(--danger);
+  }
+  .shell:has(.verify) .window {
+    height: calc(100% - 52px);
   }
 </style>

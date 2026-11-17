@@ -1,4 +1,4 @@
-use super::{audit, guild_audience, refresh, user_label};
+use super::{audit, guild_audience, refresh_parts, user_label};
 use crate::{auth::AuthUser, error::{bad, AppError, Result}, perms, AppState};
 use axum::{extract::{Path, State}, Json};
 use serde::Deserialize;
@@ -91,7 +91,7 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((g
         let action = if minutes > 0 { "timeout" } else { "timeout_end" };
         audit(&st, gid, uid, action, &user_label(&st, target).await, &if minutes > 0 { format!("{minutes} minutes") } else { String::new() }).await;
     }
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["members", "channels"]).await?;
     Ok(Json(json!({})))
 }
 
@@ -108,7 +108,7 @@ async fn remove(st: &AppState, gid: Uuid, target: Uuid) -> Result<()> {
     crate::routes::voice::leave_all(st, target).await;
     st.hub.send(&[target], "GUILD_DELETE", json!({ "guild_id": gid }));
     let rest: Vec<Uuid> = users.into_iter().filter(|u| *u != target).collect();
-    st.hub.send(&rest, "GUILD_REFRESH", json!({ "guild_id": gid }));
+    st.hub.send(&rest, "GUILD_REFRESH", json!({ "guild_id": gid, "parts": ["members"] }));
     Ok(())
 }
 

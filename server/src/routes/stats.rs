@@ -22,13 +22,45 @@ fn lap(tick: &mut Instant) -> i64 {
     secs as i64
 }
 
+const DAILY_CAP: i64 = 16 * 3600;
+
 pub async fn flush(st: &AppState, uid: Uuid) {
-    let play = st.hub.activity.get_mut(&uid).map(|mut a| if a.kind == "playing" { lap(&mut a.tick) } else { 0 }).unwrap_or(0);
-    let stream = st.hub.streaming.get_mut(&uid).map(|mut t| lap(&mut t)).unwrap_or(0);
-    let voice = st.hub.voice_tick.get_mut(&uid).map(|mut t| lap(&mut t)).unwrap_or(0);
+    let play = st.hub.activity.get_mut(&uid).map(|mut a| {
+        let secs = lap(&mut a.tick);
+        if a.kind == "playing" && a.source == "game" { secs } else { 0 }
+    }).unwrap_or(0);
+    let watched = st.hub.watching.iter().any(|e| e.value().contains(&uid));
+    let stream = st.hub.streaming.get_mut(&uid).map(|mut t| lap(&mut t)).filter(|_| watched).unwrap_or(0);
+    let room = st.hub.voice.get(&uid).map(|c| *c);
+    let company = room.is_some_and(|r| st.hub.voice.iter().filter(|e| *e.value() == r).count() >= 2);
+    let voice = st.hub.voice_tick.get_mut(&uid).map(|mut t| lap(&mut t)).filter(|_| company && !st.hub.afk.contains_key(&uid)).unwrap_or(0);
     if play + stream + voice == 0 {
         return;
     }
+    let today: Option<(i64, i64, i64)> = sqlx::query_as("SELECT play_seconds, stream_seconds, voice_seconds FROM user_stat_days WHERE user_id = $1 AND day = CURRENT_DATE")
+        .bind(uid)
+        .fetch_optional(&st.db)
+        .await
+        .ok()
+        .flatten();
+    let (p0, s0, v0) = today.unwrap_or((0, 0, 0));
+    let play = play.min((DAILY_CAP - p0).max(0));
+    let stream = stream.min((DAILY_CAP - s0).max(0));
+    let voice = voice.min((DAILY_CAP - v0).max(0));
+    if play + stream + voice == 0 {
+        return;
+    }
+    let _ = sqlx::query(
+        "INSERT INTO user_stat_days (user_id, day, play_seconds, stream_seconds, voice_seconds) VALUES ($1, CURRENT_DATE, $2, $3, $4) \
+         ON CONFLICT (user_id, day) DO UPDATE SET play_seconds = user_stat_days.play_seconds + EXCLUDED.play_seconds, \
+         stream_seconds = user_stat_days.stream_seconds + EXCLUDED.stream_seconds, voice_seconds = user_stat_days.voice_seconds + EXCLUDED.voice_seconds",
+    )
+    .bind(uid)
+    .bind(play)
+    .bind(stream)
+    .bind(voice)
+    .execute(&st.db)
+    .await;
     let _ = sqlx::query(
         "INSERT INTO user_stats (user_id, play_seconds, stream_seconds, voice_seconds) VALUES ($1, $2, $3, $4) \
          ON CONFLICT (user_id) DO UPDATE SET play_seconds = user_stats.play_seconds + EXCLUDED.play_seconds, \
@@ -98,6 +130,8 @@ pub struct ActivityBody {
     name: String,
     #[serde(default)]
     details: String,
+    #[serde(default)]
+    detected: bool,
 }
 
 pub async fn set_activity(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b): Json<ActivityBody>) -> Result<Json<Value>> {
@@ -114,13 +148,14 @@ pub async fn set_activity(State(st): State<AppState>, AuthUser(uid): AuthUser, J
         return bad("Not connected");
     }
     flush(&st, uid).await;
-    let same = st.hub.activity.get(&uid).is_some_and(|a| a.kind == b.kind && a.name == name && a.source == "manual");
+    let source = if b.detected && b.kind == "playing" { "game" } else { "manual" };
+    let same = st.hub.activity.get(&uid).is_some_and(|a| a.kind == b.kind && a.name == name && a.source == source);
     if same {
         if let Some(mut a) = st.hub.activity.get_mut(&uid) {
             a.details = details.to_string();
         }
     } else {
-        st.hub.activity.insert(uid, Activity { kind: b.kind, name: name.to_string(), details: details.to_string(), since: chrono::Utc::now(), tick: Instant::now(), source: "manual" });
+        st.hub.activity.insert(uid, Activity { kind: b.kind, name: name.to_string(), details: details.to_string(), since: chrono::Utc::now(), tick: Instant::now(), source });
     }
     broadcast(&st, uid).await;
     Ok(Json(json!({})))

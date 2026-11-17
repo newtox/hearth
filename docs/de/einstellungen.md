@@ -26,7 +26,9 @@ Die App liest diese direkt. Die erste Gruppe setzt der Stack für dich.
 |---|---|---|
 | `DATABASE_URL` | | Verbindung zu PostgreSQL |
 | `BIND` | `0.0.0.0:8080` | Adresse, auf der die App lauscht |
-| `PUBLIC_URL` | | Öffentliche Adresse, nötig für Kontoverbindungen |
+| `PUBLIC_URL` | | Öffentliche Adresse. Dient für Links in E-Mails, Linkvorschauen und die erlaubten Herkünfte. Ohne sie ist jede Herkunft erlaubt, das ist nur für die lokale Entwicklung gedacht. |
+| `CORS_ORIGINS` | | Weitere erlaubte Herkünfte, durch Komma getrennt. Die Web-Adresse und die Apps sind immer erlaubt. |
+| `EMAIL_VERIFICATION` | `on` | Mit eingerichteter E-Mail müssen neue Konten ihre Adresse bestätigen, bevor sie schreiben können. `off` schaltet das ab. |
 | `TRUST_PROXY` | `0` | `1` hinter einem Reverse Proxy, damit Ratenlimits die echte Adresse sehen |
 | `UPLOAD_DIR` | `uploads` | Ordner für hochgeladene Dateien |
 | `WEB_DIR` | `../web/dist` | Ordner der gebauten Weboberfläche |
@@ -46,6 +48,14 @@ Ohne diese Variablen zeigt die Anmeldung „Passwort vergessen?“ trotzdem an, 
 | `SMTP_TLS` | | `starttls` (Standard), `tls` (Standard bei Port 465) oder `none` |
 
 Der Link gilt eine Stunde und nur einmal. Nach dem Zurücksetzen werden alle Geräte abgemeldet.
+
+Mit eingerichteter E-Mail bekommen neue Konten und geänderte Adressen einen Bestätigungslink, der 24 Stunden gilt. Bis dahin kann das Konto lesen, aber nicht schreiben, keinen Servern beitreten und keine Freunde hinzufügen. Bestehende Konten gelten als bestätigt.
+
+Ohne E-Mail kann ein Admin auf dem Server einen Reset-Link erzeugen. Er gilt 24 Stunden:
+
+```bash
+docker exec hearth /app/hearth-server reset-link "Nutzername oder E-Mail"
+```
 
 ## Feste Grenzen im Server
 

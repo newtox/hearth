@@ -1,4 +1,4 @@
-use super::{audit, clean_color, clean_name, refresh};
+use super::{audit, clean_color, clean_name, refresh_parts};
 use crate::{auth::AuthUser, error::{bad, AppError, Result}, models::Role, perms, AppState};
 use axum::{extract::{Path, State}, Json};
 use serde::Deserialize;
@@ -49,7 +49,7 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gi
     .await?;
     tx.commit().await?;
     audit(&st, gid, uid, "role_create", &role.name, "").await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["roles"]).await?;
     Ok(Json(role))
 }
 
@@ -85,7 +85,7 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((g
         .fetch_one(&st.db)
         .await?;
     audit(&st, gid, uid, "role_update", &role.name, "").await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["roles", "channels"]).await?;
     Ok(Json(role))
 }
 
@@ -101,7 +101,7 @@ pub async fn delete(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((g
     sqlx::query("UPDATE roles SET position = position - 1 WHERE guild_id = $1 AND position > $2").bind(gid).bind(role.position).execute(&mut *tx).await?;
     tx.commit().await?;
     audit(&st, gid, uid, "role_delete", &role.name, "").await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["roles", "channels", "members"]).await?;
     Ok(Json(json!({})))
 }
 
@@ -126,6 +126,6 @@ pub async fn reorder(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(g
         sqlx::query("UPDATE roles SET position = $1 WHERE id = $2").bind(new).bind(id).execute(&mut *tx).await?;
     }
     tx.commit().await?;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["roles"]).await?;
     Ok(Json(json!({})))
 }

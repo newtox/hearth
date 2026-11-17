@@ -31,7 +31,7 @@
     if (isApp) setServer(server);
     try {
       if (mode === 'login') await login('login', { login: username, password });
-      else if (mode === 'register') await login('register', { username, email, password });
+      else if (mode === 'register') await login('register', { username, email, password, lang });
       else if (mode === 'forgot') {
         await api('POST', '/auth/forgot', { login: username, lang });
         sent = true;

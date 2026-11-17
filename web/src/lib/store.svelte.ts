@@ -27,6 +27,7 @@ export interface User {
   presence?: Presence;
   status?: Status;
   email?: string;
+  email_verified?: boolean;
   is_admin?: boolean;
   voice?: boolean;
   badges?: Badge[];
@@ -426,6 +427,11 @@ function handle(t: string, d: any) {
       app.ready = true;
       startDetection();
       spotifyNotice();
+      if (current.voiceChannel) {
+        const room = current.voiceChannel;
+        const inRoom = d.guilds.some((g: Guild) => g.voice_states.some((v) => v.user_id === d.user.id && v.channel_id === room)) || d.dms.some((x: Dm) => x.id === room && x.voice.includes(d.user.id));
+        if (!inRoom) api('POST', `/channels/${room}/voice`).catch(() => {});
+      }
       const invite = location.hash.match(/^#\/invite\/(\w+)/);
       if (invite) {
         app.modal = { kind: 'create', code: invite[1] };
@@ -520,7 +526,7 @@ function handle(t: string, d: any) {
       if (d.room === current.voiceChannel) current.onWatchers?.(d.watchers);
       break;
     case 'GUILD_REFRESH':
-      refreshGuild(d.guild_id);
+      queueRefresh(d.guild_id, d.parts);
       break;
     case 'GUILD_DELETE':
       removeGuild(d.guild_id);
@@ -543,9 +549,24 @@ export function putGuild(g: Guild) {
   if (app.guildId === g.id && !g.channels.some((c) => c.id === app.channelId && c.kind !== 'category')) select(g.id);
 }
 
+const pendingParts = new Map<string, Set<string>>();
+const ALL_PARTS = ['guild', 'roles', 'channels', 'members', 'emojis'];
+
+function queueRefresh(id: string, parts?: string[]) {
+  const known = pendingParts.get(id);
+  const next = known ?? new Set<string>();
+  for (const p of parts?.length ? parts : ALL_PARTS) next.add(p);
+  pendingParts.set(id, next);
+  if (!known) setTimeout(() => refreshGuild(id), 120);
+}
+
 async function refreshGuild(id: string) {
+  const parts = app.guilds.some((x) => x.id === id) ? [...(pendingParts.get(id) ?? ALL_PARTS)] : ALL_PARTS;
+  pendingParts.delete(id);
   try {
-    putGuild(await api('GET', `/guilds/${id}`));
+    const fresh = await api<Partial<Guild> & { id: string }>('GET', `/guilds/${id}?parts=${parts.join(',')}`);
+    const old = app.guilds.find((x) => x.id === id);
+    putGuild((old ? { ...old, ...fresh } : fresh) as Guild);
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) removeGuild(id);
   }

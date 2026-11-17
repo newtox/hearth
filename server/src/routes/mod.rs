@@ -38,9 +38,9 @@ pub async fn related_users(st: &AppState, user_id: Uuid) -> Result<Vec<Uuid>> {
     .await?)
 }
 
-pub async fn refresh(st: &AppState, guild_id: Uuid) -> Result<()> {
+pub async fn refresh_parts(st: &AppState, guild_id: Uuid, parts: &[&str]) -> Result<()> {
     let users = guild_audience(st, guild_id).await?;
-    st.hub.send(&users, "GUILD_REFRESH", json!({ "guild_id": guild_id }));
+    st.hub.send(&users, "GUILD_REFRESH", json!({ "guild_id": guild_id, "parts": parts }));
     Ok(())
 }
 

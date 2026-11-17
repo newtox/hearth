@@ -56,6 +56,7 @@ pub struct AddBody {
 }
 
 pub async fn add(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b): Json<AddBody>) -> Result<Json<Value>> {
+    crate::routes::account::require_verified(&st, uid).await?;
     st.limits.check(format!("friend:{uid}"), 20, Duration::from_secs(60))?;
     let target: Option<Uuid> = match (b.user_id, b.username) {
         (Some(id), _) => sqlx::query_scalar("SELECT id FROM users WHERE id = $1").bind(id).fetch_optional(&st.db).await?,

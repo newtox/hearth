@@ -30,7 +30,7 @@ Der Workflow „Apps“ baut alle Dateien und hängt sie an ein neues Release mi
 - Die APK ist ein Debug-Build. Sie lässt sich normal installieren, für den Play Store bräuchte sie einen Signaturschlüssel.
 - Android verbindet sich nur mit HTTPS-Servern.
 - Bildschirm teilen gibt es auf Android nicht, weil die System-WebView es nicht anbietet. Zuschauen geht.
-- Unter Linux hängt Sprache davon ab, ob die installierte WebKitGTK WebRTC kann. Im Browser geht es immer.
+- Unter Linux braucht Sprache eine WebKitGTK mit WebRTC. Ubuntu und Debian bauen sie ohne, deshalb zeigt die App dann einen Hinweis und öffnet Hearth im Browser. In Chrome lässt sich die Seite als App installieren, die dann wie eine Desktop-App mit Sprache und Bildschirm teilen funktioniert.
 - Die Windows- und Linux-Builds sind nicht signiert.
 
 ## Selbst bauen

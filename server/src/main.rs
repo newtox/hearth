@@ -28,6 +28,22 @@ pub struct AppState {
     pub mailer: Option<Arc<mail::Mailer>>,
 }
 
+fn cors() -> CorsLayer {
+    let public = env::var("PUBLIC_URL").unwrap_or_default();
+    let public = public.trim_end_matches('/').to_string();
+    if public.is_empty() {
+        return CorsLayer::permissive();
+    }
+    let mut origins: Vec<String> = vec![public, "tauri://localhost".into(), "http://tauri.localhost".into(), "https://tauri.localhost".into()];
+    origins.extend(env::var("CORS_ORIGINS").unwrap_or_default().split(',').map(|o| o.trim().trim_end_matches('/').to_string()).filter(|o| !o.is_empty()));
+    let origins: Vec<HeaderValue> = origins.iter().filter_map(|o| HeaderValue::from_str(o).ok()).collect();
+    CorsLayer::new()
+        .allow_origin(tower_http::cors::AllowOrigin::list(origins))
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers(tower_http::cors::Any)
+        .max_age(Duration::from_secs(3600))
+}
+
 fn index_html(web_dir: &std::path::Path) -> String {
     let html = std::fs::read_to_string(web_dir.join("index.html")).unwrap_or_else(|_| "<!doctype html><title>Hearth</title>".into());
     let public = env::var("PUBLIC_URL").unwrap_or_default();
@@ -46,6 +62,22 @@ async fn main() {
 
     let db = PgPoolOptions::new().max_connections(20).connect(&db_url).await.expect("database unreachable");
     sqlx::migrate!("./migrations").run(&db).await.expect("migration failed");
+    let args: Vec<String> = env::args().collect();
+    if args.get(1).map(String::as_str) == Some("reset-link") {
+        let login = args[2..].join(" ");
+        match routes::account::reset_link(&db, &login).await {
+            Ok(Some(link)) => println!("{link}"),
+            Ok(None) => {
+                eprintln!("No user with that name or email");
+                std::process::exit(1);
+            }
+            Err(_) => {
+                eprintln!("Could not create a reset link");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
     sqlx::query("UPDATE messages SET call_ended_at = now() WHERE kind = 'call' AND call_ended_at IS NULL").execute(&db).await.expect("closing calls failed");
 
     let livekit = match (env::var("LIVEKIT_URL"), env::var("LIVEKIT_API_KEY"), env::var("LIVEKIT_API_SECRET")) {
@@ -80,6 +112,8 @@ async fn main() {
         .route("/auth/logout", post(auth::logout))
         .route("/auth/forgot", post(account::forgot))
         .route("/auth/reset", post(account::reset))
+        .route("/auth/verify", post(account::verify))
+        .route("/users/@me/verify", post(account::resend))
         .route("/config", get(account::config))
         .route("/users/@me/account", patch(account::update))
         .route("/search", get(messages::search))
@@ -162,7 +196,7 @@ async fn main() {
         .route("/index.html", get(page.clone()))
         .fallback_service(ServeDir::new(&web_dir).append_index_html_on_directories(false).fallback(get(page)))
         .layer(DefaultBodyLimit::max(8 * 1024 * 1024))
-        .layer(CorsLayer::permissive())
+        .layer(cors())
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 

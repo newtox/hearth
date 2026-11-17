@@ -28,6 +28,8 @@ pub async fn me_json(st: &AppState, id: Uuid) -> Result<Value> {
     let email: String = sqlx::query_scalar("SELECT email FROM users WHERE id = $1").bind(id).fetch_one(&st.db).await?;
     let mut v = serde_json::to_value(user).map_err(|e| AppError::Internal(e.to_string()))?;
     v["email"] = json!(email);
+    let verified: bool = sqlx::query_scalar("SELECT email_verified FROM users WHERE id = $1").bind(id).fetch_one(&st.db).await?;
+    v["email_verified"] = json!(verified);
     let status: String = sqlx::query_scalar("SELECT status FROM users WHERE id = $1").bind(id).fetch_one(&st.db).await?;
     v["status"] = json!(status);
     v["voice"] = json!(st.livekit.is_some());
@@ -130,6 +132,7 @@ pub struct OpenDm {
 }
 
 pub async fn open_dm(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b): Json<OpenDm>) -> Result<Json<Value>> {
+    crate::routes::account::require_verified(&st, uid).await?;
     if b.user_id == uid {
         return bad("You cannot message yourself");
     }

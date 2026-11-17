@@ -11,6 +11,7 @@
   import { docs, releases } from '../lib/docs';
   import Avatar from './Avatar.svelte';
   import { backdrop, hoverHost } from '../lib/still.svelte';
+  import { resendVerification } from '../lib/verify';
   import SettingsPage, { type Section } from './SettingsPage.svelte';
   import Modal from './Modal.svelte';
   import { notifications } from '../lib/notify';
@@ -127,7 +128,7 @@
 
   async function saveAccount(e: SubmitEvent) {
     e.preventDefault();
-    const body: Record<string, string> = { password: form.password };
+    const body: Record<string, string> = { password: form.password, lang };
     if (editing === 'password') {
       if (form.next !== form.repeat) return toast(t('common_new_passwords_do_not_match'));
       body.new_password = form.next;
@@ -180,7 +181,7 @@
         <div class="fact">
           <div class="grow">
             <dt>{t('common_email')}</dt>
-            <dd>{showEmail ? me.email : masked(me.email ?? '')} <button class="link" onclick={() => (showEmail = !showEmail)}>{showEmail ? t('user_settings_hide') : t('user_settings_show')}</button></dd>
+            <dd>{showEmail ? me.email : masked(me.email ?? '')} <button class="link" onclick={() => (showEmail = !showEmail)}>{showEmail ? t('user_settings_hide') : t('user_settings_show')}</button>{#if me.email_verified === false}<span class="unverified">{t('verify_not_confirmed')}</span> <button class="link" onclick={() => resendVerification(lang)}>{t('verify_resend')}</button>{/if}</dd>
           </div>
           <button class="btn small" onclick={() => edit('email')}>{t('common_edit')}</button>
         </div>
@@ -536,5 +537,13 @@
     .grid {
       grid-template-columns: 1fr;
     }
+  }
+  .unverified {
+    margin: 0 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    background: color-mix(in srgb, var(--danger) 18%, transparent);
+    color: var(--danger);
   }
 </style>

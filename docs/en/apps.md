@@ -30,7 +30,7 @@ The "Apps" workflow builds every file and attaches them to a new release named a
 - The APK is a debug build. It installs fine but cannot go to the Play Store without a signing key.
 - Android only connects to HTTPS servers.
 - Screen sharing is not available on Android because the system WebView does not offer it. Watching a share works.
-- On Linux, voice depends on WebRTC support in the installed WebKitGTK. If it fails, the browser always works.
+- On Linux, voice needs a WebKitGTK built with WebRTC. Ubuntu and Debian build it without, so the app shows a note and opens Hearth in the browser instead. In Chrome you can install the web page as an app, which then works like a desktop app including voice and screen sharing.
 - Windows and Linux builds are not code-signed.
 
 ## Building yourself

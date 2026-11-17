@@ -1,17 +1,39 @@
-use super::{audit, clean_name, guild_audience, refresh, remove_upload, save_image};
+use super::{audit, clean_name, guild_audience, refresh_parts, remove_upload, save_image};
 use crate::{auth::AuthUser, error::{bad, AppError, Result}, models::{Channel, Emoji, Guild, Member, Role, CHANNEL_COLS}, perms::{self, Overwrite}, AppState};
 use axum::{extract::{Multipart, Path, State}, Json};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
+pub const ALL: &[&str] = &["guild", "roles", "channels", "members", "emojis"];
+
 pub async fn snapshot(st: &AppState, guild_id: Uuid, user_id: Uuid) -> Result<Value> {
+    snapshot_parts(st, guild_id, user_id, ALL).await
+}
+
+pub async fn snapshot_parts(st: &AppState, guild_id: Uuid, user_id: Uuid, parts: &[&str]) -> Result<Value> {
     let ctx = perms::ctx(&st.db, guild_id, user_id).await?;
+    let want = |p: &str| parts.contains(&p);
     let guild: Guild = sqlx::query_as("SELECT id, name, description, icon, owner_id, created_at FROM guilds WHERE id = $1")
         .bind(guild_id)
         .fetch_one(&st.db)
         .await?;
-    let roles: Vec<Role> = sqlx::query_as("SELECT * FROM roles WHERE guild_id = $1 ORDER BY position DESC, id").bind(guild_id).fetch_all(&st.db).await?;
+    let mut v = serde_json::to_value(guild).map_err(|e| AppError::Internal(e.to_string()))?;
+    v["permissions"] = json!(ctx.base);
+    if want("roles") {
+        let roles: Vec<Role> = sqlx::query_as("SELECT * FROM roles WHERE guild_id = $1 ORDER BY position DESC, id").bind(guild_id).fetch_all(&st.db).await?;
+        v["roles"] = json!(roles);
+    }
+    if want("emojis") {
+        let emojis: Vec<Emoji> = sqlx::query_as("SELECT id, kind, name, file FROM emojis WHERE guild_id = $1 ORDER BY name").bind(guild_id).fetch_all(&st.db).await?;
+        v["emojis"] = json!(emojis);
+    }
+    if want("members") {
+        v["members"] = json!(members(st, guild_id).await?);
+    }
+    if !want("channels") {
+        return Ok(v);
+    }
     let channels: Vec<Channel> = sqlx::query_as(&format!("SELECT {CHANNEL_COLS} FROM channels WHERE guild_id = $1 ORDER BY position, id"))
         .bind(guild_id)
         .fetch_all(&st.db)
@@ -36,6 +58,19 @@ pub async fn snapshot(st: &AppState, guild_id: Uuid, user_id: Uuid) -> Result<Va
             Some(v)
         })
         .collect();
+    let voice: Vec<Value> = st
+        .hub
+        .voice
+        .iter()
+        .filter(|e| channels.iter().any(|c| c["id"] == json!(e.value())))
+        .map(|e| json!({ "user_id": e.key(), "channel_id": e.value() }))
+        .collect();
+    v["channels"] = json!(channels);
+    v["voice_states"] = json!(voice);
+    Ok(v)
+}
+
+async fn members(st: &AppState, guild_id: Uuid) -> Result<Vec<Member>> {
     let mut members: Vec<Member> = sqlx::query_as(
         "SELECT u.id, u.username, u.display_name, u.avatar, m.nickname, m.joined_at, m.timeout_until, \
          COALESCE(array_agg(mr.role_id) FILTER (WHERE mr.role_id IS NOT NULL), '{}') AS roles \
@@ -53,22 +88,7 @@ pub async fn snapshot(st: &AppState, guild_id: Uuid, user_id: Uuid) -> Result<Va
         m.activity = if shown { st.hub.activity.get(&m.id).map(|a| a.clone()) } else { None };
         m.streaming = shown && st.hub.streaming.contains_key(&m.id);
     }
-    let mut v = serde_json::to_value(guild).map_err(|e| AppError::Internal(e.to_string()))?;
-    v["roles"] = json!(roles);
-    v["channels"] = json!(channels);
-    v["members"] = json!(members);
-    let emojis: Vec<Emoji> = sqlx::query_as("SELECT id, kind, name, file FROM emojis WHERE guild_id = $1 ORDER BY name").bind(guild_id).fetch_all(&st.db).await?;
-    let voice: Vec<Value> = st
-        .hub
-        .voice
-        .iter()
-        .filter(|e| channels.iter().any(|c| c["id"] == json!(e.value())))
-        .map(|e| json!({ "user_id": e.key(), "channel_id": e.value() }))
-        .collect();
-    v["emojis"] = json!(emojis);
-    v["voice_states"] = json!(voice);
-    v["permissions"] = json!(ctx.base);
-    Ok(v)
+    Ok(members)
 }
 
 #[derive(Deserialize)]
@@ -79,6 +99,7 @@ pub struct CreateGuild {
 }
 
 pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b): Json<CreateGuild>) -> Result<Json<Value>> {
+    crate::routes::account::require_verified(&st, uid).await?;
     let name = clean_name(&b.name, 60, "Name")?;
     let category = clean_name(b.category.as_deref().unwrap_or("General"), 60, "Name")?;
     let channel = clean_name(b.channel.as_deref().unwrap_or("general"), 60, "Name")?;
@@ -110,12 +131,21 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b)
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, ALL).await?;
     Ok(Json(snapshot(&st, gid, uid).await?))
 }
 
-pub async fn get(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gid): Path<Uuid>) -> Result<Json<Value>> {
-    Ok(Json(snapshot(&st, gid, uid).await?))
+#[derive(Deserialize)]
+pub struct PartsQuery {
+    parts: Option<String>,
+}
+
+pub async fn get(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gid): Path<Uuid>, axum::extract::Query(q): axum::extract::Query<PartsQuery>) -> Result<Json<Value>> {
+    let parts: Vec<&str> = match q.parts.as_deref() {
+        Some(list) => list.split(',').map(str::trim).filter(|p| ALL.contains(p)).collect(),
+        None => ALL.to_vec(),
+    };
+    Ok(Json(snapshot_parts(&st, gid, uid, &parts).await?))
 }
 
 #[derive(Deserialize)]
@@ -146,7 +176,7 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gi
         sqlx::query("UPDATE guilds SET owner_id = $1 WHERE id = $2").bind(new_owner).bind(gid).execute(&st.db).await?;
     }
     audit(&st, gid, uid, "server_update", "", "").await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["guild", "channels"]).await?;
     Ok(Json(snapshot(&st, gid, uid).await?))
 }
 
@@ -170,7 +200,7 @@ pub async fn set_icon(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(
     let old: Option<String> = sqlx::query_scalar("SELECT icon FROM guilds WHERE id = $1").bind(gid).fetch_one(&st.db).await?;
     sqlx::query("UPDATE guilds SET icon = $1 WHERE id = $2").bind(&name).bind(gid).execute(&st.db).await?;
     remove_upload(&st, old).await;
-    refresh(&st, gid).await?;
+    refresh_parts(&st, gid, &["guild"]).await?;
     Ok(Json(json!({ "icon": name })))
 }
 
