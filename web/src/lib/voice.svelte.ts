@@ -24,10 +24,33 @@ export const voice = $state({
   speaking: [] as string[],
   silent: [] as string[],
   tiles: [] as Tile[],
-  streams: [] as { userId: string; name: string; local: boolean; watching: boolean }[],
+  streams: [] as { userId: string; name: string; local: boolean; watching: boolean; audio: boolean }[],
+  streamVolume: loadVolumes(),
   watchers: {} as Record<string, string[]>,
   names: {} as Record<string, string>,
 });
+
+function loadVolumes(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem('hearth_stream_volume') ?? '{}');
+  } catch {
+    return {};
+  }
+}
+
+function applyVolume(el: HTMLMediaElement) {
+  const v = voice.streamVolume[el.dataset.user ?? ''] ?? 1;
+  el.volume = Math.min(1, Math.max(0, v));
+  el.muted = v === 0;
+}
+
+export function setStreamVolume(userId: string, value: number) {
+  voice.streamVolume = { ...voice.streamVolume, [userId]: value };
+  try {
+    localStorage.setItem('hearth_stream_volume', JSON.stringify(voice.streamVolume));
+  } catch {}
+  document.querySelectorAll<HTMLMediaElement>(`audio[data-hearth-voice][data-stream][data-user="${CSS.escape(userId)}"]`).forEach(applyVolume);
+}
 
 export const canShareScreen = typeof navigator !== 'undefined' && !!navigator.mediaDevices && 'getDisplayMedia' in navigator.mediaDevices;
 
@@ -95,13 +118,14 @@ function sync() {
   for (const p of [room.localParticipant, ...room.remoteParticipants.values()]) {
     const local = p === room.localParticipant;
     let mic = false;
+    const audio = [...p.trackPublications.values()].some((pub: any) => pub.source === lk!.Track.Source.ScreenShareAudio && !pub.isMuted);
     names[p.identity] = p.name || p.identity;
     for (const pub of p.trackPublications.values()) {
       if (pub.source === lk.Track.Source.Microphone) {
         mic = !pub.isMuted;
         if (pub.track) meter(p.identity, pub.track.mediaStreamTrack);
       }
-      if (pub.source === lk.Track.Source.ScreenShare && !pub.isMuted) streams.push({ userId: p.identity, name: p.name || p.identity, local, watching: local || pub.isSubscribed });
+      if (pub.source === lk.Track.Source.ScreenShare && !pub.isMuted) streams.push({ userId: p.identity, name: p.name || p.identity, local, watching: local || pub.isSubscribed, audio });
       if (pub.kind === lk.Track.Kind.Video && pub.track && !pub.isMuted) {
         tiles.push({ id: pub.trackSid, userId: p.identity, name: p.name || p.identity, kind: pub.source === lk.Track.Source.ScreenShare ? 'screen' : 'camera', track: pub.track, local });
       }
@@ -184,6 +208,11 @@ export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
       if (track.kind === 'audio') {
         const el = track.attach() as HTMLMediaElement;
         el.dataset.hearthVoice = '1';
+        el.dataset.user = p.identity;
+        if (pub.source === lk!.Track.Source.ScreenShareAudio) {
+          el.dataset.stream = '1';
+          applyVolume(el);
+        }
         el.hidden = true;
         document.body.append(el);
       }
@@ -235,7 +264,22 @@ export async function toggleMute() {
 export async function toggleShare() {
   if (!room || !voice.canStream) return;
   try {
-    await room.localParticipant.setScreenShareEnabled(!voice.sharing, { audio: true });
+    const start = !voice.sharing;
+    await room.localParticipant.setScreenShareEnabled(
+      start,
+      {
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, restrictOwnAudio: true, suppressLocalAudioPlayback: false } as MediaTrackConstraints,
+        systemAudio: 'include',
+        selfBrowserSurface: 'exclude',
+        surfaceSwitching: 'include',
+        contentHint: 'detail',
+      },
+      { audioPreset: lk!.AudioPresets.musicHighQualityStereo, dtx: false, red: false },
+    );
+    if (start && room.localParticipant.isScreenShareEnabled) {
+      const sound = [...room.localParticipant.trackPublications.values()].some((pub: any) => pub.source === lk!.Track.Source.ScreenShareAudio);
+      if (!sound) toast(t(/Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent) ? 'voice_share_no_audio_linux' : 'voice_share_no_audio'));
+    }
   } catch {
     if (!voice.sharing) toast(t('voice_screen_sharing_was_cancelled_not'));
   }
