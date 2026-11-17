@@ -129,7 +129,7 @@ async fn main() {
 
     let uploads = ServeDir::new(&upload_dir);
     let app = Router::new()
-        .nest("/api", api)
+        .nest("/api", api.fallback(|| async { error::AppError::NotFound }))
         .route("/gateway", get(gateway::handler))
         .nest_service(
             "/uploads/files",
