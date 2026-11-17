@@ -19,6 +19,7 @@ In Portainer oder in `deploy/.env` setzen, wenn du [`deploy/docker-compose.yml`]
 | `CONNECT_TWITCH_ID`, `CONNECT_TWITCH_SECRET` | nein | Twitch-Konten und Abonnenten-Rollen |
 | `CONNECT_YOUTUBE_ID`, `CONNECT_YOUTUBE_SECRET` | nein | YouTube-Konten und Mitglieder-Rollen |
 | `STEAM_API_KEY` | nein | Steam-Konten |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` | nein | E-Mail für „Passwort vergessen?“, siehe unten |
 
 ## Variablen des Servers
 
@@ -35,6 +36,20 @@ Die App liest diese direkt. Die erste Gruppe setzt der Stack für dich.
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | | Sprachserver. Ohne sie sind Sprachkanäle sichtbar, aber nicht betretbar. |
 | `SPOTIFY_POLL_SECS` | `15` | Wie oft der aktuelle Spotify-Titel abgefragt wird |
 | `INTEGRATION_SYNC_SECS` | `600` | Wie oft Twitch- und YouTube-Rollen abgeglichen werden |
+
+## E-Mail für Passwort-Resets
+
+Ohne diese Variablen zeigt die Anmeldung „Passwort vergessen?“ trotzdem an, der Server antwortet dann aber, dass das nicht eingerichtet ist.
+
+| Variable | Beispiel | Bedeutung |
+|---|---|---|
+| `SMTP_HOST` | `smtp.example.com` | Mailserver |
+| `SMTP_PORT` | `587` | `587` mit STARTTLS oder `465` mit TLS |
+| `SMTP_USER`, `SMTP_PASSWORD` | | Anmeldung am Mailserver |
+| `SMTP_FROM` | `Hearth <chat@example.com>` | Absenderadresse |
+| `SMTP_TLS` | | `starttls` (Standard), `tls` (Standard bei Port 465) oder `none` |
+
+Der Link gilt eine Stunde und nur einmal. Nach dem Zurücksetzen werden alle Geräte abgemeldet.
 
 ## Feste Grenzen im Server
 

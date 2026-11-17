@@ -19,6 +19,7 @@ Set in Portainer or in `deploy/.env` when using [`deploy/docker-compose.yml`](..
 | `CONNECT_TWITCH_ID`, `CONNECT_TWITCH_SECRET` | no | Twitch account links and subscriber roles |
 | `CONNECT_YOUTUBE_ID`, `CONNECT_YOUTUBE_SECRET` | no | YouTube account links and member roles |
 | `STEAM_API_KEY` | no | Steam account links |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` | no | Email for “Forgot your password?”, see below |
 
 ## Server variables
 
@@ -35,6 +36,20 @@ The app reads these directly. The stack sets the first group for you.
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | | Voice server. Without them voice channels are visible but cannot be joined. |
 | `SPOTIFY_POLL_SECS` | `15` | How often the current Spotify track is fetched |
 | `INTEGRATION_SYNC_SECS` | `600` | How often Twitch and YouTube roles are synced |
+
+## Email for password resets
+
+Without these variables the sign-in page still offers “Forgot your password?”, but the server answers that resets are not set up.
+
+| Variable | Example | Meaning |
+|---|---|---|
+| `SMTP_HOST` | `smtp.example.com` | Mail server |
+| `SMTP_PORT` | `587` | `587` with STARTTLS or `465` with TLS |
+| `SMTP_USER`, `SMTP_PASSWORD` | | Login at the mail server |
+| `SMTP_FROM` | `Hearth <chat@example.com>` | Sender address |
+| `SMTP_TLS` | | `starttls` (default), `tls` (default on port 465) or `none` |
+
+The reset link is valid for one hour and works once. After a reset, every device is signed out.
 
 ## Limits built into the server
 

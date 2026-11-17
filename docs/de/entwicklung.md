@@ -29,3 +29,5 @@ python3 scripts/smoke.py http://127.0.0.1:8080
 ```
 
 Rollen-Abgleich gegen eine nachgebaute Plattform: `python3 scripts/mock_platform.py` starten, den Server mit `PUBLIC_URL=http://127.0.0.1:8080 CONNECT_MOCK_URL=http://127.0.0.1:9099 INTEGRATION_SYNC_SECS=5` laufen lassen, dann `python3 scripts/integrations.py`.
+
+Passwort-Reset per E-Mail: `pip install aiosmtpd`, `python3 scripts/mock_smtp.py` starten, den Server mit `PUBLIC_URL=http://127.0.0.1:8080 SMTP_HOST=127.0.0.1 SMTP_PORT=2525 SMTP_TLS=none SMTP_FROM=chat@example.com` laufen lassen, dann `python3 scripts/password_reset.py`.

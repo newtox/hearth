@@ -9,6 +9,20 @@
 - **Right-click a message**: react, start a thread, edit, copy text, mention the author, copy the message ID, delete.
 - **Right-click a channel or category**: mark as read, edit, create a channel inside, copy the ID.
 
+## Replies, pins and search
+
+- **Reply**: the arrow next to a message or "Reply" in its menu. The reply shows a quote of the original; click it to jump there. Replies to you are highlighted like mentions.
+- **Pin**: "Pin" in a message's menu, for anyone who may manage messages (in direct messages: both people, in groups: per group settings). The pin button in the channel header lists all pinned messages, up to 50 per channel.
+- **Search**: the field in the channel header searches the whole server, or the conversation in direct messages. `from:name` (also `von:` or `fra:`) limits to one author. Channels you cannot see are never searched.
+
+## Notifications
+
+Under Settings, Notifications, you can turn on desktop notifications. They show for direct messages, groups, mentions and replies to you while Hearth is in the background, and stay off on "Do not disturb".
+
+## Account
+
+Settings is a full page with your account, profile, connections, appearance, language, notifications and activity. Under **My account** you change username, email and password; all of these need your current password. A new password signs out every other device. If you forgot your password, "Forgot your password?" on the sign-in page sends a link by email, if the server has email set up.
+
 ## Moderator view
 
 Opens from a member's menu for anyone with a moderation permission. It shows the member's message, link and media counts on this server, audit log entries about them, their effective permissions, their roles (add and remove right there), registration and join dates and a running timeout.
@@ -22,6 +36,14 @@ Threads start from a message (right-click or the thread button) and show up unde
 ## Voice and screen sharing
 
 Click a voice channel to join. Screen shares appear as tiles; you start watching by clicking one, and the sharer sees who watches. Sounds play when people join, leave and start or stop sharing.
+
+## Activity
+
+- **Games** are detected automatically by the desktop app for Windows and Linux. Every 20 seconds it looks at running programs and compares them with a list of about 20 well-known games. Your own games go under Settings, Activity, one per line as `processname=Game name`. Games running through Proton or Wine are recognised by their `.exe` name. The browser and Android cannot see running programs, so there you set the activity by hand.
+- **Spotify** shows the current track once your account is linked.
+- **By hand**: playing, listening, watching or a custom text under Settings, Activity. A manual activity or a detected game takes precedence over Spotify.
+
+Playtime from detected games counts towards the playtime badges.
 
 ## Profiles and badges
 

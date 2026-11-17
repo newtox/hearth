@@ -38,6 +38,12 @@ services:
       CONNECT_YOUTUBE_ID: ${CONNECT_YOUTUBE_ID:-}
       CONNECT_YOUTUBE_SECRET: ${CONNECT_YOUTUBE_SECRET:-}
       STEAM_API_KEY: ${STEAM_API_KEY:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_TLS: ${SMTP_TLS:-}
     ports:
       - "127.0.0.1:${APP_PORT:-8090}:8080"
     volumes:

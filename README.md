@@ -32,6 +32,7 @@ Or add [`deploy/docker-compose.yml`](deploy/docker-compose.yml) as a stack in Po
 - Roles with hierarchy, colour, 20 permissions, channel rules per role and per member
 - Right-click menus for members, messages, channels and servers, a server menu on the server name, and a moderator view per member
 - Roles for Twitch subscribers and YouTube channel members, kept in sync automatically
+- Replies, pinned messages, search across a server with an author filter, desktop notifications
 - Real-time chat: Markdown, mentions, attachments up to 25 MB, reactions, custom emojis and stickers, emoji search in German and English, typing indicator, unread markers
 - Friends, direct messages, group chats with up to 10 people, three group roles and per-group permissions, blocking
 - Voice channels and calls with screen sharing, watched on demand with a viewer list, and sounds
@@ -44,7 +45,7 @@ Or add [`deploy/docker-compose.yml`](deploy/docker-compose.yml) as a stack in Po
 
 ## Known limits
 
-- No email verification and no password reset.
+- No email verification. Password reset needs an SMTP server.
 - CORS is open so the apps can connect. Sign-in uses bearer tokens, not cookies.
 - On structural changes every client reloads the server state. Very large servers will need something finer.
 - The server keeps track of who is in a voice channel in memory only.

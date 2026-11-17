@@ -29,3 +29,5 @@ python3 scripts/smoke.py http://127.0.0.1:8080
 ```
 
 Role sync against a fake platform: start `python3 scripts/mock_platform.py`, run the server with `PUBLIC_URL=http://127.0.0.1:8080 CONNECT_MOCK_URL=http://127.0.0.1:9099 INTEGRATION_SYNC_SECS=5`, then `python3 scripts/integrations.py`.
+
+Password reset by email: `pip install aiosmtpd`, start `python3 scripts/mock_smtp.py`, run the server with `PUBLIC_URL=http://127.0.0.1:8080 SMTP_HOST=127.0.0.1 SMTP_PORT=2525 SMTP_TLS=none SMTP_FROM=chat@example.com`, then `python3 scripts/password_reset.py`.

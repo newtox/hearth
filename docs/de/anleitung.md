@@ -9,6 +9,20 @@
 - **Rechtsklick auf eine Nachricht**: reagieren, Thread starten, bearbeiten, Text kopieren, Verfasser erwähnen, Nachrichten-ID kopieren, löschen.
 - **Rechtsklick auf einen Kanal oder eine Kategorie**: als gelesen markieren, bearbeiten, Kanal darin erstellen, ID kopieren.
 
+## Antworten, Anheften, Suche
+
+- **Antworten**: der Pfeil neben einer Nachricht oder „Antworten“ im Menü. Die Antwort zeigt ein Zitat der ursprünglichen Nachricht, ein Klick springt dorthin. Antworten auf dich werden wie Erwähnungen hervorgehoben.
+- **Anheften**: „Anheften“ im Menü einer Nachricht, für alle, die Nachrichten verwalten dürfen (in Direktnachrichten beide, in Gruppen je nach Gruppeneinstellungen). Der Stecknadel-Knopf oben im Kanal zeigt alle angehefteten Nachrichten, höchstens 50 pro Kanal.
+- **Suche**: das Feld oben im Kanal durchsucht den ganzen Server, in Direktnachrichten die Unterhaltung. `von:name` (auch `from:` oder `fra:`) beschränkt auf einen Verfasser. Kanäle, die du nicht sehen darfst, werden nie durchsucht.
+
+## Benachrichtigungen
+
+Unter Einstellungen, Benachrichtigungen schaltest du Desktop-Benachrichtigungen ein. Sie kommen bei Direktnachrichten, Gruppen, Erwähnungen und Antworten auf dich, solange Hearth im Hintergrund ist, und bleiben bei „Bitte nicht stören“ aus.
+
+## Konto
+
+Die Einstellungen sind eine eigene Seite mit Konto, Profil, Verbindungen, Darstellung, Sprache, Benachrichtigungen und Aktivität. Unter **Mein Konto** änderst du Benutzername, E-Mail und Passwort, jeweils mit deinem aktuellen Passwort. Ein neues Passwort meldet alle anderen Geräte ab. Wer sein Passwort vergessen hat, bekommt über „Passwort vergessen?“ auf der Anmeldeseite einen Link per E-Mail, sofern der Server E-Mail eingerichtet hat.
+
 ## Moderatorenansicht
 
 Öffnet sich aus dem Menü eines Mitglieds, für alle mit einem Moderationsrecht. Sie zeigt Nachrichten, Links und Medien des Mitglieds auf diesem Server, Protokolleinträge über es, seine tatsächlichen Rechte, seine Rollen (direkt dort hinzufügen und entfernen), Registrierungs- und Beitrittsdatum und einen laufenden Timeout.
@@ -22,6 +36,14 @@ Threads startest du aus einer Nachricht (Rechtsklick oder Thread-Knopf), sie ers
 ## Sprache und Bildschirm teilen
 
 Ein Klick auf einen Sprachkanal tritt bei. Geteilte Bildschirme erscheinen als Kacheln; zuschauen startest du per Klick, und wer teilt, sieht die Zuschauer. Töne spielen, wenn jemand beitritt, geht oder das Teilen startet oder beendet.
+
+## Aktivität
+
+- **Spiele** erkennt die Desktop-App für Windows und Linux selbst. Alle 20 Sekunden schaut sie, welche Programme laufen, und vergleicht sie mit einer Liste von etwa 20 bekannten Spielen. Eigene Spiele trägst du unter Einstellungen, Aktivität ein, eine Zeile pro Spiel als `prozessname=Spielname`. Spiele über Proton oder Wine erkennt sie am Namen der `.exe`. Browser und Android können laufende Programme nicht sehen, dort setzt du die Aktivität von Hand.
+- **Spotify** zeigt den laufenden Titel, sobald dein Konto verbunden ist.
+- **Von Hand**: Spielt, Hört, Schaut oder eigener Text unter Einstellungen, Aktivität. Eine selbst gesetzte Aktivität oder ein erkanntes Spiel geht vor Spotify.
+
+Die Spielzeit erkannter Spiele zählt für die Spielzeit-Abzeichen.
 
 ## Profile und Abzeichen
 
