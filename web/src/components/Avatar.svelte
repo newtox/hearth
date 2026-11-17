@@ -1,15 +1,15 @@
 <script lang="ts">
   import { t } from '../lib/i18n.svelte';
-  import { asset } from '../lib/api';
+  import { thumb } from '../lib/api';
   import { frame, hoverHost, isAnimated, sizeFor } from '../lib/still.svelte';
 
   let { id, name, image = null, size = 36, online = undefined, status = undefined, square = false }: { id: string; name: string; image?: string | null; size?: number; online?: boolean; status?: string; square?: boolean } = $props();
 
   const LABELS: Record<string, string> = { online: 'common_online', idle: 'common_idle', dnd: 'common_do_not_disturb', invisible: 'common_invisible', offline: 'common_offline' };
   let hovered = $state(false);
-  const url = $derived(asset(image));
+  const url = $derived(thumb(image, sizeFor(size)));
   const moving = $derived(isAnimated(url));
-  const shown = $derived(!url ? null : moving && hovered ? url : frame(url, sizeFor(size)));
+  const shown = $derived(!url ? null : !moving || hovered ? url : frame(url, sizeFor(size)));
   const dotState = $derived(status ?? (online === undefined ? undefined : online ? 'online' : 'offline'));
 
   const hue = $derived([...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7));

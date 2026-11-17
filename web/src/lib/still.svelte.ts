@@ -56,7 +56,7 @@ export function frame(url: string, size: number) {
 
 export function sizeFor(px: number) {
   const want = px * Math.max(1, typeof devicePixelRatio === 'number' ? devicePixelRatio : 1);
-  return [32, 64, 128, 256, 512].find((s) => s >= want) ?? 1024;
+  return [32, 64, 128, 256].find((s) => s >= want) ?? 256;
 }
 
 export function still(url: string) {

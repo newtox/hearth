@@ -3,6 +3,8 @@ import { api, ApiError } from './api';
 import { current } from './current';
 import { play } from './sounds';
 import { app, toast } from './store.svelte';
+import { ask } from './dialog.svelte';
+import { openExternal, webAddress } from './external';
 
 export interface Tile {
   id: string;
@@ -52,7 +54,9 @@ export function setStreamVolume(userId: string, value: number) {
   document.querySelectorAll<HTMLMediaElement>(`audio[data-hearth-voice][data-stream][data-user="${CSS.escape(userId)}"]`).forEach(applyVolume);
 }
 
-export const canShareScreen = typeof navigator !== 'undefined' && !!navigator.mediaDevices && 'getDisplayMedia' in navigator.mediaDevices;
+export const canCall = typeof window !== 'undefined' && typeof (window as any).RTCPeerConnection === 'function';
+
+export const canShareScreen = canCall && typeof navigator !== 'undefined' && !!navigator.mediaDevices && 'getDisplayMedia' in navigator.mediaDevices;
 
 let room: any = null;
 let lk: typeof import('livekit-client') | null = null;
@@ -186,6 +190,10 @@ function cleanup() {
 
 export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
   if (voice.connecting || voice.channelId === ch.id) return;
+  if (!canCall) {
+    if (await ask({ title: t('voice_no_calls_here'), text: t('voice_no_calls_here_text'), confirm: t('voice_open_in_browser') })) openExternal(webAddress());
+    return;
+  }
   if (voice.channelId) await leaveVoice();
   voice.connecting = true;
   try {

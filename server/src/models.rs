@@ -136,9 +136,12 @@ pub struct MessageRow {
     pub avatar: Option<String>,
     pub reply_to: Option<Uuid>,
     pub pinned_at: Option<DateTime<Utc>>,
+    pub kind: String,
+    pub call_ended_at: Option<DateTime<Utc>>,
+    pub call_participants: Vec<Uuid>,
 }
 
-pub const MESSAGE_SELECT: &str = "SELECT m.id, m.channel_id, m.content, m.created_at, m.edited_at, u.id AS author_id, u.username, u.display_name, u.avatar, m.reply_to, m.pinned_at FROM messages m JOIN users u ON u.id = m.author_id";
+pub const MESSAGE_SELECT: &str = "SELECT m.id, m.channel_id, m.content, m.created_at, m.edited_at, u.id AS author_id, u.username, u.display_name, u.avatar, m.reply_to, m.pinned_at, m.kind, m.call_ended_at, m.call_participants FROM messages m JOIN users u ON u.id = m.author_id";
 
 #[derive(Serialize, FromRow)]
 pub struct Attachment {
@@ -170,6 +173,8 @@ impl MessageRow {
             "author": { "id": self.author_id, "username": self.username, "display_name": self.display_name, "avatar": self.avatar },
             "reply_to": self.reply_to,
             "pinned": self.pinned_at.is_some(),
+            "kind": self.kind,
+            "call": if self.kind == "call" { serde_json::json!({ "ended_at": self.call_ended_at, "participants": self.call_participants }) } else { serde_json::Value::Null },
         })
     }
 }

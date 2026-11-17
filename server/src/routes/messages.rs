@@ -94,6 +94,37 @@ async fn to_json(st: &AppState, rows: &[MessageRow]) -> Result<Vec<Value>> {
         .collect())
 }
 
+pub async fn call_joined(st: &AppState, room: Uuid, user: Uuid) -> Result<()> {
+    let existing = st.hub.calls.get(&room).map(|m| *m);
+    let id = match existing {
+        Some(id) => {
+            sqlx::query("UPDATE messages SET call_participants = array_append(call_participants, $2) WHERE id = $1 AND NOT ($2 = ANY(call_participants))").bind(id).bind(user).execute(&st.db).await?;
+            id
+        }
+        None => {
+            let id = Uuid::now_v7();
+            sqlx::query("INSERT INTO messages (id, channel_id, author_id, content, kind, call_participants) VALUES ($1, $2, $3, '', 'call', ARRAY[$3])").bind(id).bind(room).bind(user).execute(&st.db).await?;
+            st.hub.calls.insert(room, id);
+            id
+        }
+    };
+    let msg = fetch(st, id).await?;
+    st.hub.send(&super::groups::recipients(st, room).await?, if existing.is_some() { "MESSAGE_UPDATE" } else { "MESSAGE_CREATE" }, &msg);
+    Ok(())
+}
+
+pub async fn call_left(st: &AppState, room: Uuid) -> Result<()> {
+    if st.hub.voice.iter().any(|e| *e.value() == room) {
+        return Ok(());
+    }
+    let Some((_, id)) = st.hub.calls.remove(&room) else { return Ok(()) };
+    sqlx::query("UPDATE messages SET call_ended_at = now() WHERE id = $1").bind(id).execute(&st.db).await?;
+    if let Ok(msg) = fetch(st, id).await {
+        st.hub.send(&super::groups::recipients(st, room).await?, "MESSAGE_UPDATE", &msg);
+    }
+    Ok(())
+}
+
 async fn fetch(st: &AppState, id: Uuid) -> Result<Value> {
     let row: MessageRow = sqlx::query_as(&format!("{MESSAGE_SELECT} WHERE m.id = $1")).bind(id).fetch_one(&st.db).await?;
     Ok(to_json(st, &[row]).await?.remove(0))
@@ -254,7 +285,7 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((c
         return bad("Message: 1–4000 characters");
     }
     check_emojis(&st, &a, content).await?;
-    let done = sqlx::query("UPDATE messages SET content = $1, edited_at = now() WHERE id = $2 AND channel_id = $3 AND author_id = $4")
+    let done = sqlx::query("UPDATE messages SET content = $1, edited_at = now() WHERE id = $2 AND channel_id = $3 AND author_id = $4 AND kind = 'default'")
         .bind(content)
         .bind(mid)
         .bind(cid)

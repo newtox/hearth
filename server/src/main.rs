@@ -11,7 +11,7 @@ mod routes;
 
 use axum::{extract::DefaultBodyLimit, http::{header, HeaderValue}, response::Html, routing::{delete, get, patch, post, put}, Router};
 use hub::Hub;
-use routes::{account, badges, channels, connections, emojis, friends, groups, guilds, invites, members, messages, roles, spotify, stats, users, voice};
+use routes::{account, badges, channels, connections, emojis, friends, groups, guilds, invites, members, messages, roles, spotify, stats, thumbs, users, voice};
 use sqlx::postgres::PgPoolOptions;
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tower_http::{cors::CorsLayer, services::ServeDir, set_header::SetResponseHeaderLayer, trace::TraceLayer};
@@ -46,6 +46,7 @@ async fn main() {
 
     let db = PgPoolOptions::new().max_connections(20).connect(&db_url).await.expect("database unreachable");
     sqlx::migrate!("./migrations").run(&db).await.expect("migration failed");
+    sqlx::query("UPDATE messages SET call_ended_at = now() WHERE kind = 'call' AND call_ended_at IS NULL").execute(&db).await.expect("closing calls failed");
 
     let livekit = match (env::var("LIVEKIT_URL"), env::var("LIVEKIT_API_KEY"), env::var("LIVEKIT_API_SECRET")) {
         (Ok(url), Ok(key), Ok(secret)) if !url.is_empty() => Some(Arc::new(voice::LiveKit { url, key, secret })),
@@ -142,6 +143,7 @@ async fn main() {
     let app = Router::new()
         .nest("/api", api.fallback(|| async { error::AppError::NotFound }))
         .route("/gateway", get(gateway::handler))
+        .route("/thumbs/{size}/{name}", get(thumbs::thumb))
         .nest_service(
             "/uploads/files",
             tower::ServiceBuilder::new()

@@ -152,6 +152,8 @@ export interface Message {
   reply?: { id: string; deleted?: boolean; content?: string; attachments?: boolean; author?: User };
   pinned?: boolean;
   channel_name?: string;
+  kind?: string;
+  call?: { ended_at: string | null; participants: string[] } | null;
 }
 export interface Poll {
   question: string;
@@ -615,6 +617,7 @@ export function mentionsMe(m: Pick<Message, 'content' | 'reply'>, inGuild: boole
 }
 
 function desktopNotice(m: Message) {
+  if (m.kind === 'call') return;
   if (app.me?.status === 'dnd') return;
   const dm = app.dms.find((x) => x.id === m.channel_id);
   const g = dm ? null : app.guilds.find((x) => x.channels.some((c) => c.id === m.channel_id));

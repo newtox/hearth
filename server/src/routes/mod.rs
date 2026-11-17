@@ -11,6 +11,7 @@ pub mod members;
 pub mod messages;
 pub mod roles;
 pub mod spotify;
+pub mod thumbs;
 pub mod stats;
 pub mod users;
 pub mod voice;
@@ -134,7 +135,12 @@ pub async fn remove_upload(st: &AppState, name: Option<String>) {
     if let Some(n) = name {
         let base = n.strip_prefix("files/").unwrap_or(&n);
         if !base.is_empty() && base.chars().all(|c| c.is_ascii_alphanumeric() || c == '.') && !base.starts_with('.') {
-            let _ = tokio::fs::remove_file(st.upload_dir.join(n)).await;
+            let _ = tokio::fs::remove_file(st.upload_dir.join(&n)).await;
+            for size in ["32", "64", "128", "256"] {
+                for suffix in ["gif", "png"] {
+                    let _ = tokio::fs::remove_file(st.upload_dir.join("thumbs").join(size).join(format!("{base}.{suffix}"))).await;
+                }
+            }
         }
     }
 }

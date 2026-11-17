@@ -24,6 +24,10 @@ export function setToken(t: string | null) {
   else localStorage.removeItem('hearth_token');
 }
 
+export function thumb(name: string | null | undefined, size: number) {
+  return name ? (name.includes('/') ? asset(name) : `${base()}/thumbs/${size}/${name}`) : null;
+}
+
 export function asset(name: string | null | undefined) {
   return name ? `${base()}/uploads/${name}` : null;
 }

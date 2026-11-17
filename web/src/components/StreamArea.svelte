@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '../lib/i18n.svelte';
+  import { untrack } from 'svelte';
   import { setStreamVolume, voice, watchStream } from '../lib/voice.svelte';
   import Icon from './Icon.svelte';
 
@@ -10,19 +11,56 @@
     return { destroy: () => track.detach(node) };
   }
 
+  const key = untrack(() => compact) ? 'hearth_stream_h_call' : 'hearth_stream_h';
+  let height = $state(Number(localStorage.getItem(key)) || 0);
+
+  function resize(e: PointerEvent) {
+    const fig = (e.currentTarget as HTMLElement).parentElement?.querySelector('video, .closed') as HTMLElement | null;
+    const start = { y: e.clientY, h: fig?.getBoundingClientRect().height ?? 300 };
+    const handle = e.currentTarget as HTMLElement;
+    handle.setPointerCapture(e.pointerId);
+    const move = (ev: PointerEvent) => {
+      height = Math.round(Math.min(window.innerHeight - 140, Math.max(120, start.h + ev.clientY - start.y)));
+    };
+    const up = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', up);
+      handle.removeEventListener('pointercancel', up);
+      try {
+        localStorage.setItem(key, String(height));
+      } catch {}
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+    handle.addEventListener('pointercancel', up);
+  }
+
+  function resetSize() {
+    height = 0;
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+  }
+
+  function fullscreen(e: MouseEvent) {
+    const fig = (e.currentTarget as HTMLElement).closest('figure');
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else fig?.requestFullscreen?.().catch(() => {});
+  }
+
   function viewers(userId: string) {
     return (voice.watchers[userId] ?? []).map((id) => voice.names[id] ?? '?');
   }
 </script>
 
 {#if voice.streams.length}
-  <div class="streams" class:compact class:single={voice.streams.length === 1}>
+  <div class="streams" class:compact class:single={voice.streams.length === 1} style:--stream-h={height ? `${height}px` : null}>
     {#each voice.streams as s (s.userId)}
       {@const tile = voice.tiles.find((x) => x.userId === s.userId && x.kind === 'screen')}
       {@const list = viewers(s.userId)}
       <figure>
         {#if s.watching && tile}
-          <video use:show={tile.track} autoplay playsinline muted={s.local}></video>
+          <video use:show={tile.track} autoplay playsinline muted={s.local} ondblclick={fullscreen}></video>
         {:else}
           <div class="closed">
             <Icon name="broadcast" size={28} />
@@ -44,11 +82,13 @@
               <span class="noaudio">{t('stream_area_without_sound')}</span>
             {/if}
             {#if s.watching && !s.local}<button onclick={() => watchStream(s.userId, false)}>{t('stream_area_stop_watching')}</button>{/if}
+            {#if s.watching && tile}<button class="full" onclick={fullscreen} aria-label={t('stream_area_fullscreen')} title={t('stream_area_fullscreen')}><Icon name="expand" size={14} /></button>{/if}
           </div>
           {#if list.length}<p class="who ellipsis">{t('stream_area_watching_names', { names: list.join(', ') })}</p>{/if}
         </figcaption>
       </figure>
     {/each}
+    <div class="grip" role="separator" aria-orientation="horizontal" aria-label={t('stream_area_resize')} title={t('stream_area_resize')} onpointerdown={resize} ondblclick={resetSize}></div>
   </div>
 {/if}
 
@@ -78,11 +118,46 @@
   video {
     display: block;
     width: 100%;
-    max-height: 62vh;
+    max-height: var(--stream-h, 62vh);
+    height: var(--stream-h, auto);
     object-fit: contain;
   }
   .compact video {
-    max-height: 42vh;
+    max-height: var(--stream-h, 42vh);
+  }
+  figure:fullscreen video {
+    max-height: none;
+    height: calc(100% - 34px);
+  }
+  figure:fullscreen {
+    justify-content: center;
+  }
+  .full {
+    display: inline-flex;
+    padding: 2px;
+    text-decoration: none !important;
+  }
+  .grip {
+    grid-column: 1 / -1;
+    height: 10px;
+    margin-top: -6px;
+    cursor: ns-resize;
+    touch-action: none;
+    position: relative;
+  }
+  .grip::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 3px;
+    width: 48px;
+    height: 4px;
+    margin-left: -24px;
+    border-radius: 2px;
+    background: var(--line);
+  }
+  .grip:hover::after {
+    background: var(--accent);
   }
   .closed {
     min-height: 150px;

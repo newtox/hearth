@@ -14,6 +14,7 @@ pub struct Hub {
     conns: DashMap<Uuid, Vec<(u64, Tx)>>,
     pub voice: DashMap<Uuid, Uuid>,
     pub voice_tick: DashMap<Uuid, Instant>,
+    pub calls: DashMap<Uuid, Uuid>,
     pub streaming: DashMap<Uuid, Instant>,
     pub watching: DashMap<Uuid, Vec<Uuid>>,
     pub activity: DashMap<Uuid, Activity>,

@@ -16,6 +16,7 @@
   import EmojiPicker from './EmojiPicker.svelte';
   import Icon from './Icon.svelte';
   import SearchBox from './SearchBox.svelte';
+  import { joinVoice, voice } from '../lib/voice.svelte';
   import Markdown from './Markdown.svelte';
   import PollCard from './PollCard.svelte';
   import PollModal from './PollModal.svelte';
@@ -145,7 +146,17 @@
   }
 
   function grouped(m: Message, prev: Message | undefined) {
-    return !!prev && !m.reply_to && prev.author.id === m.author.id && Date.parse(m.created_at) - Date.parse(prev.created_at) < 5 * 60000 && !newDay(m, prev);
+    return !!prev && !m.reply_to && m.kind !== 'call' && prev.kind !== 'call' && prev.author.id === m.author.id && Date.parse(m.created_at) - Date.parse(prev.created_at) < 5 * 60000 && !newDay(m, prev);
+  }
+
+  function callLength(m: Message) {
+    const secs = Math.max(0, (Date.parse(m.call?.ended_at ?? m.created_at) - Date.parse(m.created_at)) / 1000);
+    if (secs < 60) return t('chat_call_seconds');
+    const mins = Math.round(secs / 60);
+    if (mins < 60) return mins === 1 ? t('chat_call_one_minute') : t('chat_call_n_minutes', { n: mins });
+    const h = Math.floor(mins / 60);
+    const rest = mins % 60;
+    return rest ? t('chat_call_hours_minutes', { h, m: rest }) : h === 1 ? t('chat_call_one_hour') : t('chat_call_n_hours', { n: h });
   }
 
   function newDay(m: Message, prev: Message | undefined) {
@@ -316,6 +327,22 @@
         {#if newDay(m, messages[i - 1])}
           <div class="day"><span>{day.format(new Date(m.created_at))}</span></div>
         {/if}
+        {#if m.kind === 'call'}
+          {@const call = m.call}
+          {@const live = !!call && !call.ended_at}
+          {@const alone = !!call && call.participants.length <= 1}
+          <div class="callnote" class:flash={app.highlight === m.id} data-id={m.id}>
+            <span class="phone" class:live class:missed={!live && alone}><Icon name="phone" size={16} /></span>
+            <span class="grow">
+              {#if live}{t('chat_call_started', { name: memberName(g, m.author) })} <strong>{t('chat_call_live')}</strong>
+              {:else if alone && m.author.id !== app.me?.id}{t('chat_call_missed', { name: memberName(g, m.author) })}
+              {:else if alone}{t('chat_call_unanswered', { name: memberName(g, m.author) })}
+              {:else}{t('chat_call_lasted', { name: memberName(g, m.author), duration: callLength(m) })}{/if}
+              <time class="muted" datetime={m.created_at}>{time.format(new Date(m.created_at))}</time>
+            </span>
+            {#if live && direct && voice.channelId !== direct.id}<button class="btn small primary" onclick={() => joinVoice(direct)}><Icon name="phone" size={14} />{t('common_join')}</button>{/if}
+          </div>
+        {:else}
         <article class="msg" class:own class:joined class:mention={!own && mentionsMe(m, !!g)} class:flash={app.highlight === m.id} data-id={m.id} oncontextmenu={(e) => editing !== m.id && messageMenu(e, m)}>
           {#if !own}
             <button class="face" onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))} aria-label={t('chat_profile_name', { name: m.author.display_name })} tabindex={joined ? -1 : 0}>
@@ -391,6 +418,7 @@
             </div>
           {/if}
         </article>
+        {/if}
       {/each}
     </div>
     <p class="typing muted" aria-live="polite">
@@ -821,4 +849,39 @@
     text-overflow: ellipsis;
   }
 
+  .callnote {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0 4px;
+    padding: 8px 12px;
+    border-radius: var(--radius-s);
+    background: var(--panel-2);
+    font-size: 0.92em;
+  }
+  .callnote time {
+    margin-left: 6px;
+    font-size: 0.85em;
+  }
+  .callnote .phone {
+    display: inline-grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--muted) 20%, transparent);
+    color: var(--muted);
+  }
+  .callnote .phone.live {
+    background: color-mix(in srgb, var(--ok) 22%, transparent);
+    color: var(--ok);
+  }
+  .callnote .phone.missed {
+    background: color-mix(in srgb, var(--danger) 18%, transparent);
+    color: var(--danger);
+  }
+  .callnote.flash {
+    animation: flash 2s ease-out;
+  }
 </style>

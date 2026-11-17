@@ -94,6 +94,9 @@ pub async fn leave_all(st: &AppState, user: Uuid) {
     if let Some((_, channel)) = st.hub.voice.remove(&user) {
         if let Ok(guild_id) = sqlx::query_scalar::<_, Option<Uuid>>("SELECT guild_id FROM channels WHERE id = $1").bind(channel).fetch_one(&st.db).await {
             let _ = announce(st, guild_id, channel, user, false).await;
+            if guild_id.is_none() {
+                let _ = super::messages::call_left(st, channel).await;
+            }
         }
     }
 }
@@ -115,6 +118,9 @@ pub async fn join(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid)
         st.hub.voice.insert(uid, cid);
         st.hub.voice_tick.insert(uid, std::time::Instant::now());
         announce(&st, gid, cid, uid, true).await?;
+        if gid.is_none() {
+            super::messages::call_joined(&st, cid, uid).await?;
+        }
         if gid.is_none() && first {
             let others: Vec<Uuid> = sqlx::query_scalar("SELECT user_id FROM dm_recipients WHERE channel_id = $1 AND user_id <> $2 AND user_id NOT IN (SELECT user_id FROM blocks WHERE blocked_id = $2)")
                 .bind(cid)
