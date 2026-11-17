@@ -1,31 +1,13 @@
-#[tauri::command]
-fn running_processes() -> Vec<String> {
-    #[cfg(not(target_os = "android"))]
-    {
-        let mut system = sysinfo::System::new();
-        system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
-        let mut names: Vec<String> = system
-            .processes()
-            .values()
-            .map(|p| p.exe().and_then(|e| e.file_name()).unwrap_or(p.name()).to_string_lossy().into_owned())
-            .collect();
-        names.sort();
-        names.dedup();
-        names
-    }
-    #[cfg(target_os = "android")]
-    {
-        Vec::new()
-    }
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "linux")]
     if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() && std::path::Path::new("/proc/driver/nvidia").exists() {
         std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
     }
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+    builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
@@ -57,7 +39,6 @@ pub fn run() {
             let _ = app;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![running_processes])
         .run(tauri::generate_context!())
         .expect("failed to start Hearth");
 }

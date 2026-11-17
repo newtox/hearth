@@ -9,7 +9,6 @@ Self-hosted chat for communities: servers, channels, roles, direct messages, gro
 | Install on a server with Portainer or a script | [installation](docs/en/installation.md) | [Installation](docs/de/installation.md) |
 | Download and install the apps | [apps](docs/en/apps.md) | [Apps](docs/de/apps.md) |
 | All settings | [configuration](docs/en/configuration.md) | [Einstellungen](docs/de/einstellungen.md) |
-| Spotify | [connections](docs/en/connections.md) | [Verbindungen](docs/de/verbindungen.md) |
 | Roles and permissions | [permissions](docs/en/permissions.md) | [Rechte](docs/de/rechte.md) |
 | Using Hearth | [guide](docs/en/guide.md) | [Anleitung](docs/de/anleitung.md) |
 | Working on the code | [development](docs/en/development.md) | [Entwicklung](docs/de/entwicklung.md) |
@@ -37,14 +36,13 @@ Or add [`deploy/docker-compose.yml`](deploy/docker-compose.yml) as a stack in Po
 - Voice channels and calls with screen sharing, watched on demand with a viewer list, and sounds
 - Profiles with avatar, banner, bio, accent colour, badges with built-in icons and linked accounts
 - Status online, idle (also automatic), do not disturb and invisible
-- Activity status set by hand, detected from running games in the desktop app, or taken from Spotify
-- Badges earned from playtime, stream time, voice time and account age in ten colour levels
+- Activity status set by hand: playing, listening, watching or a custom text
+- Badges earned from stream time, voice time and account age in ten colour levels
 - Moderation: timeouts, kicks, bans, audit log, rate limits
 - Six themes: Light, Ash, Dark, Onyx, Midnight and Parchment
 
 ## Known limits
 
-- Game detection runs on the user's computer. Playtime only counts for detected games, at most 16 hours a day, but a modified client could still claim a game.
 - The Linux app needs a WebKitGTK with WebRTC for voice. Ubuntu and Debian build it without, so the app offers to open the browser instead.
 - Every member of a server is loaded at once. That is fine for friend groups, not for servers with many thousands of members.
 

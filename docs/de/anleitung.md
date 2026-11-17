@@ -39,15 +39,11 @@ Ein Klick auf einen Sprachkanal tritt bei. Geteilte Bildschirme erscheinen als K
 
 ## Aktivität
 
-- **Spiele** erkennt die Desktop-App für Windows und Linux selbst. Alle 20 Sekunden schaut sie, welche Programme laufen, und vergleicht sie mit einer Liste von etwa 20 bekannten Spielen. Eigene Spiele trägst du unter Einstellungen, Aktivität ein, eine Zeile pro Spiel als `prozessname=Spielname`. Spiele über Proton oder Wine erkennt sie am Namen der `.exe`. Browser und Android können laufende Programme nicht sehen, dort setzt du die Aktivität von Hand.
-- **Spotify** zeigt den laufenden Titel, sobald dein Konto verbunden ist.
-- **Von Hand**: Spielt, Hört, Schaut oder eigener Text unter Einstellungen, Aktivität. Eine selbst gesetzte Aktivität oder ein erkanntes Spiel geht vor Spotify.
-
-Die Spielzeit erkannter Spiele zählt für die Spielzeit-Abzeichen.
+Unter Einstellungen, Aktivität kannst du zeigen, was du gerade machst: Spielt, Hört, Schaut oder ein eigener Text. Sie bleibt, bis du sie entfernst oder Hearth schließt.
 
 ## Profile und Abzeichen
 
-Profile haben Avatar, Banner, Bio, Akzentfarbe, Aktivität und verbundene Konten. Abzeichen gibt es in zwei Arten: solche, die der Instanz-Admin vergibt (Beschreibung optional), und verdiente für Spielzeit, Streamzeit, Sprachzeit und Kontoalter in zehn Farbstufen. Ein Klick auf ein verdientes Abzeichen zeigt den Fortschritt.
+Profile haben Avatar, Banner, Bio, Akzentfarbe und Aktivität. Abzeichen gibt es in zwei Arten: solche, die der Instanz-Admin vergibt, und verdiente für Streamzeit, Sprachzeit und Kontoalter in zehn Farbstufen. Streamzeit zählt, solange jemand zuschaut, Sprachzeit, solange mindestens zwei Leute im Kanal sind. Ein Klick auf ein verdientes Abzeichen zeigt den Fortschritt.
 
 ## Status
 

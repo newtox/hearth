@@ -15,7 +15,6 @@ In Portainer oder in `deploy/.env` setzen, wenn du [`deploy/docker-compose.yml`]
 | `APP_PORT` | nein | Lokaler Port der App, Standard `8090` |
 | `LIVEKIT_PORT` | nein | Lokaler Port von LiveKit, Standard `7880` |
 | `HEARTH_IMAGE` | nein | Welches Image läuft, Standard `ghcr.io/newtox/hearth:latest`. Mit einer Version wie `ghcr.io/newtox/hearth:0.2.0` bleibst du auf dieser. |
-| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | nein | Spotify-Aktivität, siehe [Verbindungen](verbindungen.md) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` | nein | E-Mail für „Passwort vergessen?“, siehe unten |
 
 ## Variablen des Servers
@@ -33,7 +32,6 @@ Die App liest diese direkt. Die erste Gruppe setzt der Stack für dich.
 | `UPLOAD_DIR` | `uploads` | Ordner für hochgeladene Dateien |
 | `WEB_DIR` | `../web/dist` | Ordner der gebauten Weboberfläche |
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | | Sprachserver. Ohne sie sind Sprachkanäle sichtbar, aber nicht betretbar. |
-| `SPOTIFY_POLL_SECS` | `15` | Wie oft der aktuelle Spotify-Titel abgefragt wird |
 
 ## E-Mail für Passwort-Resets
 

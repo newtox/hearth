@@ -39,15 +39,11 @@ Click a voice channel to join. Screen shares appear as tiles; you start watching
 
 ## Activity
 
-- **Games** are detected automatically by the desktop app for Windows and Linux. Every 20 seconds it looks at running programs and compares them with a list of about 20 well-known games. Your own games go under Settings, Activity, one per line as `processname=Game name`. Games running through Proton or Wine are recognised by their `.exe` name. The browser and Android cannot see running programs, so there you set the activity by hand.
-- **Spotify** shows the current track once your account is linked.
-- **By hand**: playing, listening, watching or a custom text under Settings, Activity. A manual activity or a detected game takes precedence over Spotify.
-
-Playtime from detected games counts towards the playtime badges.
+Under Settings, Activity you can show what you are doing: playing, listening, watching or a custom text. It stays until you remove it or close Hearth.
 
 ## Profiles and badges
 
-Profiles have avatar, banner, bio, accent colour, activity and linked accounts. Badges come in two kinds: badges the instance admin gives (no description needed), and earned badges for playtime, stream time, voice time and account age in ten colour levels. Click an earned badge to see your progress.
+Profiles have avatar, banner, bio, accent colour and activity. Badges come in two kinds: badges the instance admin gives, and earned badges for stream time, voice time and account age in ten colour levels. Stream time counts while someone watches, voice time while at least two people are in the channel. Click an earned badge to see your progress.
 
 ## Status
 

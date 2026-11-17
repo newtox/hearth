@@ -238,8 +238,11 @@ async def main():
         s, bd = call("POST", "/badges", a, {"name": "Stern" + S, "icon": "svg:star"})
         check("badge with built-in icon", s == 200 and bd["icon"] == "svg:star", bd)
         check("unknown built-in icon rejected", call("POST", "/badges", a, {"name": "Nope" + S, "icon": "svg:nope"})[0] == 400)
+        s, bt = call("PATCH", f"/badges/{bd['id']}", a, {"name": "Star" + S, "icon": "svg:star", "translations": {"de": {"name": "Stern", "description": ""}, "xx": {"name": "ignored"}}})
+        check("badge translations saved", s == 200 and bt["translations"] == {"de": {"name": "Stern", "description": ""}}, bt)
         call("DELETE", f"/badges/{bd['id']}", a)
-    check("spotify off by default", call("GET", "/spotify", a)[0] == 503 and call("GET", "/users/@me", a)[1]["spotify"] == {"available": False, "linked": False})
+    check("spotify is gone", call("GET", "/spotify", a)[0] == 404 and "spotify" not in call("GET", "/users/@me", a)[1])
+    check("only stream, voice and age tracks", [t["track"] for t in call("GET", "/users/@me", a)[1]["progress"]["tracks"]] == ["stream", "voice", "age"])
 
     s, pm = call("POST", f"/channels/{general}/messages", a, {"content": "", "poll": {"question": "Wann raiden?", "options": ["Freitag", "Samstag", "Sonntag"], "hours": 24}})
     check("create poll", s == 200 and len(pm["poll"]["options"]) == 3 and pm["poll"]["expires_at"], pm)

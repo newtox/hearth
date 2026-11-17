@@ -1,7 +1,6 @@
 pub mod account;
 pub mod badges;
 pub mod channels;
-pub mod connections;
 pub mod emojis;
 pub mod friends;
 pub mod groups;
@@ -10,7 +9,6 @@ pub mod invites;
 pub mod members;
 pub mod messages;
 pub mod roles;
-pub mod spotify;
 pub mod thumbs;
 pub mod stats;
 pub mod users;

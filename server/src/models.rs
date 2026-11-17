@@ -4,7 +4,7 @@ use sqlx::FromRow;
 use uuid::Uuid;
 
 pub const USER_COLS: &str = "id, username, display_name, avatar, banner, bio, accent_color, created_at, is_admin, \
-    (SELECT COALESCE(json_agg(json_build_object('id', b.id, 'name', b.name, 'description', b.description, 'icon', b.icon, 'color', b.color, 'granted_at', ub.granted_at) ORDER BY b.position), '[]'::json) \
+    (SELECT COALESCE(json_agg(json_build_object('id', b.id, 'name', b.name, 'description', b.description, 'icon', b.icon, 'color', b.color, 'translations', b.translations, 'granted_at', ub.granted_at) ORDER BY b.position), '[]'::json) \
      FROM user_badges ub JOIN badges b ON b.id = ub.badge_id WHERE ub.user_id = users.id) AS badges";
 
 #[derive(Serialize, Deserialize, FromRow, Clone)]
@@ -14,6 +14,9 @@ pub struct Badge {
     pub description: String,
     pub icon: String,
     pub color: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[sqlx(default)]
+    pub translations: Option<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[sqlx(default)]
     pub track: Option<String>,
@@ -63,9 +66,6 @@ pub struct PublicUser {
     #[sqlx(skip)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub progress: Option<serde_json::Value>,
-    #[sqlx(skip)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub connections: Option<serde_json::Value>,
 }
 
 #[derive(Serialize, FromRow)]

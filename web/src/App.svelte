@@ -21,7 +21,14 @@
   import Dialog from './components/Dialog.svelte';
   import { resendVerification } from './lib/verify';
   import { lang } from './lib/i18n.svelte';
+  import TitleBar from './components/TitleBar.svelte';
+  import { isApp } from './lib/api';
+
+  const framed = isApp && !/android|iphone|ipad/i.test(navigator.userAgent);
 </script>
+
+{#if framed}<TitleBar />{/if}
+<div class="frame" class:framed>
 
 {#if !app.authed}
   <Auth />
@@ -58,6 +65,7 @@
 <Dialog />
 
 {#if app.toast}<div class="toast panel" role="alert">{app.toast}</div>{/if}
+</div>
 
 <style>
   .loading {
@@ -65,8 +73,17 @@
     display: grid;
     place-items: center;
   }
+  .frame {
+    height: 100%;
+  }
+  .frame.framed {
+    height: calc(100% - 30px);
+    position: relative;
+    transform: translateZ(0);
+    overflow: hidden;
+  }
   .shell {
-    height: 100dvh;
+    height: 100%;
     padding: max(var(--gap), env(safe-area-inset-top)) max(var(--gap), env(safe-area-inset-right)) max(var(--gap), env(safe-area-inset-bottom)) max(var(--gap), env(safe-area-inset-left));
   }
   .window {

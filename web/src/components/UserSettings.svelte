@@ -2,11 +2,11 @@
   import { ask } from '../lib/dialog.svelte';
   import { LANGS, fromEnglish, lang, setLang, t } from '../lib/i18n.svelte';
   import { api, upload } from '../lib/api';
-  import { customGames, detection } from '../lib/activity';
   import { play, sounds } from '../lib/sounds';
   import { BADGE_ICONS } from '../lib/badges';
   import BadgeIcon from './BadgeIcon.svelte';
-  import { app, attempt, logout, toast, type Badge, type Connection, type User } from '../lib/store.svelte';
+  import { badgeLabel } from '../lib/activity';
+  import { app, attempt, logout, toast, type Badge, type User } from '../lib/store.svelte';
   import { THEMES, applyTheme, theme } from '../lib/theme.svelte';
   import { docs, releases } from '../lib/docs';
   import Avatar from './Avatar.svelte';
@@ -32,25 +32,7 @@
   }
 
   let badges = $state<Badge[]>([]);
-  let badge = $state({ name: '', icon: 'svg:star', description: '', color: '#8b6cff' });
-  let available = $state<{ id: string; name: string }[]>([]);
-  let linked = $state<Connection[]>([]);
-
-  async function loadConnections() {
-    const res = await attempt(api<{ available: { id: string; name: string }[]; linked: Connection[] }>('GET', '/connections'));
-    if (res) ({ available, linked } = res);
-  }
-
-  async function connectAccount(provider: string) {
-    const res = await attempt(api<{ url: string }>('GET', '/spotify'));
-    if (res) location.href = res.url;
-  }
-
-  async function disconnect(provider: string) {
-    if (await attempt(api('DELETE', '/spotify'))) loadConnections();
-  }
-
-  loadConnections();
+  let badge = $state({ name: '', icon: 'svg:star', description: '', color: '#8b6cff', translations: { de: { name: '', description: '' }, da: { name: '', description: '' } } });
 
   async function loadBadges() {
     badges = (await attempt(api<Badge[]>('GET', '/badges'))) ?? [];
@@ -58,9 +40,7 @@
 
   let kind = $state(app.me!.activity?.kind ?? 'playing');
   let activityName = $state(app.me!.activity?.name ?? '');
-  let detect = $state(detection.enabled());
   let soundOn = $state(sounds.enabled());
-  let games = $state(localStorage.getItem('hearth_games') ?? '');
 
   async function setActivity(e: SubmitEvent) {
     e.preventDefault();
@@ -72,17 +52,37 @@
     activityName = '';
   }
 
-  function saveDetection() {
-    detection.set(detect);
-    localStorage.setItem('hearth_games', games);
-    toast(t('user_settings_saved_n_custom_games', { n: customGames().length }));
+
+  const emptyBadge = () => ({ name: '', icon: 'svg:star', description: '', color: '#8b6cff', translations: { de: { name: '', description: '' }, da: { name: '', description: '' } } });
+  let badgeEditing = $state<string | null>(null);
+  let canTranslate = $state(false);
+  api<{ translate?: boolean }>('GET', '/config').then((c) => (canTranslate = !!c.translate)).catch(() => {});
+
+  function editBadge(b: Badge) {
+    badgeEditing = b.id;
+    badge = {
+      name: b.name,
+      icon: b.icon,
+      description: b.description,
+      color: b.color,
+      translations: {
+        de: { name: b.translations?.de?.name ?? '', description: b.translations?.de?.description ?? '' },
+        da: { name: b.translations?.da?.name ?? '', description: b.translations?.da?.description ?? '' },
+      },
+    };
+  }
+
+  function cancelBadge() {
+    badgeEditing = null;
+    badge = emptyBadge();
   }
 
   async function addBadge(e: SubmitEvent) {
     e.preventDefault();
-    const created = await attempt(api<Badge>('POST', '/badges', badge));
-    if (created) {
-      badge = { name: '', icon: 'svg:star', description: '', color: '#8b6cff' };
+    const saved = await attempt(api<Badge>(badgeEditing ? 'PATCH' : 'POST', badgeEditing ? `/badges/${badgeEditing}` : '/badges', badge));
+    if (saved) {
+      toast(badgeEditing ? t('user_settings_badge_saved') : t('user_settings_badge_created'));
+      cancelBadge();
       loadBadges();
     }
   }
@@ -107,7 +107,6 @@
   const sections = $derived<Section[]>([
     { id: 'account', name: t('user_settings_my_account'), group: t('user_settings_user_settings') },
     { id: 'profile', name: t('common_profile'), group: t('user_settings_user_settings') },
-    { id: 'connections', name: t('user_settings_connections'), group: t('user_settings_user_settings') },
     { id: 'appearance', name: t('user_settings_appearance'), group: t('user_settings_app_settings') },
     { id: 'language', name: t('user_settings_language'), group: t('user_settings_app_settings') },
     { id: 'notifications', name: t('user_settings_notifications'), group: t('user_settings_app_settings') },
@@ -136,7 +135,7 @@
     const u = await attempt(api<User>('PATCH', '/users/@me/account', body));
     if (u) {
       app.me = { ...app.me!, ...u };
-      editing = null;
+      badgeEditing = null;
       toast(t('user_settings_account_saved'));
     }
   }
@@ -199,7 +198,7 @@
     <h3>{t('common_password')}</h3>
     <div><button class="btn primary" onclick={() => edit('password')}>{t('user_settings_change_password')}</button></div>
     {#if editing}
-      <Modal title={editing === 'username' ? t('user_settings_change_username') : editing === 'email' ? t('user_settings_change_email') : t('user_settings_change_password')} onclose={() => (editing = null)}>
+      <Modal title={editing === 'username' ? t('user_settings_change_username') : editing === 'email' ? t('user_settings_change_email') : t('user_settings_change_password')} onclose={() => (badgeEditing = null)}>
         <form class="stack" onsubmit={saveAccount}>
           {#if editing === 'username'}
             <label class="field"><span>{t('common_username')}</span><input class="input" bind:value={form.value} maxlength="32" autocomplete="username" required /></label>
@@ -212,7 +211,7 @@
           {/if}
           <label class="field"><span>{t('user_settings_current_password')}</span><input class="input" type="password" bind:value={form.password} autocomplete="current-password" required /></label>
           <div class="row end">
-            <button type="button" class="btn" onclick={() => (editing = null)}>{t('common_cancel')}</button>
+            <button type="button" class="btn" onclick={() => (badgeEditing = null)}>{t('common_cancel')}</button>
             <button class="btn primary">{t('common_save')}</button>
           </div>
         </form>
@@ -252,22 +251,6 @@
         </div>
       </div>
     </div>
-  {:else if section === 'connections'}
-    <p class="muted">{t('user_settings_spotify_track_playing_shows_as')}</p>
-    {#each available as p (p.id)}
-      {@const link = linked.find((x) => x.provider === p.id)}
-      <div class="row conn">
-        <strong>{p.name}</strong>
-        <span class="grow muted ellipsis">{link ? link.name : t('user_settings_not_connected')}</span>
-        {#if link}
-          <button class="btn small" onclick={() => disconnect(p.id)}>{t('user_settings_unlink')}</button>
-        {:else}
-          <button class="btn small" onclick={() => connectAccount(p.id)}>{t('user_settings_connect')}</button>
-        {/if}
-      </div>
-    {:else}
-      <p class="muted">{t('user_settings_spotify_not_set_up_server')}</p>
-    {/each}
   {:else if section === 'appearance'}
     <div class="swatches" role="radiogroup" aria-label={t('user_settings_appearance')}>
       {#each THEMES as th (th.id)}
@@ -306,26 +289,15 @@
       <button class="btn small">{t('user_settings_set')}</button>
       <button type="button" class="btn small" onclick={clearActivity}>{t('common_remove')}</button>
     </form>
-    <h3>{t('user_settings_detect_games_automatically')}</h3>
-    {#if detection.available}
-      <label class="row"><input type="checkbox" bind:checked={detect} /> {t('user_settings_detect_running_games_automatically')}</label>
-      <label class="field">
-        <span>{t('user_settings_own_games_one_per_line')}</span>
-        <textarea class="input" rows="4" bind:value={games} placeholder="factorio=Factorio"></textarea>
-      </label>
-      <div><button class="btn small" onclick={saveDetection}>{t('user_settings_save_detection')}</button></div>
-    {:else}
-      <p class="muted">{t('user_settings_only_desktop_app_windows_linux')}</p>
-      <a class="btn small" href={releases} target="_blank" rel="noopener noreferrer">{t('user_settings_download_apps')}</a>
-    {/if}
   {:else if section === 'badges'}
     <p class="muted">{t('user_settings_only_visible_instance_admins_badges')}</p>
     <div class="row wrap">
       {#each badges as b (b.id)}
-        <span class="badge" style:--c={b.color} title={fromEnglish(b.description)}><BadgeIcon badge={b} size={16} /> {fromEnglish(b.name)}<button onclick={() => removeBadge(b)} aria-label={t('common_delete_name', { name: b.name })}>✕</button></span>
+        {@const label = badgeLabel(b)}
+        <span class="badge" class:on={badgeEditing === b.id} style:--c={b.color} title={label.description}><BadgeIcon badge={b} size={16} /> {label.name}<button onclick={() => editBadge(b)} aria-label={t('common_edit')}>✎</button><button onclick={() => removeBadge(b)} aria-label={t('common_delete_name', { name: label.name })}>✕</button></span>
       {/each}
     </div>
-    <h3>{t('user_settings_create_badge')}</h3>
+    <h3>{badgeEditing ? t('user_settings_edit_badge') : t('user_settings_create_badge')}</h3>
     <form class="stack" onsubmit={addBadge}>
       <div class="icons" role="radiogroup" aria-label={t('user_settings_symbol')}>
         {#each Object.keys(BADGE_ICONS) as name}
@@ -335,11 +307,25 @@
         {/each}
       </div>
       <div class="row wrap">
-        <input class="input name" bind:value={badge.name} maxlength="32" placeholder={t('common_name')} required />
-        <input class="input grow" bind:value={badge.description} maxlength="120" placeholder={t('user_settings_description_optional')} />
+        <input class="input name" bind:value={badge.name} maxlength="32" placeholder={t('user_settings_name_english')} required />
+        <input class="input grow" bind:value={badge.description} maxlength="120" placeholder={t('user_settings_description_english')} />
         <input type="color" bind:value={badge.color} aria-label={t('user_settings_colour')} />
       </div>
-      <div><button class="btn">{t('user_settings_create_badge')}</button></div>
+      <details class="langs-edit">
+        <summary>{t('user_settings_translations')}</summary>
+        <p class="muted small">{canTranslate ? t('user_settings_translations_auto') : t('user_settings_translations_manual')}</p>
+        {#each [['de', 'Deutsch'], ['da', 'Dansk']] as [code, label] (code)}
+          <div class="row wrap">
+            <span class="langname">{label}</span>
+            <input class="input name" bind:value={badge.translations[code as 'de' | 'da'].name} maxlength="32" placeholder={t('common_name')} />
+            <input class="input grow" bind:value={badge.translations[code as 'de' | 'da'].description} maxlength="120" placeholder={t('user_settings_description_optional')} />
+          </div>
+        {/each}
+      </details>
+      <div class="row">
+        <button class="btn">{badgeEditing ? t('common_save') : t('user_settings_create_badge')}</button>
+        {#if badgeEditing}<button type="button" class="btn" onclick={cancelBadge}>{t('common_cancel')}</button>{/if}
+      </div>
     </form>
   {:else if section === 'help'}
     <div class="stack">
@@ -438,12 +424,6 @@
     border: 1px solid var(--line);
     border-radius: var(--radius-s);
     background: none;
-  }
-  .conn {
-    padding: 4px 0;
-  }
-  .conn strong {
-    min-width: 84px;
   }
   .kind {
     width: 130px;
@@ -545,5 +525,25 @@
     font-size: 0.8em;
     background: color-mix(in srgb, var(--danger) 18%, transparent);
     color: var(--danger);
+  }
+  .langs-edit {
+    display: grid;
+    gap: 8px;
+  }
+  .langs-edit summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9em;
+  }
+  .langname {
+    width: 64px;
+    font-size: 0.85em;
+    color: var(--muted);
+  }
+  .small {
+    font-size: 0.85em;
+  }
+  .badge.on {
+    outline: 2px solid var(--accent);
   }
 </style>

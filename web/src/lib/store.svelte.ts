@@ -2,7 +2,6 @@ import { t } from './i18n.svelte';
 import { toParams } from './search';
 import { api, ApiError, gatewayUrl, getToken, setToken } from './api';
 import { P, has } from './perms';
-import { startDetection } from './activity';
 import { current } from './current';
 import { play, setQuiet } from './sounds';
 import { notify } from './notify';
@@ -33,14 +32,7 @@ export interface User {
   badges?: Badge[];
   activity?: Activity | null;
   streaming?: boolean;
-  spotify?: { available: boolean; linked: boolean };
   progress?: Progress;
-  connections?: Connection[];
-}
-export interface Connection {
-  provider: string;
-  name: string;
-  url: string | null;
 }
 export interface Progress {
   colors: string[];
@@ -62,6 +54,7 @@ export interface Badge {
   tier?: number;
   hours?: number;
   granted_at?: string;
+  translations?: Record<string, { name: string; description: string }>;
 }
 export interface Emoji {
   id: string;
@@ -403,14 +396,6 @@ function patchUser(id: string, patch: Partial<User>) {
   }
 }
 
-function spotifyNotice() {
-  const params = new URLSearchParams(location.search);
-  const result = params.get('spotify');
-  if (!result) return;
-  toast(result === 'linked' ? t('store_spotify_linked') : t('store_spotify_could_not_linked'));
-  history.replaceState(null, '', location.pathname);
-}
-
 function handle(t: string, d: any) {
   switch (t) {
     case 'READY': {
@@ -425,8 +410,6 @@ function handle(t: string, d: any) {
       app.more = {};
       app.connected = true;
       app.ready = true;
-      startDetection();
-      spotifyNotice();
       if (current.voiceChannel) {
         const room = current.voiceChannel;
         const inRoom = d.guilds.some((g: Guild) => g.voice_states.some((v) => v.user_id === d.user.id && v.channel_id === room)) || d.dms.some((x: Dm) => x.id === room && x.voice.includes(d.user.id));

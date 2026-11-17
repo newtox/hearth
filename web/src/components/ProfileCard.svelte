@@ -17,7 +17,6 @@
   const member = $derived(g?.members.find((m) => m.id === userId) ?? null);
   const roles = $derived(g && member ? g.roles.filter((r) => member.roles.includes(r.id)) : []);
   let user = $state<User | null>(null);
-  const PROVIDERS: Record<string, string> = { spotify: 'Spotify' };
   let allBadges = $state<Badge[]>([]);
   let progressTrack = $state<string | null>(null);
   let openBadge = $state<Badge | null>(null);
@@ -97,17 +96,6 @@
             {#each roles as r (r.id)}<span class="role" style:--c={r.color ?? 'var(--muted)'}>{r.name}</span>{/each}
           </div>
         {/if}
-        {#if user.connections?.length}
-          <div class="links">
-            {#each user.connections as c (c.provider)}
-              {#if c.url}
-                <a class="link" href={c.url} target="_blank" rel="noopener noreferrer nofollow"><strong>{PROVIDERS[c.provider] ?? c.provider}</strong><span class="ellipsis">{c.name}</span></a>
-              {:else}
-                <span class="link"><strong>{PROVIDERS[c.provider] ?? c.provider}</strong><span class="ellipsis">{c.name}</span></span>
-              {/if}
-            {/each}
-          </div>
-        {/if}
         <p class="muted small">{t('profile_card_joined_date', { date: since.format(new Date(user.created_at!)) })}{member ? t('profile_card_here_since_date', { date: since.format(new Date(member.joined_at)) }) : ''}</p>
         <div class="row actions">
           {#if user.id === app.me?.id}
@@ -136,7 +124,7 @@
             <summary class="muted">{t('profile_card_grant_badges')}</summary>
             <div class="badges grant">
               {#each allBadges as b (b.id)}
-                <button class="badge" class:dim={!user.badges?.some((x) => x.id === b.id)} style:--c={b.color} onclick={() => toggleBadge(b)} aria-pressed={user.badges?.some((x) => x.id === b.id)}><BadgeIcon badge={b} size={16} />{fromEnglish(b.name)}</button>
+                <button class="badge" class:dim={!user.badges?.some((x) => x.id === b.id)} style:--c={b.color} onclick={() => toggleBadge(b)} aria-pressed={user.badges?.some((x) => x.id === b.id)}><BadgeIcon badge={b} size={16} />{badgeLabel(b).name}</button>
               {/each}
             </div>
           </details>
@@ -288,28 +276,7 @@
     cursor: pointer;
     font-size: 0.88em;
   }
-  .links {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 6px;
-  }
-  .link {
-    display: grid;
-    padding: 6px 10px;
-    border-radius: var(--radius-s);
-    border: 1px solid var(--line);
-    text-decoration: none;
-    font-size: 0.88em;
-    line-height: 1.3;
-    min-width: 0;
-  }
-  a.link:hover {
-    background: var(--panel-2);
-  }
-  .link strong {
-    font-size: 0.85em;
-    color: var(--muted);
-  }
+
   .small {
     font-size: 0.85em;
   }

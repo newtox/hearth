@@ -26,7 +26,7 @@ You need:
    | `APP_PORT` | a free local port for the app, default `8090` |
    | `LIVEKIT_PORT` | a free local port for LiveKit, default `7880` |
 
-   Optional variables for Spotify and email are listed in [configuration](configuration.md).
+   Optional variables for email are listed in [configuration](configuration.md).
 4. Click **Deploy the stack**.
 5. Add the domains to your reverse proxy, see [Caddy](#caddy).
 6. Open `https://chat.example.com`. The first account that registers becomes the instance admin.

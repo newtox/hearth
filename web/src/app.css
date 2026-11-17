@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --bg: #1a1b2e;
   --bg-image: none;
   --panel: #1f2137;
@@ -30,6 +31,7 @@
 }
 
 [data-theme='hell'] {
+  color-scheme: light;
   --bg: #ffffff;
   --panel: #f3f4f6;
   --panel-2: #e2e4e9;
@@ -92,6 +94,7 @@
 }
 
 [data-theme='pergament'] {
+  color-scheme: light;
   --bg: #24170f;
   --bg-image: repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 46px), repeating-linear-gradient(90deg, rgba(255, 220, 160, 0.03) 0 120px, rgba(0, 0, 0, 0.08) 120px 240px);
   --panel: #ecdcb8;
@@ -373,4 +376,39 @@ body.sorting * {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
   border-radius: var(--radius-s);
+}
+
+option,
+optgroup {
+  background-color: var(--panel);
+  color: var(--ink);
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 300;
+  max-width: 260px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--panel);
+  font-size: 0.8em;
+  font-weight: 600;
+  line-height: 1.35;
+  pointer-events: none;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  white-space: pre-line;
+  animation: tip-in 0.08s ease-out;
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip {
+    animation: none;
+  }
 }

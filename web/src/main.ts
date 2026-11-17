@@ -1,3 +1,4 @@
+import './lib/tooltip';
 import './lib/verify';
 import './lib/external';
 import '@fontsource/poppins/400.css';

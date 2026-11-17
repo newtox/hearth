@@ -19,7 +19,6 @@ pub async fn public_user(st: &AppState, id: Uuid) -> Result<PublicUser> {
     let (badges, progress) = super::stats::tracked(st, id).await?;
     u.badges.0.extend(badges);
     u.progress = Some(progress);
-    u.connections = Some(super::connections::of_user(st, id).await?);
     Ok(u)
 }
 
@@ -33,8 +32,6 @@ pub async fn me_json(st: &AppState, id: Uuid) -> Result<Value> {
     let status: String = sqlx::query_scalar("SELECT status FROM users WHERE id = $1").bind(id).fetch_one(&st.db).await?;
     v["status"] = json!(status);
     v["voice"] = json!(st.livekit.is_some());
-    let linked: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spotify_links WHERE user_id = $1)").bind(id).fetch_one(&st.db).await?;
-    v["spotify"] = json!({ "available": st.spotify.is_some(), "linked": linked });
     Ok(v)
 }
 

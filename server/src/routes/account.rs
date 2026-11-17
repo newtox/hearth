@@ -64,7 +64,7 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, parts: 
 }
 
 pub async fn config(State(st): State<AppState>) -> Json<Value> {
-    Json(json!({ "password_reset": st.mailer.is_some(), "voice": st.livekit.is_some(), "email_verification": verification_required(&st) }))
+    Json(json!({ "password_reset": st.mailer.is_some(), "voice": st.livekit.is_some(), "email_verification": verification_required(&st), "translate": super::badges::translation_available() }))
 }
 
 pub fn verification_required(st: &AppState) -> bool {

@@ -11,7 +11,7 @@ mod routes;
 
 use axum::{extract::DefaultBodyLimit, http::{header, HeaderValue}, response::Html, routing::{delete, get, patch, post, put}, Router};
 use hub::Hub;
-use routes::{account, badges, channels, connections, emojis, friends, groups, guilds, invites, members, messages, roles, spotify, stats, thumbs, users, voice};
+use routes::{account, badges, channels, emojis, friends, groups, guilds, invites, members, messages, roles, stats, thumbs, users, voice};
 use sqlx::postgres::PgPoolOptions;
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tower_http::{cors::CorsLayer, services::ServeDir, set_header::SetResponseHeaderLayer, trace::TraceLayer};
@@ -24,7 +24,6 @@ pub struct AppState {
     pub limits: Arc<limit::Limiter>,
     pub trust_proxy: bool,
     pub livekit: Option<Arc<voice::LiveKit>>,
-    pub spotify: Option<Arc<spotify::Spotify>>,
     pub mailer: Option<Arc<mail::Mailer>>,
 }
 
@@ -91,12 +90,8 @@ async fn main() {
         limits: Arc::new(limit::Limiter::default()),
         trust_proxy: env::var("TRUST_PROXY").is_ok_and(|v| v == "1"),
         livekit,
-        spotify: spotify::Spotify::from_env().map(Arc::new),
         mailer: mail::Mailer::from_env().map(Arc::new),
     };
-    if state.spotify.is_some() {
-        tokio::spawn(spotify::poll(state.clone()));
-    }
     let ticker = state.clone();
     tokio::spawn(async move {
         loop {
@@ -126,7 +121,7 @@ async fn main() {
         .route("/users/{id}", get(users::get_user))
         .route("/users/{id}/badges/{bid}", put(badges::grant).delete(badges::revoke))
         .route("/badges", get(badges::list).post(badges::create))
-        .route("/badges/{bid}", delete(badges::delete))
+        .route("/badges/{bid}", delete(badges::delete).patch(badges::update))
         .route("/users/@me/activity", post(stats::set_activity).delete(stats::clear_activity))
         .route("/voice/stream", post(stats::set_streaming))
         .route("/voice/watch", post(voice::watch))
@@ -138,9 +133,6 @@ async fn main() {
         .route("/channels/{cid}/group/icon", post(groups::set_icon))
         .route("/channels/{cid}/recipients/{uid}/role", put(groups::set_role))
         .route("/channels/{cid}/recipients/{uid}", put(groups::add).delete(groups::remove))
-        .route("/connections", get(connections::list))
-        .route("/spotify", get(spotify::login).delete(spotify::unlink))
-        .route("/spotify/callback", get(spotify::callback))
         .route("/voice", delete(voice::leave))
         .route("/channels/{cid}/voice", post(voice::join))
         .route("/channels/{cid}/attachments", post(messages::upload).layer(DefaultBodyLimit::max(26 * 1024 * 1024)))

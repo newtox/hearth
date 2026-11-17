@@ -9,11 +9,10 @@ use uuid::Uuid;
 const TIER_COLORS: [&str; 10] = ["#9aa3ad", "#a3d977", "#3fca7a", "#2fd0c0", "#3fc3f5", "#4a7df8", "#a57bf7", "#f04fd0", "#f0485f", "#f0a530"];
 const HOURS: [i64; 10] = [1, 5, 20, 75, 150, 300, 500, 1000, 2000, 5000];
 const YEARS: [i64; 10] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-const TRACKS: [(&str, &str, &str, [i64; 10]); 4] = [
-    ("play", "Playtime", "svg:gamepad", HOURS),
-    ("stream", "Stream time", "svg:broadcast", HOURS),
-    ("voice", "Voice time", "svg:mic", HOURS),
-    ("age", "Account age", "svg:calendar", YEARS),
+const TRACKS: [(u128, &str, &str, &str, [i64; 10]); 3] = [
+    (1, "stream", "Stream time", "svg:broadcast", HOURS),
+    (2, "voice", "Voice time", "svg:mic", HOURS),
+    (3, "age", "Account age", "svg:calendar", YEARS),
 ];
 
 fn lap(tick: &mut Instant) -> i64 {
@@ -25,49 +24,40 @@ fn lap(tick: &mut Instant) -> i64 {
 const DAILY_CAP: i64 = 16 * 3600;
 
 pub async fn flush(st: &AppState, uid: Uuid) {
-    let play = st.hub.activity.get_mut(&uid).map(|mut a| {
-        let secs = lap(&mut a.tick);
-        if a.kind == "playing" && a.source == "game" { secs } else { 0 }
-    }).unwrap_or(0);
     let watched = st.hub.watching.iter().any(|e| e.value().contains(&uid));
     let stream = st.hub.streaming.get_mut(&uid).map(|mut t| lap(&mut t)).filter(|_| watched).unwrap_or(0);
     let room = st.hub.voice.get(&uid).map(|c| *c);
     let company = room.is_some_and(|r| st.hub.voice.iter().filter(|e| *e.value() == r).count() >= 2);
     let voice = st.hub.voice_tick.get_mut(&uid).map(|mut t| lap(&mut t)).filter(|_| company && !st.hub.afk.contains_key(&uid)).unwrap_or(0);
-    if play + stream + voice == 0 {
+    if stream + voice == 0 {
         return;
     }
-    let today: Option<(i64, i64, i64)> = sqlx::query_as("SELECT play_seconds, stream_seconds, voice_seconds FROM user_stat_days WHERE user_id = $1 AND day = CURRENT_DATE")
+    let today: Option<(i64, i64)> = sqlx::query_as("SELECT stream_seconds, voice_seconds FROM user_stat_days WHERE user_id = $1 AND day = CURRENT_DATE")
         .bind(uid)
         .fetch_optional(&st.db)
         .await
         .ok()
         .flatten();
-    let (p0, s0, v0) = today.unwrap_or((0, 0, 0));
-    let play = play.min((DAILY_CAP - p0).max(0));
+    let (s0, v0) = today.unwrap_or((0, 0));
     let stream = stream.min((DAILY_CAP - s0).max(0));
     let voice = voice.min((DAILY_CAP - v0).max(0));
-    if play + stream + voice == 0 {
+    if stream + voice == 0 {
         return;
     }
     let _ = sqlx::query(
-        "INSERT INTO user_stat_days (user_id, day, play_seconds, stream_seconds, voice_seconds) VALUES ($1, CURRENT_DATE, $2, $3, $4) \
-         ON CONFLICT (user_id, day) DO UPDATE SET play_seconds = user_stat_days.play_seconds + EXCLUDED.play_seconds, \
-         stream_seconds = user_stat_days.stream_seconds + EXCLUDED.stream_seconds, voice_seconds = user_stat_days.voice_seconds + EXCLUDED.voice_seconds",
+        "INSERT INTO user_stat_days (user_id, day, stream_seconds, voice_seconds) VALUES ($1, CURRENT_DATE, $2, $3) \
+         ON CONFLICT (user_id, day) DO UPDATE SET stream_seconds = user_stat_days.stream_seconds + EXCLUDED.stream_seconds, voice_seconds = user_stat_days.voice_seconds + EXCLUDED.voice_seconds",
     )
     .bind(uid)
-    .bind(play)
     .bind(stream)
     .bind(voice)
     .execute(&st.db)
     .await;
     let _ = sqlx::query(
-        "INSERT INTO user_stats (user_id, play_seconds, stream_seconds, voice_seconds) VALUES ($1, $2, $3, $4) \
-         ON CONFLICT (user_id) DO UPDATE SET play_seconds = user_stats.play_seconds + EXCLUDED.play_seconds, \
-         stream_seconds = user_stats.stream_seconds + EXCLUDED.stream_seconds, voice_seconds = user_stats.voice_seconds + EXCLUDED.voice_seconds",
+        "INSERT INTO user_stats (user_id, stream_seconds, voice_seconds) VALUES ($1, $2, $3) \
+         ON CONFLICT (user_id) DO UPDATE SET stream_seconds = user_stats.stream_seconds + EXCLUDED.stream_seconds, voice_seconds = user_stats.voice_seconds + EXCLUDED.voice_seconds",
     )
     .bind(uid)
-    .bind(play)
     .bind(stream)
     .bind(voice)
     .execute(&st.db)
@@ -75,34 +65,34 @@ pub async fn flush(st: &AppState, uid: Uuid) {
 }
 
 pub async fn flush_all(st: &AppState) {
-    let mut users: HashSet<Uuid> = st.hub.activity.iter().map(|e| *e.key()).collect();
-    users.extend(st.hub.voice_tick.iter().map(|e| *e.key()));
+    let users: HashSet<Uuid> = st.hub.voice_tick.iter().map(|e| *e.key()).collect();
     for u in users {
         flush(st, u).await;
     }
 }
 
 pub async fn tracked(st: &AppState, uid: Uuid) -> Result<(Vec<Badge>, Value)> {
-    let (created, play, stream, voice): (chrono::DateTime<chrono::Utc>, i64, i64, i64) = sqlx::query_as(
-        "SELECT u.created_at, COALESCE(s.play_seconds, 0), COALESCE(s.stream_seconds, 0), COALESCE(s.voice_seconds, 0) \
+    let (created, stream, voice): (chrono::DateTime<chrono::Utc>, i64, i64) = sqlx::query_as(
+        "SELECT u.created_at, COALESCE(s.stream_seconds, 0), COALESCE(s.voice_seconds, 0) \
          FROM users u LEFT JOIN user_stats s ON s.user_id = u.id WHERE u.id = $1",
     )
     .bind(uid)
     .fetch_one(&st.db)
     .await?;
-    let values = [play / 3600, stream / 3600, voice / 3600, (chrono::Utc::now() - created).num_days() / 365];
+    let values = [stream / 3600, voice / 3600, (chrono::Utc::now() - created).num_days() / 365];
     let mut badges = Vec::new();
     let mut tracks = Vec::new();
-    for (i, (track, label, icon, steps)) in TRACKS.iter().enumerate() {
+    for (i, (slot, track, label, icon, steps)) in TRACKS.iter().enumerate() {
         let tier = steps.iter().rposition(|s| values[i] >= *s);
         tracks.push(json!({ "track": track, "icon": icon, "value": values[i], "tier": tier, "steps": steps }));
         let Some(tier) = tier else { continue };
         badges.push(Badge {
-            id: Uuid::from_u128(0x7000 + (i as u128) * 16 + tier as u128),
+            id: Uuid::from_u128(0x7000 + slot * 16 + tier as u128),
             name: format!("{label}: level {}", tier + 1),
             description: String::new(),
             icon: icon.to_string(),
             color: TIER_COLORS[tier].to_string(),
+            translations: None,
             track: Some(track.to_string()),
             tier: Some(tier as i32),
             hours: Some(values[i]),
@@ -130,8 +120,6 @@ pub struct ActivityBody {
     name: String,
     #[serde(default)]
     details: String,
-    #[serde(default)]
-    detected: bool,
 }
 
 pub async fn set_activity(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b): Json<ActivityBody>) -> Result<Json<Value>> {
@@ -148,7 +136,7 @@ pub async fn set_activity(State(st): State<AppState>, AuthUser(uid): AuthUser, J
         return bad("Not connected");
     }
     flush(&st, uid).await;
-    let source = if b.detected && b.kind == "playing" { "game" } else { "manual" };
+    let source = "manual";
     let same = st.hub.activity.get(&uid).is_some_and(|a| a.kind == b.kind && a.name == name && a.source == source);
     if same {
         if let Some(mut a) = st.hub.activity.get_mut(&uid) {
