@@ -95,6 +95,9 @@ pub async fn delete(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((g
     if role.is_default {
         return bad("The default role cannot be deleted");
     }
+    if role.managed.is_some() {
+        return bad("Remove the integration to delete this role");
+    }
     let mut tx = st.db.begin().await?;
     sqlx::query("DELETE FROM overwrites WHERE target_id = $1").bind(rid).execute(&mut *tx).await?;
     sqlx::query("DELETE FROM roles WHERE id = $1").bind(rid).execute(&mut *tx).await?;

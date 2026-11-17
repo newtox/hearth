@@ -10,7 +10,7 @@ mod routes;
 
 use axum::{extract::DefaultBodyLimit, http::{header, HeaderValue}, routing::{delete, get, patch, post, put}, Router};
 use hub::Hub;
-use routes::{badges, channels, connections, emojis, friends, groups, guilds, invites, members, messages, roles, spotify, stats, users, voice};
+use routes::{badges, channels, connections, emojis, friends, groups, guilds, integrations, invites, members, messages, roles, spotify, stats, users, voice};
 use sqlx::postgres::PgPoolOptions;
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tower_http::{cors::CorsLayer, services::{ServeDir, ServeFile}, set_header::SetResponseHeaderLayer, trace::TraceLayer};
@@ -56,6 +56,9 @@ async fn main() {
     };
     if state.spotify.is_some() {
         tokio::spawn(spotify::poll(state.clone()));
+    }
+    if state.connections.as_deref().is_some_and(|c| c.syncable().next().is_some()) {
+        tokio::spawn(integrations::poll(state.clone()));
     }
     let ticker = state.clone();
     tokio::spawn(async move {
@@ -109,6 +112,9 @@ async fn main() {
         .route("/guilds/{gid}/roles", post(roles::create).put(roles::reorder))
         .route("/guilds/{gid}/roles/{rid}", patch(roles::update).delete(roles::delete))
         .route("/guilds/{gid}/members/{uid}", patch(members::update).delete(members::kick))
+        .route("/guilds/{gid}/integrations", get(integrations::list))
+        .route("/guilds/{gid}/integrations/{key}", post(integrations::start).delete(integrations::remove))
+        .route("/guilds/{gid}/integrations/{key}/sync", post(integrations::sync_now))
         .route("/guilds/{gid}/bans", get(members::bans))
         .route("/guilds/{gid}/bans/{uid}", put(members::ban).delete(members::unban))
         .route("/guilds/{gid}/invites", get(invites::list).post(invites::create))

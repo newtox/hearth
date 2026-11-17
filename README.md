@@ -8,6 +8,7 @@ The name is a working title and can be changed at any time.
 - `web/src-tauri/` Tauri 2 shell for Windows, Linux and Android
 - `deploy/` Docker stack and setup script for your own server
 - `scripts/smoke.py` end-to-end test against a running server
+- `scripts/integrations.py` and `scripts/mock_platform.py` test for the Twitch and YouTube roles against a fake platform
 - `.github/workflows/apps.yml` builds the apps on GitHub
 
 ## Getting started
@@ -27,6 +28,8 @@ The first account to register becomes the instance admin and can create and gran
 For frontend development with hot reload, start the server as above and run `cd web && npm run dev`.
 
 Test: `pip install requests websockets && python3 scripts/smoke.py http://127.0.0.1:8080`
+
+Role sync test: start `python3 scripts/mock_platform.py`, run the server with `PUBLIC_URL=http://127.0.0.1:8080 CONNECT_MOCK_URL=http://127.0.0.1:9099 INTEGRATION_SYNC_SECS=5`, then `python3 scripts/integrations.py`.
 
 ## Deploying to a server
 
@@ -65,6 +68,17 @@ Optional. Users can link outside accounts under Settings and show them on their 
 
 On a deployed server, add the variables to `deploy/.env` and run `deploy.sh` again.
 
+## Twitch and YouTube roles
+
+Server managers can link their Twitch or YouTube channel under Server settings, Integrations. Hearth then creates a role and gives it to every member who has linked their own account under Settings and subscribes to that Twitch channel or is a member of that YouTube channel. When the subscription or membership ends, the role is removed again.
+
+Roles are synced every 10 minutes (change with `INTEGRATION_SYNC_SECS`), right away when someone links or unlinks an account, and when someone joins the server. The role can be renamed, recoloured and given permissions like any other role, but it cannot be assigned by hand or deleted while the integration exists.
+
+It uses the same apps and redirect URIs as the account connections above, no extra setup is needed.
+
+- Twitch: subscriptions only exist for Affiliate and Partner channels.
+- YouTube: Google only gives the channel member list to creators it has allowlisted, which in practice means channels with a YouTube Partner Manager. Without that access the integration links but shows an error instead of assigning roles. While the Google app is in testing mode, only accounts added as test users can link.
+
 ## Apps
 
 The apps are the same interface inside a Tauri shell. They ask for the server address at sign-in.
@@ -90,6 +104,7 @@ Limitations:
 - Servers with categories, text and voice channels, icon, description, ownership transfer
 - Roles with hierarchy, colour, 20 permissions, per-role channel rules
 - Threads started from any message in a text channel
+- Roles for Twitch subscribers and YouTube channel members, kept in sync automatically
 - Polls with single or multiple choice and an optional end time
 - Real-time chat: Markdown, attachments up to 25 MB, reactions, custom emojis and stickers, typing indicator, unread markers
 - Friends list with requests, direct messages between friends or members of shared servers

@@ -83,6 +83,7 @@ pub struct Role {
     pub position: i32,
     pub hoist: bool,
     pub is_default: bool,
+    pub managed: Option<String>,
 }
 
 #[derive(Serialize, FromRow, Clone)]

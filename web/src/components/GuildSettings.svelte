@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { auditDetail, locale, t } from '../lib/i18n.svelte';
+  import { auditDetail, locale, serverError, t } from '../lib/i18n.svelte';
   import { untrack } from 'svelte';
   import { api, asset, base, getToken, upload } from '../lib/api';
   import { PERMISSIONS, has } from '../lib/perms';
@@ -22,6 +22,7 @@
       { id: 'emojis', name: 'Emojis', show: can(P.MANAGE_EMOJIS, g) },
       { id: 'invites', name: w('invites'), show: can(P.CREATE_INVITE, g) },
       { id: 'bans', name: t('Banns'), show: can(P.BAN_MEMBERS, g) },
+      { id: 'integrations', name: t('Integrationen'), show: can(P.MANAGE_GUILD, g) },
       { id: 'audit', name: t('Protokoll'), show: can(P.MANAGE_GUILD, g) },
     ].filter((x) => x.show),
   );
@@ -54,6 +55,48 @@
 
   function editable(r: Role) {
     return owner || r.position < myTop;
+  }
+
+  interface Integration {
+    id: string;
+    provider: string;
+    account_name: string;
+    role_id: string;
+    synced_at: string | null;
+    error: string | null;
+    members: number;
+  }
+  let integ = $state<{ available: { id: string; name: string }[]; linked: Integration[] }>({ available: [], linked: [] });
+  const HINTS: Record<string, string> = {
+    twitch: 'Wer deinen Twitch-Kanal abonniert hat, bekommt die Rolle.',
+    youtube: 'Wer auf deinem YouTube-Kanal Kanalmitglied ist, bekommt die Rolle. YouTube gibt die Mitgliederliste nur heraus, wenn YouTube deinen Kanal dafür freigeschaltet hat.',
+  };
+
+  async function loadIntegrations() {
+    integ = (await attempt(api<typeof integ>('GET', `/guilds/${g.id}/integrations`))) ?? { available: [], linked: [] };
+  }
+
+  async function linkIntegration(provider: string) {
+    const res = await attempt(api<{ url: string }>('POST', `/guilds/${g.id}/integrations/${provider}`));
+    if (res) location.href = res.url;
+  }
+
+  async function syncIntegration(id: string) {
+    if (await attempt(api('POST', `/guilds/${g.id}/integrations/${id}/sync`))) {
+      await loadIntegrations();
+      toast(t('Abgleich abgeschlossen'));
+    }
+  }
+
+  async function unlinkIntegration(i: Integration, label: string) {
+    if (confirm(t('{name} trennen? Die Rolle wird dabei gelöscht.', { name: label }))) {
+      await attempt(api('DELETE', `/guilds/${g.id}/integrations/${i.id}`));
+      loadIntegrations();
+    }
+  }
+
+  function providerName(id: string | null) {
+    return integ.available.find((p) => p.id === id)?.name ?? ({ twitch: 'Twitch', youtube: 'YouTube' } as Record<string, string>)[id ?? ''] ?? id ?? '';
   }
 
   function pickRole(r: Role) {
@@ -177,6 +220,8 @@
     emoji_create: 'hat ein Emoji hochgeladen',
     sticker_create: 'hat einen Sticker hochgeladen',
     emoji_delete: 'hat ein Emoji oder einen Sticker gelöscht',
+    integration_create: 'hat eine Integration verbunden:',
+    integration_delete: 'hat eine Integration getrennt:',
   };
 
   async function loadAudit() {
@@ -221,6 +266,7 @@
     if (tab === 'invites') loadInvites();
     if (tab === 'bans') loadBans();
     if (tab === 'audit') loadAudit();
+    if (tab === 'integrations') loadIntegrations();
   });
 
   const date = new Intl.DateTimeFormat(locale(), { dateStyle: 'medium', timeStyle: 'short' });
@@ -292,6 +338,9 @@
                 {:else}
                   <p class="muted">{t('Diese Rolle hat jedes Mitglied. Ihre Berechtigungen gelten für alle.')}</p>
                 {/if}
+                {#if role.managed}
+                  <p class="muted">{t('Diese Rolle verwaltet die {name}-Integration. Sie wird automatisch vergeben und entzogen.', { name: providerName(role.managed) })}</p>
+                {/if}
                 <div class="perms">
                   {#each PERMISSIONS as p (p.bit)}
                     <label class="perm">
@@ -307,7 +356,7 @@
                 </div>
                 <div class="row">
                   <button class="btn primary">{t('Rolle speichern')}</button>
-                  {#if !role.is_default}<button type="button" class="btn danger" onclick={deleteRole}>{t('Löschen')}</button>{/if}
+                  {#if !role.is_default && !role.managed}<button type="button" class="btn danger" onclick={deleteRole}>{t('Löschen')}</button>{/if}
                 </div>
               </fieldset>
               {#if !editable(role)}<p class="muted">{t('Diese Rolle steht nicht unter deiner höchsten Rolle, du kannst sie nicht ändern.')}</p>{/if}
@@ -345,7 +394,7 @@
               {#if can(P.MANAGE_ROLES, g) && g.roles.some((r) => !r.is_default)}
                 <div class="chips">
                   {#each g.roles.filter((r) => !r.is_default) as r (r.id)}
-                    <button class="chip" class:on={m.roles.includes(r.id)} style:--c={r.color ?? 'var(--muted)'} disabled={!editable(r)} aria-pressed={m.roles.includes(r.id)} onclick={() => toggleRole(m.id, m.roles, r.id)}>{r.name}</button>
+                    <button class="chip" class:on={m.roles.includes(r.id)} style:--c={r.color ?? 'var(--muted)'} disabled={!editable(r) || !!r.managed} title={r.managed ? t('Wird automatisch von der {name}-Integration vergeben', { name: providerName(r.managed) }) : undefined} aria-pressed={m.roles.includes(r.id)} onclick={() => toggleRole(m.id, m.roles, r.id)}>{r.name}</button>
                   {/each}
                 </div>
               {/if}
@@ -418,6 +467,39 @@
             </div>
           {/each}
         </div>
+      {:else if tab === 'integrations'}
+        <div class="stack">
+          <p class="muted">{t('Mitglieder, die ihr Konto unter Einstellungen verbunden haben, bekommen automatisch eine Rolle, solange sie deinen Kanal unterstützen. Der Abgleich läuft alle 10 Minuten.')}</p>
+          {#each integ.available as p (p.id)}
+            {@const link = integ.linked.find((l) => l.provider === p.id)}
+            {@const r = link ? g.roles.find((x) => x.id === link.role_id) : null}
+            <section class="integration stack">
+              <div class="row">
+                <h3 class="grow">{p.name}</h3>
+                {#if link}
+                  <button class="btn small" onclick={() => syncIntegration(link.id)}>{t('Jetzt abgleichen')}</button>
+                  <button class="btn small danger" onclick={() => unlinkIntegration(link, p.name)}>{t('Trennen')}</button>
+                {:else}
+                  <button class="btn small primary" onclick={() => linkIntegration(p.id)}>{t('Kanal verbinden')}</button>
+                {/if}
+              </div>
+              {#if HINTS[p.id]}<p class="muted">{t(HINTS[p.id])}</p>{/if}
+              {#if link}
+                <p>{t('Verbunden mit {name}', { name: link.account_name })}</p>
+                {#if r}
+                  <p class="row wrap"><span class="chip on" style:--c={r.color ?? 'var(--muted)'}>{r.name}</span> {link.members === 1 ? t('1 Mitglied hat diese Rolle') : t('{n} Mitglieder haben diese Rolle', { n: link.members })}</p>
+                {/if}
+                {#if link.error}
+                  <p class="warn" role="alert">{serverError(link.error)}</p>
+                {:else if link.synced_at}
+                  <p class="muted">{t('Zuletzt abgeglichen: {date}', { date: date.format(new Date(link.synced_at)) })}</p>
+                {/if}
+              {/if}
+            </section>
+          {:else}
+            <p class="muted">{t('Auf diesem Server ist weder Twitch noch YouTube eingerichtet. Wie das geht, steht in der README.')}</p>
+          {/each}
+        </div>
       {:else if tab === 'audit'}
         <div class="stack">
           {#each audit as a (a.id)}
@@ -454,6 +536,20 @@
     grid-template-columns: 150px 1fr;
     gap: 24px;
     min-height: 100%;
+  }
+  .integration {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .integration h3 {
+    margin: 0;
+  }
+  .integration p {
+    margin: 0;
+  }
+  .warn {
+    color: var(--danger);
   }
   .tabs {
     display: flex;
