@@ -1,0 +1,26 @@
+id: de.newtox.hearth
+runtime: org.gnome.Platform
+runtime-version: "46"
+sdk: org.gnome.Sdk
+command: hearth-app
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --share=ipc
+  - --share=network
+modules:
+  - name: hearth
+    buildsystem: simple
+    sources:
+      - type: file
+        path: hearth.deb
+        only-arches: [x86_64]
+    build-commands:
+      - ar -x hearth.deb
+      - tar -xf data.tar.gz
+      - install -Dm755 usr/bin/hearth-app /app/bin/hearth-app
+      - install -Dm644 usr/share/applications/Hearth.desktop /app/share/applications/de.newtox.hearth.desktop
+      - desktop-file-edit --set-icon=de.newtox.hearth /app/share/applications/de.newtox.hearth.desktop
+      - install -Dm644 usr/share/icons/hicolor/128x128/apps/hearth-app.png /app/share/icons/hicolor/128x128/apps/de.newtox.hearth.png
