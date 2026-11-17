@@ -10,6 +10,7 @@
   import { docs, releases } from '../lib/docs';
   import Avatar from './Avatar.svelte';
   import SettingsPage, { type Section } from './SettingsPage.svelte';
+  import Modal from './Modal.svelte';
   import { notifications } from '../lib/notify';
   import { setStatus } from '../lib/store.svelte';
 
@@ -113,21 +114,26 @@
     { id: 'logout', name: t('Abmelden'), danger: true, action: () => confirm(t('Wirklich abmelden?')) && logout() },
   ]);
 
-  let account = $state({ username: app.me!.username, email: app.me!.email ?? '', password: '', next: '', repeat: '' });
   let showEmail = $state(false);
+  let editing = $state<null | 'username' | 'email' | 'password'>(null);
+  let form = $state({ value: '', password: '', next: '', repeat: '' });
+
+  function edit(what: 'username' | 'email' | 'password') {
+    form = { value: what === 'username' ? me.username : what === 'email' ? (me.email ?? '') : '', password: '', next: '', repeat: '' };
+    editing = what;
+  }
 
   async function saveAccount(e: SubmitEvent) {
     e.preventDefault();
-    if (account.next && account.next !== account.repeat) return toast(t('Die neuen Passwörter stimmen nicht überein'));
-    const body: Record<string, string> = { password: account.password };
-    if (account.username.trim() !== me.username) body.username = account.username;
-    if (account.email.trim() !== (me.email ?? '')) body.email = account.email;
-    if (account.next) body.new_password = account.next;
-    if (Object.keys(body).length === 1) return toast(t('Es gibt nichts zu speichern'));
+    const body: Record<string, string> = { password: form.password };
+    if (editing === 'password') {
+      if (form.next !== form.repeat) return toast(t('Die neuen Passwörter stimmen nicht überein'));
+      body.new_password = form.next;
+    } else if (editing) body[editing] = form.value;
     const u = await attempt(api<User>('PATCH', '/users/@me/account', body));
     if (u) {
       app.me = { ...app.me!, ...u };
-      account = { username: u.username, email: u.email ?? '', password: '', next: '', repeat: '' };
+      editing = null;
       toast(t('Konto gespeichert'));
     }
   }
@@ -163,10 +169,16 @@
         <button class="btn small" onclick={() => (section = 'profile')}>{t('Profil bearbeiten')}</button>
       </div>
       <dl class="facts">
-        <div><dt>{t('Benutzername')}</dt><dd>{me.username}</dd></div>
-        <div>
-          <dt>{t('E-Mail')}</dt>
-          <dd>{showEmail ? me.email : masked(me.email ?? '')} <button class="link" onclick={() => (showEmail = !showEmail)}>{showEmail ? t('Verbergen') : t('Anzeigen')}</button></dd>
+        <div class="fact">
+          <div class="grow"><dt>{t('Benutzername')}</dt><dd>{me.username}</dd></div>
+          <button class="btn small" onclick={() => edit('username')}>{t('Bearbeiten')}</button>
+        </div>
+        <div class="fact">
+          <div class="grow">
+            <dt>{t('E-Mail')}</dt>
+            <dd>{showEmail ? me.email : masked(me.email ?? '')} <button class="link" onclick={() => (showEmail = !showEmail)}>{showEmail ? t('Verbergen') : t('Anzeigen')}</button></dd>
+          </div>
+          <button class="btn small" onclick={() => edit('email')}>{t('Bearbeiten')}</button>
         </div>
         <div><dt>{t('Status')}</dt><dd>
           <select class="input" value={me.status ?? 'online'} onchange={(e) => setStatus(e.currentTarget.value as any)}>
@@ -179,18 +191,28 @@
       </dl>
     </div>
 
-    <h3>{t('Anmeldedaten ändern')}</h3>
-    <form class="stack" onsubmit={saveAccount}>
-      <label class="field"><span>{t('Benutzername')}</span><input class="input" bind:value={account.username} maxlength="32" autocomplete="username" /></label>
-      <label class="field"><span>{t('E-Mail')}</span><input class="input" type="email" bind:value={account.email} maxlength="254" autocomplete="email" /></label>
-      <div class="two">
-        <label class="field"><span>{t('Neues Passwort')}</span><input class="input" type="password" bind:value={account.next} minlength="8" maxlength="128" autocomplete="new-password" placeholder={t('leer lassen, um es zu behalten')} /></label>
-        <label class="field"><span>{t('Neues Passwort wiederholen')}</span><input class="input" type="password" bind:value={account.repeat} maxlength="128" autocomplete="new-password" /></label>
-      </div>
-      <label class="field"><span>{t('Aktuelles Passwort zur Bestätigung')}</span><input class="input" type="password" bind:value={account.password} required autocomplete="current-password" /></label>
-      <p class="muted small">{t('Nach einem neuen Passwort werden alle anderen Geräte abgemeldet.')}</p>
-      <div><button class="btn primary">{t('Änderungen speichern')}</button></div>
-    </form>
+    <h3>{t('Passwort')}</h3>
+    <div><button class="btn primary" onclick={() => edit('password')}>{t('Passwort ändern')}</button></div>
+    {#if editing}
+      <Modal title={editing === 'username' ? t('Benutzername ändern') : editing === 'email' ? t('E-Mail ändern') : t('Passwort ändern')} onclose={() => (editing = null)}>
+        <form class="stack" onsubmit={saveAccount}>
+          {#if editing === 'username'}
+            <label class="field"><span>{t('Benutzername')}</span><input class="input" bind:value={form.value} maxlength="32" autocomplete="username" required /></label>
+          {:else if editing === 'email'}
+            <label class="field"><span>{t('E-Mail')}</span><input class="input" type="email" bind:value={form.value} maxlength="254" autocomplete="email" required /></label>
+          {:else}
+            <label class="field"><span>{t('Neues Passwort')}</span><input class="input" type="password" bind:value={form.next} minlength="8" maxlength="128" autocomplete="new-password" required /></label>
+            <label class="field"><span>{t('Neues Passwort wiederholen')}</span><input class="input" type="password" bind:value={form.repeat} maxlength="128" autocomplete="new-password" required /></label>
+            <p class="muted small">{t('Nach einem neuen Passwort werden alle anderen Geräte abgemeldet.')}</p>
+          {/if}
+          <label class="field"><span>{t('Aktuelles Passwort')}</span><input class="input" type="password" bind:value={form.password} autocomplete="current-password" required /></label>
+          <div class="row end">
+            <button type="button" class="btn" onclick={() => (editing = null)}>{t('Abbrechen')}</button>
+            <button class="btn primary">{t('Speichern')}</button>
+          </div>
+        </form>
+      </Modal>
+    {/if}
   {:else if section === 'profile'}
     <div class="grid">
       <form class="stack" onsubmit={save}>
@@ -364,12 +386,20 @@
     border-radius: var(--radius-s);
     background: var(--panel);
   }
-  .facts div {
+  .facts > div {
     padding: 10px 0;
     border-bottom: 1px solid var(--line);
   }
-  .facts div:last-child {
+  .facts > div:last-child {
     border-bottom: 0;
+  }
+  .fact {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .end {
+    justify-content: flex-end;
   }
   dt {
     font-size: 0.78em;
@@ -383,11 +413,6 @@
     color: var(--accent);
     font-size: 0.9em;
     margin-left: 6px;
-  }
-  .two {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
   }
   .option {
     display: flex;
@@ -504,8 +529,7 @@
     outline-color: var(--accent);
   }
   @media (max-width: 700px) {
-    .grid,
-    .two {
+    .grid {
       grid-template-columns: 1fr;
     }
   }

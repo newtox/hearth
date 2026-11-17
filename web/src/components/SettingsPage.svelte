@@ -33,7 +33,7 @@
   }
 
   function key(e: KeyboardEvent) {
-    if (e.key === 'Escape' && !(e.target as HTMLElement).closest('input, textarea, select')) onclose();
+    if (e.key === 'Escape' && !(e.target as HTMLElement).closest('input, textarea, select') && !document.querySelector('[aria-modal="true"][role="dialog"]:not(.settings)')) onclose();
   }
 </script>
 
