@@ -9,6 +9,7 @@
   import { docs } from '../lib/docs';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
+  import { sortable, type Place } from '../lib/drag';
   import SettingsPage from './SettingsPage.svelte';
 
   let { tab: initial = 'overview' }: { tab?: string } = $props();
@@ -83,13 +84,40 @@
     }
   }
 
-  async function move(r: Role, dir: -1 | 1) {
+  async function saveOrder(order: string[]) {
+    const before = g.roles;
+    const rest = g.roles.filter((x) => x.is_default);
+    g.roles = [...order.map((id, i) => ({ ...g.roles.find((x) => x.id === id)!, position: order.length - i })), ...rest];
+    if (!(await attempt(api('PUT', `/guilds/${g.id}/roles`, order)))) g.roles = before;
+  }
+
+  function move(r: Role, dir: -1 | 1) {
     const order = g.roles.filter((x) => !x.is_default).map((x) => x.id);
     const i = order.indexOf(r.id);
     const j = i + dir;
-    if (j < 0 || j >= order.length) return;
+    const other = g.roles.find((x) => x.id === order[j]);
+    if (j < 0 || j >= order.length || !other || !editable(other)) return;
     [order[i], order[j]] = [order[j], order[i]];
-    await attempt(api('PUT', `/guilds/${g.id}/roles`, order));
+    saveOrder(order);
+  }
+
+  function rolePlace(dragId: string, targetId: string, ratio: number): Place | null {
+    const target = g.roles.find((x) => x.id === targetId);
+    if (dragId === targetId || !target || target.is_default || !editable(target)) return null;
+    return ratio < 0.5 ? 'before' : 'after';
+  }
+
+  function roleDrop(dragId: string, targetId: string, place: Place) {
+    const order = g.roles.filter((x) => !x.is_default && x.id !== dragId).map((x) => x.id);
+    const at = order.indexOf(targetId);
+    order.splice(place === 'before' ? at : at + 1, 0, dragId);
+    saveOrder(order);
+  }
+
+  function roleKey(e: KeyboardEvent, r: Role) {
+    if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') || r.is_default || !editable(r)) return;
+    e.preventDefault();
+    move(r, e.key === 'ArrowUp' ? -1 : 1);
   }
 
   async function toggleRole(memberId: string, current: string[], id: string) {
@@ -168,6 +196,7 @@
     role_delete: 'guild_settings_deleted_role',
     channel_create: 'guild_settings_created_channel',
     channel_update: 'guild_settings_changed_channel',
+    channel_reorder: 'guild_settings_reordered_channels',
     channel_delete: 'guild_settings_deleted_channel',
     channel_rules: 'guild_settings_changed_channel_rules',
     member_roles: 'guild_settings_changed_roles',
@@ -262,15 +291,12 @@
         <div class="roles">
           <div class="rolelist">
             {#each g.roles as r (r.id)}
-              <div class="roleitem" class:on={r.id === roleId}>
-                <button class="row grow" onclick={() => pickRole(r)}>
+              <div class="roleitem" class:on={r.id === roleId} class:movable={!r.is_default && editable(r)} use:sortable={{ id: r.id, group: 'roles', label: r.name, enabled: !r.is_default && editable(r), place: rolePlace, drop: roleDrop }}>
+                <button class="row grow" onclick={() => pickRole(r)} onkeydown={(e) => roleKey(e, r)} title={!r.is_default && editable(r) ? t('guild_settings_drag_to_sort') : undefined}>
                   <span class="swatch" style:background={r.color ?? 'var(--muted)'}></span>
                   <span class="ellipsis">{r.name}</span>
                 </button>
-                {#if !r.is_default && editable(r)}
-                  <button class="icon" onclick={() => move(r, -1)} aria-label={t('guild_settings_move_name_up', { name: r.name })}><Icon name="up" size={14} /></button>
-                  <button class="icon" onclick={() => move(r, 1)} aria-label={t('guild_settings_move_name_down', { name: r.name })}><Icon name="down" size={14} /></button>
-                {/if}
+                {#if !r.is_default && editable(r)}<span class="grip" aria-hidden="true"><Icon name="grip" size={14} /></span>{/if}
               </div>
             {/each}
             <button class="btn small" onclick={addRole}><Icon name="plus" size={14} /> {t('guild_settings_create_role')}</button>
@@ -486,6 +512,18 @@
     padding: 6px 8px;
     min-width: 0;
     text-align: left;
+  }
+  .grip {
+    display: inline-flex;
+    padding: 0 8px;
+    color: var(--muted);
+    opacity: 0;
+  }
+  .roleitem:hover .grip {
+    opacity: 1;
+  }
+  .roleitem.movable {
+    cursor: grab;
   }
   .roleitem.on,
   .roleitem:hover {

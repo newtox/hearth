@@ -111,7 +111,7 @@ async fn main() {
         .route("/guilds", post(guilds::create))
         .route("/guilds/{gid}", get(guilds::get).patch(guilds::update).delete(guilds::delete))
         .route("/guilds/{gid}/icon", post(guilds::set_icon))
-        .route("/guilds/{gid}/channels", post(channels::create))
+        .route("/guilds/{gid}/channels", post(channels::create).put(channels::reorder))
         .route("/guilds/{gid}/roles", post(roles::create).put(roles::reorder))
         .route("/guilds/{gid}/roles/{rid}", patch(roles::update).delete(roles::delete))
         .route("/guilds/{gid}/members/{uid}", patch(members::update).delete(members::kick))

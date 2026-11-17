@@ -1,11 +1,12 @@
 <script lang="ts">
   import { t } from '../lib/i18n.svelte';
-  import { app, can, dmTitle, guild, partner, select, P, type Channel, presenceOf } from '../lib/store.svelte';
-  import { asset } from '../lib/api';
+  import { app, attempt, can, dmTitle, guild, partner, select, P, type Channel, presenceOf } from '../lib/store.svelte';
+  import { api, asset } from '../lib/api';
   import { w } from '../lib/theme.svelte';
   import { leaveVoice, toggleMute, voice, voiceMembers } from '../lib/voice.svelte';
   import { channelMenu, guildMenu, memberMenu, openBelow, openMenu } from '../lib/menus';
   import Avatar from './Avatar.svelte';
+  import { sortable, type Place } from '../lib/drag';
   import Icon from './Icon.svelte';
   import StillImg from './StillImg.svelte';
 
@@ -18,6 +19,46 @@
     for (const cat of g.channels.filter((c) => c.kind === 'category')) groups.push({ category: cat, items: text.filter((c) => c.parent_id === cat.id) });
     return groups.filter((x) => x.items.length || (x.category && manage));
   });
+  function sortPlace(dragId: string, targetId: string, ratio: number): Place | null {
+    if (!g || dragId === targetId) return null;
+    const drag = g.channels.find((c) => c.id === dragId);
+    const target = g.channels.find((c) => c.id === targetId);
+    if (!drag || !target) return null;
+    if (drag.kind === 'category') return target.kind === 'category' ? (ratio < 0.5 ? 'before' : 'after') : null;
+    if (target.kind === 'category') return 'inside';
+    return ratio < 0.5 ? 'before' : 'after';
+  }
+
+  async function sortDrop(dragId: string, targetId: string, place: Place) {
+    if (!g) return;
+    const all = g.channels;
+    const cats = all.filter((c) => c.kind === 'category');
+    const groups = [{ id: null as string | null, items: all.filter((c) => c.kind !== 'category' && !cats.some((x) => x.id === c.parent_id)) }, ...cats.map((cat) => ({ id: cat.id as string | null, items: all.filter((c) => c.parent_id === cat.id && c.kind !== 'category') }))];
+    const drag = all.find((c) => c.id === dragId)!;
+    if (drag.kind === 'category') {
+      const from = groups.findIndex((x) => x.id === dragId);
+      const [moved] = groups.splice(from, 1);
+      const to = groups.findIndex((x) => x.id === targetId);
+      groups.splice(place === 'before' ? to : to + 1, 0, moved);
+    } else {
+      for (const grp of groups) grp.items = grp.items.filter((c) => c.id !== dragId);
+      if (place === 'inside') groups.find((x) => x.id === targetId)?.items.unshift(drag);
+      else {
+        const grp = groups.find((x) => x.items.some((c) => c.id === targetId))!;
+        const at = grp.items.findIndex((c) => c.id === targetId);
+        grp.items.splice(place === 'before' ? at : at + 1, 0, drag);
+      }
+    }
+    const order: { id: string; parent_id: string | null }[] = [];
+    for (const grp of groups) {
+      if (grp.id) order.push({ id: grp.id, parent_id: null });
+      for (const c of grp.items) order.push({ id: c.id, parent_id: grp.id });
+    }
+    const before = all;
+    g.channels = order.map((o, i) => ({ ...all.find((c) => c.id === o.id)!, parent_id: o.parent_id, position: i }));
+    if (!(await attempt(api('PUT', `/guilds/${g.id}/channels`, order)))) g.channels = before;
+  }
+
   let menuFromHeader = $state(false);
   $effect(() => {
     if (!app.menu) menuFromHeader = false;
@@ -36,7 +77,7 @@
     <div class="list scroll">
       {#each tree as group (group.category?.id ?? 'none')}
         {#if group.category}
-          <div class="category row" role="presentation" oncontextmenu={(e) => openMenu(e, channelMenu(g, group.category!))}>
+          <div class="category row" role="presentation" use:sortable={{ id: group.category.id, group: 'channels', label: group.category.name, enabled: manage, place: sortPlace, drop: sortDrop }} oncontextmenu={(e) => openMenu(e, channelMenu(g, group.category!))}>
             <span class="grow ellipsis">{group.category.name}</span>
             {#if manage}
               <button class="icon" onclick={() => (app.modal = { kind: 'channel', channel: group.category })} aria-label={t('common_edit_category')}><Icon name="edit" size={14} /></button>
@@ -45,7 +86,7 @@
           </div>
         {/if}
         {#each group.items as c (c.id)}
-          <div class="item" class:active={c.id === app.channelId} class:unread={app.unread[c.id]} role="presentation" oncontextmenu={(e) => openMenu(e, channelMenu(g, c))}>
+          <div class="item" class:active={c.id === app.channelId} class:unread={app.unread[c.id]} role="presentation" use:sortable={{ id: c.id, group: 'channels', label: c.name, enabled: manage, place: sortPlace, drop: sortDrop }} oncontextmenu={(e) => openMenu(e, channelMenu(g, c))}>
             <button class="main row" onclick={() => select(g.id, c.id)}>
               <Icon name={c.kind === 'voice' ? 'volume' : 'hash'} size={16} />
               <span class="ellipsis">{c.name}</span>

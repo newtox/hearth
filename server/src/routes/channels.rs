@@ -150,6 +150,48 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
     Ok(Json(channel))
 }
 
+#[derive(Deserialize)]
+pub struct Placement {
+    id: Uuid,
+    parent_id: Option<Uuid>,
+}
+
+pub async fn reorder(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gid): Path<Uuid>, Json(order): Json<Vec<Placement>>) -> Result<Json<Value>> {
+    perms::ctx(&st.db, gid, uid).await?.require(perms::MANAGE_CHANNELS)?;
+    let current: Vec<(Uuid, String, Option<Uuid>)> = sqlx::query_as("SELECT id, kind, parent_id FROM channels WHERE guild_id = $1 ORDER BY position, id").bind(gid).fetch_all(&st.db).await?;
+    let mut ids: Vec<Uuid> = order.iter().map(|p| p.id).collect();
+    ids.sort();
+    ids.dedup();
+    if ids.len() != order.len() || !order.iter().all(|p| current.iter().any(|c| c.0 == p.id)) {
+        return bad("Unknown target");
+    }
+    let mut order = order;
+    for (id, _, parent) in &current {
+        if ids.binary_search(id).is_err() {
+            order.push(Placement { id: *id, parent_id: *parent });
+        }
+    }
+    let kind = |id: Uuid| current.iter().find(|c| c.0 == id).map(|c| c.1.as_str()).unwrap_or("");
+    for p in &order {
+        if let Some(parent) = p.parent_id {
+            if kind(p.id) == "category" {
+                return bad("Categories cannot be nested");
+            }
+            if kind(parent) != "category" {
+                return bad("Unknown category");
+            }
+        }
+    }
+    let mut tx = st.db.begin().await?;
+    for (i, p) in order.iter().enumerate() {
+        sqlx::query("UPDATE channels SET position = $1, parent_id = $2 WHERE id = $3").bind(i as i32).bind(p.parent_id).bind(p.id).execute(&mut *tx).await?;
+    }
+    tx.commit().await?;
+    audit(&st, gid, uid, "channel_reorder", "", "").await;
+    refresh(&st, gid).await?;
+    Ok(Json(json!({})))
+}
+
 pub async fn delete(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid): Path<Uuid>) -> Result<Json<Value>> {
     let (ch, gid, _) = guild_channel(&st, uid, cid).await?;
     let files: Vec<String> = sqlx::query_scalar("SELECT file FROM attachments WHERE channel_id = $1").bind(cid).fetch_all(&st.db).await?;
