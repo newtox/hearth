@@ -3,6 +3,7 @@ name: hearth
 services:
   db:
     image: postgres:16
+    container_name: hearth-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: hearth
@@ -17,6 +18,7 @@ services:
       retries: 20
 
   app:
+    container_name: hearth
     image: ${HEARTH_IMAGE:-ghcr.io/newtox/hearth:latest}
     restart: unless-stopped
     depends_on:
@@ -45,6 +47,7 @@ services:
       - uploads:/data/uploads
 
   livekit:
+    container_name: hearth-livekit
     image: livekit/livekit-server:latest
     restart: unless-stopped
     environment:

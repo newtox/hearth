@@ -94,6 +94,6 @@ After removing everything, also delete the two domain blocks from your Caddyfile
 ## Backups
 
 ```sh
-docker exec hearth-db-1 pg_dump -U hearth hearth > hearth.sql
+docker exec hearth-db pg_dump -U hearth hearth > hearth.sql
 docker run --rm -v hearth_uploads:/data -v "$PWD":/out debian tar czf /out/uploads.tar.gz -C /data .
 ```

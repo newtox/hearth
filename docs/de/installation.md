@@ -94,6 +94,6 @@ Wenn du alles entfernst und Hearth nicht neu einrichtest, auch die beiden Domain
 ## Sicherungen
 
 ```sh
-docker exec hearth-db-1 pg_dump -U hearth hearth > hearth.sql
+docker exec hearth-db pg_dump -U hearth hearth > hearth.sql
 docker run --rm -v hearth_uploads:/data -v "$PWD":/out debian tar czf /out/uploads.tar.gz -C /data .
 ```
