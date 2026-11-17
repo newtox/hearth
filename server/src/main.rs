@@ -9,12 +9,12 @@ mod models;
 mod perms;
 mod routes;
 
-use axum::{extract::DefaultBodyLimit, http::{header, HeaderValue}, routing::{delete, get, patch, post, put}, Router};
+use axum::{extract::DefaultBodyLimit, http::{header, HeaderValue}, response::Html, routing::{delete, get, patch, post, put}, Router};
 use hub::Hub;
 use routes::{account, badges, channels, connections, emojis, friends, groups, guilds, invites, members, messages, roles, spotify, stats, users, voice};
 use sqlx::postgres::PgPoolOptions;
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
-use tower_http::{cors::CorsLayer, services::{ServeDir, ServeFile}, set_header::SetResponseHeaderLayer, trace::TraceLayer};
+use tower_http::{cors::CorsLayer, services::ServeDir, set_header::SetResponseHeaderLayer, trace::TraceLayer};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -26,6 +26,12 @@ pub struct AppState {
     pub livekit: Option<Arc<voice::LiveKit>>,
     pub spotify: Option<Arc<spotify::Spotify>>,
     pub mailer: Option<Arc<mail::Mailer>>,
+}
+
+fn index_html(web_dir: &std::path::Path) -> String {
+    let html = std::fs::read_to_string(web_dir.join("index.html")).unwrap_or_else(|_| "<!doctype html><title>Hearth</title>".into());
+    let public = env::var("PUBLIC_URL").unwrap_or_default();
+    html.replace("__PUBLIC_URL__", public.trim_end_matches('/'))
 }
 
 #[tokio::main]
@@ -127,6 +133,11 @@ async fn main() {
         .route("/channels/{cid}/messages/{mid}", patch(messages::update).delete(messages::delete))
         .route("/channels/{cid}/typing", post(messages::typing));
 
+    let index = Arc::new(index_html(&web_dir));
+    let page = move || {
+        let index = index.clone();
+        async move { ([(header::CACHE_CONTROL, "no-cache")], Html(index.to_string())) }
+    };
     let uploads = ServeDir::new(&upload_dir);
     let app = Router::new()
         .nest("/api", api.fallback(|| async { error::AppError::NotFound }))
@@ -146,7 +157,8 @@ async fn main() {
                 .layer(SetResponseHeaderLayer::overriding(header::CACHE_CONTROL, HeaderValue::from_static("public, max-age=31536000, immutable")))
                 .service(uploads),
         )
-        .fallback_service(ServeDir::new(&web_dir).fallback(ServeFile::new(web_dir.join("index.html"))))
+        .route("/index.html", get(page.clone()))
+        .fallback_service(ServeDir::new(&web_dir).append_index_html_on_directories(false).fallback(get(page)))
         .layer(DefaultBodyLimit::max(8 * 1024 * 1024))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
