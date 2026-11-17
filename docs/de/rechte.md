@@ -32,7 +32,7 @@ Jeder Server hat die Rolle `@everyone`, die alle Mitglieder haben. Weitere Rolle
 
 ## Kanalregeln
 
-In den Kanaleinstellungen erlauben oder verbieten Regeln pro Rolle oder pro Mitglied einzelne Rechte für diesen Kanal. Mitgliederregeln gehen vor Rollenregeln, Verbote für `@everyone` werden durch erlaubende Rollen aufgehoben. Threads folgen den Regeln ihres Kanals.
+In den Kanaleinstellungen erlauben oder verbieten Regeln pro Rolle oder pro Mitglied einzelne Rechte für diesen Kanal. Mitgliederregeln gehen vor Rollenregeln, Verbote für `@everyone` werden durch erlaubende Rollen aufgehoben.
 
 ## Gruppenchats
 

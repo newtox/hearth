@@ -32,7 +32,7 @@ Every server has the role `@everyone`, which every member has. Further roles are
 
 ## Channel rules
 
-In the channel settings, rules per role or per member allow or deny single permissions for that channel. Member rules beat role rules, denials of `@everyone` are overridden by allowing roles. Threads follow the rules of their channel.
+In the channel settings, rules per role or per member allow or deny single permissions for that channel. Member rules beat role rules, denials of `@everyone` are overridden by allowing roles.
 
 ## Group chats
 

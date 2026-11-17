@@ -6,7 +6,7 @@
 
 - **Server name** at the top of the channel list: invite people, server settings, create channels and categories, copy the server ID, leave.
 - **Right-click a member** (member list, name or avatar in chat, voice channel): profile, mention, send a message, nickname, roles with checkboxes, moderator view, timeout, kick, ban, copy user ID. Only actions you are allowed to do appear.
-- **Right-click a message**: react, start a thread, edit, copy text, mention the author, copy the message ID, delete.
+- **Right-click a message**: react, edit, copy text, mention the author, copy the message ID, delete.
 - **Right-click a channel or category**: mark as read, edit, create a channel inside, copy the ID.
 
 ## Replies, pins and search
@@ -31,7 +31,7 @@ Opens from a member's menu for anyone with a moderation permission. It shows the
 
 Markdown: `**bold**`, `*italic*`, `~~struck~~`, `` `code` `` and code blocks. Mention people with `@username` and everyone with `@everyone`; messages that mention you are highlighted. The emoji button has a search that understands English and German words, for example `fire` or `feuer`.
 
-Threads start from a message (right-click or the thread button) and show up under their channel. Polls are created with the poll button next to the message field, with one or several answers and an optional end time.
+Polls are created with the poll button next to the message field, with one or several answers and an optional end time.
 
 ## Voice and screen sharing
 

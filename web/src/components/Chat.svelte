@@ -43,19 +43,6 @@
     return memberColor(g, userId);
   }
 
-  const parent = $derived(ch && 'parent_id' in ch && ch.kind === 'thread' ? (g?.channels.find((c) => c.id === ch.parent_id) ?? null) : null);
-  const canThread = $derived(!!g && !!ch && ch.kind === 'text' && has(perms, P.SEND_MESSAGES));
-
-  function threadOf(messageId: string) {
-    return g?.channels.find((c) => c.kind === 'thread' && c.starter_id === messageId) ?? null;
-  }
-
-  async function startThread(m: Message) {
-    const name = prompt(t('Name des Threads:'), m.content.slice(0, 40));
-    if (!name || !ch) return;
-    const made = await attempt(api<{ id: string }>('POST', `/channels/${ch.id}/threads`, { name, message_id: m.id }));
-    if (made) setTimeout(() => select(g!.id, made.id), 300);
-  }
 
   let draft = $state('');
   let pending = $state<Attachment[]>([]);
@@ -264,7 +251,6 @@
     openMenu(e, [
       has(perms, P.SEND_MESSAGES) && { label: t('Antworten'), icon: 'reply', action: () => startReply(m) },
       has(perms, P.ADD_REACTIONS) && { label: t('Reagieren'), icon: 'smile', action: () => (picker = { message: m }) },
-      canThread && !threadOf(m.id) && { label: t('Thread starten'), icon: 'thread', action: () => startThread(m) },
       own && !!m.content && !m.poll && !m.content.match(STICKER) && { label: t('Bearbeiten'), icon: 'edit', action: () => startEdit(m) },
       'sep',
       !!m.content && !m.content.match(STICKER) && { label: t('Text kopieren'), icon: 'copy', action: () => copy(m.content) },
@@ -312,12 +298,7 @@
         {@render headerTools()}
         <CallBar dm={direct} compact />
       {:else}
-        {#if parent}
-          <button class="row crumb muted" onclick={() => select(g!.id, parent.id)}><Icon name="hash" size={16} />{parent.name}</button>
-          <Icon name="thread" />
-        {:else}
-          <Icon name="hash" />
-        {/if}
+        <Icon name="hash" />
         <h3 class="ellipsis">{title}</h3>
         <p class="topic muted grow ellipsis">{(ch as any).topic ?? ''}</p>
         {@render headerTools()}
@@ -396,10 +377,6 @@
                 {/each}
               </div>
             {/if}
-            {#if threadOf(m.id)}
-              {@const th = threadOf(m.id)!}
-              <button class="threadlink" onclick={() => select(g!.id, th.id)}><Icon name="thread" size={14} />{th.name}</button>
-            {/if}
             {#if m.reactions.length}
               <div class="reactions">
                 {#each m.reactions as r (r.emoji)}
@@ -416,7 +393,6 @@
             <div class="tools">
               {#if has(perms, P.SEND_MESSAGES)}<button class="icon" onclick={() => startReply(m)} aria-label={t('Antworten')} title={t('Antworten')}><Icon name="reply" size={15} /></button>{/if}
               {#if has(perms, P.ADD_REACTIONS)}<button class="icon" onclick={() => (picker = { message: m })} aria-label={t('Reagieren')}><Icon name="smile" size={15} /></button>{/if}
-              {#if canThread && !threadOf(m.id)}<button class="icon" onclick={() => startThread(m)} aria-label={t('Thread starten')} title={t('Thread starten')}><Icon name="thread" size={15} /></button>{/if}
               {#if own && m.content && !m.poll && !m.content.match(STICKER)}<button class="icon" onclick={() => startEdit(m)} aria-label={t('Bearbeiten')}><Icon name="edit" size={15} /></button>{/if}
               {#if own || (g && has(perms, P.MANAGE_MESSAGES)) || groupDelete}<button class="icon" onclick={() => remove(m)} aria-label={t('Löschen')}><Icon name="trash" size={15} /></button>{/if}
             </div>
@@ -575,25 +551,6 @@
     font-size: 0.88em;
     font-style: italic;
     text-decoration: underline dotted;
-  }
-  .crumb {
-    gap: 4px;
-    font-weight: 600;
-  }
-  .crumb:hover {
-    color: var(--ink);
-  }
-  .threadlink {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 4px;
-    padding: 2px 10px;
-    border-radius: var(--radius-s);
-    border: 1px solid var(--line);
-    font-size: 0.88em;
-    font-weight: 600;
-    color: var(--accent);
   }
   .sticker {
     display: block;

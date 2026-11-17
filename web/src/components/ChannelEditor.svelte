@@ -66,7 +66,7 @@
   }
 </script>
 
-<Modal title={t((kind === 'category' ? 'Kategorie' : kind === 'voice' ? 'Sprachkanal' : kind === 'thread' ? 'Thread' : 'Kanal') + (existing ? ' bearbeiten' : ' anlegen'))} onclose={close} wide={!!existing && kind !== 'category' && kind !== 'thread'}>
+<Modal title={t((kind === 'category' ? 'Kategorie' : kind === 'voice' ? 'Sprachkanal' : 'Kanal') + (existing ? ' bearbeiten' : ' anlegen'))} onclose={close} wide={!!existing && kind !== 'category'}>
   <div class="stack">
     <form class="stack" onsubmit={save}>
       <label class="field">
@@ -79,7 +79,7 @@
           <input class="input" bind:value={topic} maxlength="300" placeholder={t('Worum geht es hier?')} />
         </label>
       {/if}
-      {#if kind !== 'category' && kind !== 'thread'}
+      {#if kind !== 'category'}
         <label class="field">
           <span>{t('Kategorie')}</span>
           <select class="input" bind:value={parent}>
@@ -94,7 +94,7 @@
       </div>
     </form>
 
-    {#if existing && kind !== 'category' && kind !== 'thread' && can(P.MANAGE_ROLES)}
+    {#if existing && kind !== 'category' && can(P.MANAGE_ROLES)}
       <div>
         <h3>{t('Kanalregeln')}</h3>
         <p class="muted">{t('Pro Rolle oder Mitglied erlauben, verbieten oder die Server-Einstellung übernehmen. Regeln für ein Mitglied gehen vor. Änderungen gelten sofort.')}</p>

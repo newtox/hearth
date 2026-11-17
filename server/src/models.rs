@@ -100,16 +100,9 @@ pub struct Channel {
     pub topic: String,
     pub parent_id: Option<Uuid>,
     pub position: i32,
-    pub starter_id: Option<Uuid>,
 }
 
-impl Channel {
-    pub fn rules_id(&self) -> Uuid {
-        if self.kind == "thread" { self.parent_id.unwrap_or(self.id) } else { self.id }
-    }
-}
-
-pub const CHANNEL_COLS: &str = "id, guild_id, kind, name, topic, parent_id, position, starter_id";
+pub const CHANNEL_COLS: &str = "id, guild_id, kind, name, topic, parent_id, position";
 
 #[derive(Serialize, FromRow)]
 pub struct Member {

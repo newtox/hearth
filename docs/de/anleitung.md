@@ -6,7 +6,7 @@
 
 - **Servername** oben in der Kanalliste: Leute einladen, Servereinstellungen, Kanäle und Kategorien erstellen, Server-ID kopieren, verlassen.
 - **Rechtsklick auf ein Mitglied** (Mitgliederliste, Name oder Avatar im Chat, Sprachkanal): Profil, erwähnen, Nachricht senden, Spitzname, Rollen mit Häkchen, Moderatorenansicht, Timeout, entfernen, bannen, Nutzer-ID kopieren. Es erscheint nur, was du darfst.
-- **Rechtsklick auf eine Nachricht**: reagieren, Thread starten, bearbeiten, Text kopieren, Verfasser erwähnen, Nachrichten-ID kopieren, löschen.
+- **Rechtsklick auf eine Nachricht**: reagieren, bearbeiten, Text kopieren, Verfasser erwähnen, Nachrichten-ID kopieren, löschen.
 - **Rechtsklick auf einen Kanal oder eine Kategorie**: als gelesen markieren, bearbeiten, Kanal darin erstellen, ID kopieren.
 
 ## Antworten, Anheften, Suche
@@ -31,7 +31,7 @@ Die Einstellungen sind eine eigene Seite mit Konto, Profil, Verbindungen, Darste
 
 Markdown: `**fett**`, `*kursiv*`, `~~durchgestrichen~~`, `` `Code` `` und Codeblöcke. Leute erwähnst du mit `@benutzername`, alle mit `@everyone`; Nachrichten, die dich erwähnen, sind hervorgehoben. Der Emoji-Knopf hat eine Suche, die deutsche und englische Wörter versteht, zum Beispiel `feuer` oder `fire`.
 
-Threads startest du aus einer Nachricht (Rechtsklick oder Thread-Knopf), sie erscheinen unter ihrem Kanal. Umfragen legst du mit dem Umfrage-Knopf neben dem Nachrichtenfeld an, mit einer oder mehreren Antworten und optionalem Ende.
+Umfragen legst du mit dem Umfrage-Knopf neben dem Nachrichtenfeld an, mit einer oder mehreren Antworten und optionalem Ende.
 
 ## Sprache und Bildschirm teilen
 

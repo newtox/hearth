@@ -12,7 +12,7 @@
   const manage = $derived(can(P.MANAGE_CHANNELS, g));
   const tree = $derived.by(() => {
     if (!g) return [];
-    const text = g.channels.filter((c) => c.kind !== 'category' && c.kind !== 'thread');
+    const text = g.channels.filter((c) => c.kind !== 'category');
     const groups: { category: Channel | null; items: Channel[] }[] = [{ category: null, items: text.filter((c) => !g.channels.some((p) => p.id === c.parent_id)) }];
     for (const cat of g.channels.filter((c) => c.kind === 'category')) groups.push({ category: cat, items: text.filter((c) => c.parent_id === cat.id) });
     return groups.filter((x) => x.items.length || (x.category && manage));
@@ -53,15 +53,6 @@
               <button class="icon edit" onclick={() => (app.modal = { kind: 'channel', channel: c })} aria-label={t('{name} bearbeiten', { name: c.name })}><Icon name="edit" size={14} /></button>
             {/if}
           </div>
-          {#each g.channels.filter((x) => x.kind === 'thread' && x.parent_id === c.id) as th (th.id)}
-            <div class="item sub" class:active={th.id === app.channelId} class:unread={app.unread[th.id]} role="presentation" oncontextmenu={(e) => openMenu(e, channelMenu(g, th))}>
-              <button class="main row" onclick={() => select(g.id, th.id)}>
-                <Icon name="thread" size={14} />
-                <span class="ellipsis">{th.name}</span>
-              </button>
-              {#if manage}<button class="icon edit" onclick={() => (app.modal = { kind: 'channel', channel: th })} aria-label={t('{name} bearbeiten', { name: th.name })}><Icon name="edit" size={13} /></button>{/if}
-            </div>
-          {/each}
           {#if c.kind === 'voice'}
             {#each voiceMembers(c.id) as m (m.id)}
               <button class="row inside" onclick={() => (app.profile = m.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.id, g))}>
@@ -235,13 +226,6 @@
   }
   .incall {
     color: var(--ok);
-  }
-  .sub {
-    margin-left: 18px;
-    font-size: 0.92em;
-  }
-  .sub .main {
-    padding: 4px 8px;
   }
   .inside {
     width: 100%;
