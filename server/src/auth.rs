@@ -66,6 +66,12 @@ pub async fn create_session(db: &PgPool, user_id: Uuid) -> Result<String> {
     Ok(token)
 }
 
+pub fn clean_username(raw: &str) -> Option<String> {
+    let name = raw.split_whitespace().collect::<Vec<_>>().join(" ");
+    let ok = (2..=32).contains(&name.chars().count()) && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, ' ' | '.' | '_' | '-'));
+    ok.then_some(name)
+}
+
 #[derive(Deserialize)]
 pub struct Register {
     username: String,
@@ -76,18 +82,17 @@ pub struct Register {
 
 pub async fn register(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b): Json<Register>) -> Result<Json<Value>> {
     st.limits.check(format!("register:{ip}"), 20, Duration::from_secs(3600))?;
-    let username = b.username.trim().to_lowercase();
+    let Some(username) = clean_username(&b.username) else {
+        return bad("Username: 2–32 characters, only letters, digits, spaces, dot, dash and underscore");
+    };
     let email = b.email.trim().to_lowercase();
-    if !(2..=32).contains(&username.len()) || !username.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.') {
-        return bad("Username: 2–32 characters, only a–z, 0–9, dot and underscore");
-    }
     if email.len() > 254 || !email.contains('@') || email.starts_with('@') || email.ends_with('@') {
         return bad("Invalid email address");
     }
     if b.password.len() < 8 || b.password.len() > 128 {
         return bad("Password: 8–128 characters");
     }
-    let taken: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 OR email = $2)")
+    let taken: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE lower(username) = lower($1) OR email = $2)")
         .bind(&username)
         .bind(&email)
         .fetch_one(&st.db)
@@ -126,8 +131,8 @@ pub struct Login {
 
 pub async fn login(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b): Json<Login>) -> Result<Json<Value>> {
     st.limits.check(format!("login:{ip}"), 10, Duration::from_secs(60))?;
-    let login = b.login.trim().to_lowercase();
-    let row: Option<(Uuid, String)> = sqlx::query_as("SELECT id, password_hash FROM users WHERE username = $1 OR email = $1")
+    let login = b.login.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase();
+    let row: Option<(Uuid, String)> = sqlx::query_as("SELECT id, password_hash FROM users WHERE lower(username) = $1 OR email = $1")
         .bind(&login)
         .fetch_optional(&st.db)
         .await?;

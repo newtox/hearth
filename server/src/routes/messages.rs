@@ -495,7 +495,7 @@ struct Filters {
 }
 
 fn name(raw: Option<&str>) -> Option<String> {
-    raw.map(|a| a.trim().trim_start_matches('@').to_lowercase()).filter(|a| !a.is_empty())
+    raw.map(|a| a.trim().trim_start_matches('@').split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase()).filter(|a| !a.is_empty())
 }
 
 fn push_filters(qb: &mut sqlx::QueryBuilder<'_, sqlx::Postgres>, f: &Filters) {
@@ -504,11 +504,12 @@ fn push_filters(qb: &mut sqlx::QueryBuilder<'_, sqlx::Postgres>, f: &Filters) {
         qb.push(" AND (m.content ILIKE ").push_bind(p.clone()).push(" OR EXISTS (SELECT 1 FROM polls pl WHERE pl.message_id = m.id AND pl.question ILIKE ").push_bind(p.clone()).push("))");
     }
     if let Some(a) = &f.author {
-        qb.push(" AND u.username = ").push_bind(a.clone());
+        qb.push(" AND lower(u.username) = ").push_bind(a.clone());
     }
     if let Some(n) = &f.mention {
-        let escaped = n.replace('.', "\\.");
-        qb.push(" AND m.content ~* ").push_bind(format!("(^|[^[:alnum:]_@])@{escaped}([^[:alnum:]_.]|$)"));
+        let escaped: String = n.chars().map(|c| if c.is_ascii_alphanumeric() || c == ' ' || c == '_' { c.to_string() } else { format!("\\{c}") }).collect();
+        qb.push(" AND (m.content ~* ").push_bind(format!("(^|[^[:alnum:]_@])@{escaped}([^[:alnum:]_.-]|$)"))
+            .push(" OR strpos(m.content, '<@' || (SELECT id::text FROM users WHERE lower(username) = ").push_bind(n.clone()).push(") || '>') > 0)");
     }
     for kind in &f.has {
         qb.push(match kind.as_str() {

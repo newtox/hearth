@@ -7,7 +7,7 @@
   import { api, asset, upload } from '../lib/api';
   import { CUSTOM, STICKER } from '../lib/markdown';
   import { has } from '../lib/perms';
-  import { app, attempt, channel, dmTitle, select, findEmoji, guild, loadMessages, memberColor, memberName, partner, toast, P, type Attachment, type Dm, type Emoji, type Message, presenceOf, jumpTo, mentionsMe, runSearch } from '../lib/store.svelte';
+  import { app, attempt, channel, dmTitle, select, findEmoji, guild, loadMessages, memberColor, memberName, partner, toast, P, type Attachment, type Dm, type Emoji, type Message, presenceOf, jumpTo, mentionsMe, runSearch, encodeMentions, decodeMentions, plainText, searchPeople } from '../lib/store.svelte';
   import { GROUP_ROLES, groupMay, groupRole } from '../lib/groups';
   import { isBlocked } from '../lib/store.svelte';
   import CallBar from './CallBar.svelte';
@@ -200,7 +200,7 @@
     pending = [];
     replying = null;
     stick = true;
-    const ok = await attempt(api('POST', `/channels/${ch.id}/messages`, { content: encode(raw), attachment_ids: files.map((f) => f.id), reply_to: reply?.id ?? null }));
+    const ok = await attempt(api('POST', `/channels/${ch.id}/messages`, { content: encodeMentions(encode(raw), searchPeople()), attachment_ids: files.map((f) => f.id), reply_to: reply?.id ?? null }));
     if (!ok) {
       draft = raw;
       pending = files;
@@ -234,11 +234,11 @@
 
   function startEdit(m: Message) {
     editing = m.id;
-    editText = m.content;
+    editText = decodeMentions(m.content);
   }
 
   async function saveEdit(m: Message) {
-    const content = editText.trim();
+    const content = encodeMentions(encode(editText.trim()), searchPeople());
     if (content && content !== m.content) await attempt(api('PATCH', `/channels/${m.channel_id}/messages/${m.id}`, { content }));
     editing = null;
   }
@@ -259,7 +259,7 @@
       has(perms, P.ADD_REACTIONS) && { label: t('chat_react'), icon: 'smile', action: () => (picker = { message: m }) },
       own && !!m.content && !m.poll && !m.content.match(STICKER) && { label: t('common_edit'), icon: 'edit', action: () => startEdit(m) },
       'sep',
-      !!m.content && !m.content.match(STICKER) && { label: t('chat_copy_text'), icon: 'copy', action: () => copy(m.content) },
+      !!m.content && !m.content.match(STICKER) && { label: t('chat_copy_text'), icon: 'copy', action: () => copy(decodeMentions(m.content)) },
       !own && { label: t('common_mention'), icon: 'at', action: () => (app.insert = `@${m.author.username} `) },
       canPin && { label: m.pinned ? t('common_unpin') : t('chat_pin'), icon: 'pin', action: () => togglePin(m) },
       { label: t('chat_copy_message_id'), icon: 'id', action: () => copy(m.id) },
@@ -269,7 +269,7 @@
   }
 
   async function remove(m: Message, e?: MouseEvent) {
-    const preview = { name: memberName(g, m.author), text: m.content.match(STICKER) ? t('common_stickers') : m.content || (m.poll ? t('chat_poll') : m.attachments.map((a) => a.filename).join(', ')) };
+    const preview = { name: memberName(g, m.author), text: m.content.match(STICKER) ? t('common_stickers') : plainText(m.content) || (m.poll ? t('chat_poll') : m.attachments.map((a) => a.filename).join(', ')) };
     if (e?.shiftKey || (await ask({ title: t('chat_delete_message'), text: t('chat_sure_want_delete_message'), preview, confirm: t('common_delete'), danger: true, tip: t('chat_hold_shift_while_clicking_trash') }))) attempt(api('DELETE', `/channels/${m.channel_id}/messages/${m.id}`));
   }
 </script>
@@ -365,7 +365,7 @@
                   <Icon name="reply" size={13} />
                   <Avatar id={m.reply.author!.id} name={m.reply.author!.display_name} image={m.reply.author!.avatar} size={16} />
                   <strong style:color={nameColor(m.reply.author!.id)}>{memberName(g, m.reply.author!)}</strong>
-                  <span class="ellipsis">{m.reply.content?.match(STICKER) ? t('common_stickers') : m.reply.content || (m.reply.attachments ? t('common_file') : '')}</span>
+                  <span class="ellipsis">{m.reply.content?.match(STICKER) ? t('common_stickers') : (m.reply.content ? plainText(m.reply.content) : m.reply.attachments ? t('common_file') : '')}</span>
                 </button>
               {/if}
             {/if}

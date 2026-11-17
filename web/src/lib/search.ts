@@ -52,13 +52,13 @@ function findHas(word: string): HasKind | null {
   return HAS_KINDS.find((k) => HAS[k].includes(w)) ?? null;
 }
 
-const TOKEN = /(?<![^\s])([\p{L}]+):(\S*)/gu;
+const TOKEN = /(?<![^\s])([\p{L}]+):("[^"]*"|[^\s"]*)/gu;
 
 export function editing(query: string): { key: FilterKey; value: string; start: number } | null {
-  const m = query.match(/(?:^|\s)([\p{L}]+):(\S*)$/u);
+  const m = query.match(/(?:^|\s)([\p{L}]+):("[^"]*|[^\s"]*)$/u);
   if (!m) return null;
   const key = findKey(m[1]);
-  return key ? { key, value: m[2], start: query.length - m[0].trimStart().length } : null;
+  return key ? { key, value: m[2].replace(/^"/, ''), start: query.length - m[0].trimStart().length } : null;
 }
 
 function day(value: string) {
@@ -76,13 +76,14 @@ export function toParams(query: string, g: Guild | null, people: User[]) {
   const params = new URLSearchParams();
   const has = new Set<HasKind>();
   const text = query
-    .replace(TOKEN, (whole, rawKey: string, value: string) => {
+    .replace(TOKEN, (whole, rawKey: string, quoted: string) => {
       const key = findKey(rawKey);
+      const value = quoted.replace(/^"|"$/g, '').trim();
       if (!key) return whole;
       if (!value) return ' ';
       if (key === 'from' || key === 'mentions') {
         const name = value.replace(/^@/, '').toLowerCase();
-        const user = people.find((u) => u.username.toLowerCase() === name || u.display_name.toLowerCase() === name);
+        const user = people.find((u) => u.username.toLowerCase() === name.toLowerCase() || u.display_name.toLowerCase() === name.toLowerCase());
         params.set(key === 'from' ? 'author' : 'mentions', user?.username ?? name);
         return ' ';
       }

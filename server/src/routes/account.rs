@@ -26,9 +26,12 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, parts: 
         return bad("Wrong password");
     }
     if let Some(name) = &b.username {
-        let name = name.trim().to_lowercase();
-        if !(2..=32).contains(&name.len()) || !name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.') {
-            return bad("Username: 2–32 characters, only a–z, 0–9, dot and underscore");
+        let Some(name) = crate::auth::clean_username(name) else {
+            return bad("Username: 2–32 characters, only letters, digits, spaces, dot, dash and underscore");
+        };
+        let taken: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE lower(username) = lower($1) AND id <> $2)").bind(&name).bind(uid).fetch_one(&st.db).await?;
+        if taken {
+            return Err(AppError::Conflict("Already taken".into()));
         }
         sqlx::query("UPDATE users SET username = $1 WHERE id = $2").bind(&name).bind(uid).execute(&st.db).await?;
     }
@@ -193,8 +196,8 @@ pub async fn forgot(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b):
         return Err(AppError::Unavailable("Password reset by email is not set up on this server".into()));
     };
     st.limits.check(format!("forgot:{ip}"), 5, Duration::from_secs(3600))?;
-    let login = b.login.trim().to_lowercase();
-    let user: Option<(Uuid, String, String)> = sqlx::query_as("SELECT id, email, display_name FROM users WHERE username = $1 OR email = $1").bind(&login).fetch_optional(&st.db).await?;
+    let login = b.login.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase();
+    let user: Option<(Uuid, String, String)> = sqlx::query_as("SELECT id, email, display_name FROM users WHERE lower(username) = $1 OR email = $1").bind(&login).fetch_optional(&st.db).await?;
     if let Some((uid, email, name)) = user {
         let token = hex::encode(rand::random::<[u8; 32]>());
         sqlx::query("DELETE FROM password_resets WHERE user_id = $1 OR expires_at < now()").bind(uid).execute(&st.db).await?;

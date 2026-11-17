@@ -3,9 +3,10 @@ export type Node =
   | { t: 'bold' | 'italic' | 'strike'; c: Node[] }
   | { t: 'code' | 'block' | 'link'; v: string }
   | { t: 'emoji'; name: string; file: string }
-  | { t: 'mention'; v: string };
+  | { t: 'mention'; v: string; id?: string };
 
-const INLINE = /(`[^`\n]+`)|(\*\*[^*]+?\*\*)|(~~[^~]+?~~)|(\*[^*\n]+?\*)|(https?:\/\/[^\s<]+)|<:([a-z0-9_]{2,32}):([a-z0-9]+\.[a-z0-9]+)>|(?<![\w@])@(everyone|[a-z0-9_.]{2,32})(?![\w.])/gi;
+const INLINE = /(`[^`\n]+`)|(\*\*[^*]+?\*\*)|(~~[^~]+?~~)|(\*[^*\n]+?\*)|(https?:\/\/[^\s<]+)|<:([a-z0-9_]{2,32}):([a-z0-9]+\.[a-z0-9]+)>|(?<![\w@])@(everyone|[a-z0-9_.]{2,32})(?![\w.])|<@([0-9a-f-]{36})>/gi;
+export const MENTION_ID = /<@([0-9a-f-]{36})>/gi;
 export const STICKER = /^<sticker:([a-z0-9_]{2,32}):([a-z0-9]+\.[a-z0-9]+)>$/i;
 export const CUSTOM = /^<:([a-z0-9_]{2,32}):([a-z0-9]+\.[a-z0-9]+)>$/i;
 
@@ -20,6 +21,7 @@ function inline(text: string): Node[] {
     else if (m[4]) out.push({ t: 'italic', c: inline(m[4].slice(1, -1)) });
     else if (m[5]) out.push({ t: 'link', v: m[5] });
     else if (m[8]) out.push({ t: 'mention', v: m[8].toLowerCase() });
+    else if (m[9]) out.push({ t: 'mention', v: '', id: m[9].toLowerCase() });
     else out.push({ t: 'emoji', name: m[6], file: m[7] });
     last = m.index + m[0].length;
   }

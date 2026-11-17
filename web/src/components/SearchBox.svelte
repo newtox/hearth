@@ -43,7 +43,7 @@
 
   function fill(value: string) {
     if (!current) return;
-    query = `${query.slice(0, current.start)}${keyword(current.key)}:${value} `;
+    query = `${query.slice(0, current.start)}${keyword(current.key)}:${/\s/.test(value) ? `"${value}"` : value} `;
     active = -1;
     input?.focus();
   }

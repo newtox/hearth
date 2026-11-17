@@ -629,12 +629,53 @@ setInterval(() => {
 
 if (getToken()) connect();
 
+export function findPerson(test: (u: User) => boolean): User | null {
+  const g = guild();
+  return (
+    g?.members.find(test) ??
+    app.guilds.flatMap((x) => x.members).find(test) ??
+    app.dms.flatMap((d) => d.recipients ?? []).find(test) ??
+    (app.me && test(app.me) ? app.me : null)
+  );
+}
+
+function escapeRegex(text: string) {
+  return text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
+}
+
+export function encodeMentions(text: string, people: User[]) {
+  const sorted = [...people].sort((a, b) => b.username.length - a.username.length);
+  let out = text;
+  for (const u of sorted) {
+    const re = new RegExp(`(^|[^\\w@<])@${escapeRegex(u.username)}(?![\\w.-])`, 'gi');
+    out = out.replace(re, (_, pre) => `${pre}<@${u.id}>`);
+  }
+  return out;
+}
+
+export function decodeMentions(text: string) {
+  return text.replace(/<@([0-9a-f-]{36})>/gi, (all, id) => {
+    const u = findPerson((x) => x.id === id.toLowerCase());
+    return u ? `@${u.username}` : all;
+  });
+}
+
+export function plainText(text: string) {
+  return text
+    .replace(/<@([0-9a-f-]{36})>/gi, (all, id) => {
+      const u = findPerson((x) => x.id === id.toLowerCase());
+      return u ? `@${u.display_name}` : '@?';
+    })
+    .replace(/<:([a-z0-9_]{2,32}):[a-z0-9]+\.[a-z0-9]+>/gi, ':$1:');
+}
+
 export function mentionsMe(m: Pick<Message, 'content' | 'reply'>, inGuild: boolean) {
-  const name = app.me?.username;
-  if (!name) return false;
-  if (m.reply?.author?.id === app.me?.id) return true;
+  const me = app.me;
+  if (!me) return false;
+  if (m.reply?.author?.id === me.id) return true;
   if (inGuild && /(^|[^\w@])@everyone(?![\w.])/i.test(m.content)) return true;
-  return new RegExp(`(^|[^\\w@])@${name.replace(/\./g, '\\.')}(?![\\w.])`, 'i').test(m.content);
+  if (m.content.toLowerCase().includes(`<@${me.id}>`)) return true;
+  return new RegExp(`(^|[^\\w@])@${escapeRegex(me.username)}(?![\\w.-])`, 'i').test(m.content);
 }
 
 function desktopNotice(m: Message) {
@@ -646,7 +687,7 @@ function desktopNotice(m: Message) {
   const author = g ? memberName(g, m.author) : m.author.display_name;
   const where = dm ? (dm.kind === 'group' ? dmTitle(dm) : '') : `#${g!.channels.find((c) => c.id === m.channel_id)?.name ?? ''}`;
   const title = where ? `${author} (${where})` : author;
-  const body = m.content.match(/^<sticker:/) ? t('common_stickers') : m.content ? m.content.slice(0, 160) : m.poll ? m.poll.question : t('common_file');
+  const body = m.content.match(/^<sticker:/) ? t('common_stickers') : m.content ? plainText(m.content).slice(0, 160) : m.poll ? m.poll.question : t('common_file');
   notify(title, body, m.channel_id, () => jumpTo(g?.id ?? null, m.channel_id, m.id));
 }
 

@@ -60,7 +60,7 @@ pub async fn add(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b): J
     st.limits.check(format!("friend:{uid}"), 20, Duration::from_secs(60))?;
     let target: Option<Uuid> = match (b.user_id, b.username) {
         (Some(id), _) => sqlx::query_scalar("SELECT id FROM users WHERE id = $1").bind(id).fetch_optional(&st.db).await?,
-        (None, Some(name)) => sqlx::query_scalar("SELECT id FROM users WHERE username = $1").bind(name.trim().trim_start_matches('@').to_lowercase()).fetch_optional(&st.db).await?,
+        (None, Some(name)) => sqlx::query_scalar("SELECT id FROM users WHERE lower(username) = $1").bind(name.trim().trim_start_matches('@').split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase()).fetch_optional(&st.db).await?,
         _ => None,
     };
     let Some(target) = target else {
