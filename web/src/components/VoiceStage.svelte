@@ -13,10 +13,10 @@
 
 <section class="panel pane-chat">
   <header class="row">
-    <button class="icon mobile" onclick={() => (app.pane = 'side')} aria-label={t('Kanalliste')}><Icon name="menu" /></button>
+    <button class="icon mobile" onclick={() => (app.pane = 'side')} aria-label={t('common_channel_list')}><Icon name="menu" /></button>
     <Icon name="volume" />
     <h3 class="grow ellipsis">{ch.name}</h3>
-    <button class="icon mobile" onclick={() => (app.pane = 'members')} aria-label={t('Mitglieder')}><Icon name="users" /></button>
+    <button class="icon mobile" onclick={() => (app.pane = 'members')} aria-label={t('common_members')}><Icon name="users" /></button>
   </header>
 
   <div class="stage scroll">
@@ -26,10 +26,10 @@
         <div class="person" class:speaking={here && voice.speaking.includes(m.id)}>
           <Avatar id={m.id} name={m.display_name} image={m.avatar} size={72} />
           <span class="ellipsis">{m.nickname || m.display_name}</span>
-          {#if here && voice.silent.includes(m.id)}<span class="muted" title={t('Stumm')}><Icon name="micOff" size={15} /></span>{/if}
+          {#if here && voice.silent.includes(m.id)}<span class="muted" title={t('voice_stage_muted')}><Icon name="micOff" size={15} /></span>{/if}
         </div>
       {:else}
-        <p class="muted">{t('Gerade ist niemand hier.')}</p>
+        <p class="muted">{t('voice_stage_nobody_here_right_now')}</p>
       {/each}
     </div>
   </div>
@@ -37,18 +37,18 @@
   <div class="controls row">
     {#if here}
       <button class="btn" class:off={voice.muted} onclick={toggleMute} disabled={!voice.canSpeak}>
-        <Icon name={voice.muted ? 'micOff' : 'mic'} />{voice.muted ? t('Stumm') : t('Mikrofon an')}
+        <Icon name={voice.muted ? 'micOff' : 'mic'} />{voice.muted ? t('voice_stage_muted') : t('voice_stage_microphone')}
       </button>
       {#if canShareScreen}
         <button class="btn" class:primary={voice.sharing} onclick={toggleShare} disabled={!voice.canStream}>
-          <Icon name="screen" />{voice.sharing ? t('Freigabe beenden') : t('Bildschirm teilen')}
+          <Icon name="screen" />{voice.sharing ? t('common_stop_sharing') : t('common_share_screen')}
         </button>
       {/if}
-      <button class="btn danger" onclick={leaveVoice}><Icon name="leave" />{t('Verlassen')}</button>
+      <button class="btn danger" onclick={leaveVoice}><Icon name="leave" />{t('common_leave')}</button>
     {:else if app.me?.voice}
-      <button class="btn primary" onclick={() => joinVoice(ch)} disabled={voice.connecting}><Icon name="volume" />{voice.connecting ? t('Verbinde …') : t('Beitreten')}</button>
+      <button class="btn primary" onclick={() => joinVoice(ch)} disabled={voice.connecting}><Icon name="volume" />{voice.connecting ? t('common_connecting') : t('common_join')}</button>
     {:else}
-      <p class="muted">{t('Sprachkanäle sind auf diesem Server noch nicht eingerichtet (LiveKit fehlt).')}</p>
+      <p class="muted">{t('voice_stage_voice_channels_not_set_up')}</p>
     {/if}
   </div>
 </section>

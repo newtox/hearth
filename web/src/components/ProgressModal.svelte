@@ -17,7 +17,7 @@
   const share = $derived(next === null ? 1 : Math.min(1, Math.max(0, (current.value - from) / (current.steps[next] - from))));
 </script>
 
-<Modal title={own ? t('Dein Fortschritt') : t('Fortschritt von {name}', { name })} {onclose}>
+<Modal title={own ? t('progress_modal_progress') : t('progress_modal_progress_name', { name })} {onclose}>
   <div class="stack">
     <div class="tabs" role="tablist">
       {#each progress.tracks as p (p.track)}
@@ -32,10 +32,10 @@
       <BadgeIcon badge={{ icon: current.icon, color: tier >= 0 ? progress.colors[tier] : 'var(--muted)' }} size={40} />
       <div class="grow">
         <strong>
-          {#if next === null}{t('Höchste Stufe erreicht')}{:else}{t('Noch {amount} bis Stufe {tier}', { amount: amount(track, current.steps[next] - current.value), tier: next + 1 })}{/if}
+          {#if next === null}{t('progress_modal_highest_level_reached')}{:else}{t('progress_modal_amount_go_until_level_tier', { amount: amount(track, current.steps[next] - current.value), tier: next + 1 })}{/if}
         </strong>
         <div class="bar" role="progressbar" aria-valuenow={Math.round(share * 100)} aria-valuemin="0" aria-valuemax="100"><i style:width="{share * 100}%"></i></div>
-        <small class="muted">{t('Bisher: {amount}', { amount: amount(track, current.value) })}</small>
+        <small class="muted">{t('progress_modal_so_far_amount', { amount: amount(track, current.value) })}</small>
       </div>
       {#if next !== null}<BadgeIcon badge={{ icon: current.icon, color: progress.colors[next] }} size={40} />{/if}
     </div>
@@ -46,7 +46,7 @@
       {#each current.steps as step, i}
         <li class:locked={i > tier} class:here={i === tier}>
           <BadgeIcon badge={{ icon: current.icon, color: progress.colors[i] }} size={30} />
-          <strong>{t('Stufe {n}', { n: i + 1 })}</strong>
+          <strong>{t('progress_modal_level_n', { n: i + 1 })}</strong>
           <span class="muted">{#if i > tier}<Icon name="lock" size={12} />{/if}{amount(track, step)}{i === current.steps.length - 1 ? '+' : ''}</span>
         </li>
       {/each}

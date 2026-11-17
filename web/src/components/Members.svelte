@@ -25,7 +25,7 @@
 
 <aside class="panel pane-members">
   <header class="row">
-    <button class="icon mobile" onclick={() => (app.pane = 'chat')} aria-label={t('Zurück zum Chat')}><Icon name="close" /></button>
+    <button class="icon mobile" onclick={() => (app.pane = 'chat')} aria-label={t('members_back_chat')}><Icon name="close" /></button>
     <h3>{w('members')}</h3>
     <span class="muted">{g.members.length}</span>
   </header>
@@ -39,8 +39,8 @@
             <span class="ellipsis" style:color={memberColor(g, m.id)}>{m.nickname || m.display_name}</span>
             {#if m.activity}<small class="ellipsis muted">{activityText(m.activity)}</small>{/if}
           </span>
-          {#if m.streaming}<span class="live" title={t('Teilt den Bildschirm')}><Icon name="broadcast" size={15} /></span>{/if}
-          {#if m.id === g.owner_id}<span class="crown" title={t('Besitzer')}><Icon name="crown" size={14} /></span>{/if}
+          {#if m.streaming}<span class="live" title={t('common_sharing_their_screen')}><Icon name="broadcast" size={15} /></span>{/if}
+          {#if m.id === g.owner_id}<span class="crown" title={t('common_owner')}><Icon name="crown" size={14} /></span>{/if}
         </button>
       {/each}
     {/each}

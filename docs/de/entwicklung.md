@@ -16,7 +16,7 @@ Die App läuft unter http://localhost:8080 und legt ihre Tabellen beim Start an.
 ## Aufbau
 
 - `server/` Rust-Backend: Axum, WebSocket-Gateway, PostgreSQL über sqlx, Migrationen in `server/migrations`
-- `web/` Svelte-5-Oberfläche, Übersetzungen in `web/src/lib/i18n.svelte.ts` (deutsche Schlüssel, englische Werte)
+- `web/` Svelte-5-Oberfläche, Texte in `web/src/lib/lang/` (`de.ts`, `en.ts`, `da.ts`, ein Schlüssel pro Text wie `chat_delete_message`, geprüft mit `python3 scripts/check_i18n.py`)
 - `web/src-tauri/` Tauri-2-Hülle für die Apps
 - `deploy/` Stack für Server
 - `.github/workflows/image.yml` Server-Image, `.github/workflows/apps.yml` Apps und Releases

@@ -21,7 +21,7 @@
 
 <div class="poll">
   <strong class="question">{poll.question}</strong>
-  <small class="muted">{poll.multi ? t('Mehrere Antworten möglich') : t('Eine Antwort')}</small>
+  <small class="muted">{poll.multi ? t('poll_card_multiple_answers_allowed') : t('poll_card_one_answer')}</small>
   {#each poll.options as o (o.id)}
     {@const share = total ? o.voters.length / total : 0}
     {@const mine = o.voters.includes(me)}
@@ -32,7 +32,7 @@
     </button>
   {/each}
   <small class="muted">
-    {voters === 1 ? t('1 Stimme') : t('{n} Stimmen', { n: voters })}{#if poll.expires_at}, {closed ? t('beendet') : t('läuft bis {date}', { date: date.format(new Date(poll.expires_at)) })}{/if}
+    {voters === 1 ? t('poll_card_1_vote') : t('poll_card_n_votes', { n: voters })}{#if poll.expires_at}, {closed ? t('poll_card_ended') : t('poll_card_open_until_date', { date: date.format(new Date(poll.expires_at)) })}{/if}
   </small>
 </div>
 

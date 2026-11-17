@@ -18,14 +18,14 @@
   const myTop = $derived(topPosition(g, app.me!.id));
   const tabs = $derived(
     [
-      { id: 'overview', name: t('Übersicht'), group: g.name, show: true },
+      { id: 'overview', name: t('guild_settings_overview'), group: g.name, show: true },
       { id: 'roles', name: w('roles'), group: g.name, show: can(P.MANAGE_ROLES, g) },
-      { id: 'emojis', name: t('Emojis'), group: g.name, show: can(P.MANAGE_EMOJIS, g) },
-      { id: 'members', name: w('members'), group: t('Mitgliederverwaltung'), show: true },
-      { id: 'invites', name: w('invites'), group: t('Mitgliederverwaltung'), show: can(P.CREATE_INVITE, g) },
-      { id: 'bans', name: t('Banns'), group: t('Mitgliederverwaltung'), show: can(P.BAN_MEMBERS, g) },
-      { id: 'audit', name: t('Protokoll'), group: t('Moderation'), show: can(P.MANAGE_GUILD, g) },
-      { id: 'leave', name: owner ? t('{server} löschen', { server: w('server') }) : t('{server} verlassen', { server: w('server') }), danger: true, show: true, action: () => (owner ? destroy() : leave()) },
+      { id: 'emojis', name: t('common_emojis'), group: g.name, show: can(P.MANAGE_EMOJIS, g) },
+      { id: 'members', name: w('members'), group: t('guild_settings_member_management'), show: true },
+      { id: 'invites', name: w('invites'), group: t('guild_settings_member_management'), show: can(P.CREATE_INVITE, g) },
+      { id: 'bans', name: t('guild_settings_bans'), group: t('guild_settings_member_management'), show: can(P.BAN_MEMBERS, g) },
+      { id: 'audit', name: t('guild_settings_audit_log'), group: t('guild_settings_moderation'), show: can(P.MANAGE_GUILD, g) },
+      { id: 'leave', name: owner ? t('guild_settings_delete_server_named', { server: w('server') }) : t('common_leave_server', { server: w('server') }), danger: true, show: true, action: () => (owner ? destroy() : leave()) },
     ].filter((x) => x.show),
   );
   let tab = $state(untrack(() => initial));
@@ -35,7 +35,7 @@
 
   async function saveOverview(e: SubmitEvent) {
     e.preventDefault();
-    if (await attempt(api('PATCH', `/guilds/${g.id}`, { name, description }))) toast(t('Gespeichert'));
+    if (await attempt(api('PATCH', `/guilds/${g.id}`, { name, description }))) toast(t('guild_settings_saved'));
   }
 
   async function pickIcon(e: Event) {
@@ -44,11 +44,11 @@
   }
 
   async function leave() {
-    if ((await ask({ title: t('„{name}“ verlassen', { name: g.name }), text: t('Du kannst nur mit einer neuen Einladung wieder beitreten.'), confirm: t('Verlassen'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${app.me!.id}`));
+    if ((await ask({ title: t('common_leave_name', { name: g.name }), text: t('common_only_rejoin_new_invite'), confirm: t('common_leave'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${app.me!.id}`));
   }
 
   async function destroy() {
-    if ((await askText({ title: t('„{name}“ löschen', { name: g.name }), text: t('Alle Kanäle, Nachrichten und Rollen gehen verloren. Das lässt sich nicht rückgängig machen.'), input: { label: t('Zum Bestätigen den Servernamen eingeben'), match: g.name }, confirm: t('Server löschen'), danger: true })) === g.name) await attempt(api('DELETE', `/guilds/${g.id}`));
+    if ((await askText({ title: t('guild_settings_delete_name', { name: g.name }), text: t('guild_settings_all_channels_messages_roles_lost'), input: { label: t('guild_settings_enter_server_name_confirm'), match: g.name }, confirm: t('guild_settings_delete_server'), danger: true })) === g.name) await attempt(api('DELETE', `/guilds/${g.id}`));
   }
 
   let roleId = $state<string | null>(null);
@@ -65,7 +65,7 @@
   }
 
   async function addRole() {
-    const r = await attempt(api<Role>('POST', `/guilds/${g.id}/roles`, { name: t('Neue Rolle') }));
+    const r = await attempt(api<Role>('POST', `/guilds/${g.id}/roles`, { name: t('guild_settings_new_role') }));
     if (r) pickRole(r);
   }
 
@@ -73,11 +73,11 @@
     e.preventDefault();
     if (!role) return;
     const body = { name: draft.name, color: draft.colored ? draft.color : '', hoist: draft.hoist, permissions: draft.permissions };
-    if (await attempt(api('PATCH', `/guilds/${g.id}/roles/${role.id}`, body))) toast(t('Rolle gespeichert'));
+    if (await attempt(api('PATCH', `/guilds/${g.id}/roles/${role.id}`, body))) toast(t('guild_settings_role_saved'));
   }
 
   async function deleteRole() {
-    if (role && (await ask({ title: t('Rolle löschen'), text: t('„{name}“ wird gelöscht und allen Mitgliedern entzogen.', { name: role.name }), confirm: t('Löschen'), danger: true }))) {
+    if (role && (await ask({ title: t('guild_settings_delete_role'), text: t('guild_settings_name_deleted_removed_from_all', { name: role.name }), confirm: t('common_delete'), danger: true }))) {
       await attempt(api('DELETE', `/guilds/${g.id}/roles/${role.id}`));
       roleId = null;
     }
@@ -98,21 +98,21 @@
   }
 
   async function nickname(memberId: string, current: string | null) {
-    const nick = await askText({ title: t('Spitzname ändern'), input: { value: current ?? '', label: t('Spitzname'), placeholder: '' }, text: t('Leer lassen, um den Spitznamen zu entfernen.'), confirm: t('Speichern') });
+    const nick = await askText({ title: t('common_change_nickname'), input: { value: current ?? '', label: t('common_nickname'), placeholder: '' }, text: t('common_leave_empty_remove_nickname'), confirm: t('common_save') });
     if (nick !== null) await attempt(api('PATCH', `/guilds/${g.id}/members/${memberId}`, { nickname: nick }));
   }
 
   async function kick(id: string, label: string) {
-    if ((await ask({ title: t('{name} entfernen', { name: label }), text: t('{name} kann über eine neue Einladung wieder beitreten.', { name: label }), confirm: t('Entfernen'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${id}`));
+    if ((await ask({ title: t('common_remove_name', { name: label }), text: t('common_name_rejoin_new_invite', { name: label }), confirm: t('common_remove'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${id}`));
   }
 
   async function ban(id: string, label: string) {
-    const reason = await askText({ title: t('{name} bannen', { name: label }), text: t('{name} wird entfernt und kann nicht wieder beitreten, bis der Bann aufgehoben wird.', { name: label }), input: { label: t('Grund (optional)') }, confirm: t('Bannen'), danger: true });
+    const reason = await askText({ title: t('common_ban_name', { name: label }), text: t('common_name_removed_cannot_rejoin_until', { name: label }), input: { label: t('common_reason_optional') }, confirm: t('common_ban'), danger: true });
     if (reason !== null) await attempt(api('PUT', `/guilds/${g.id}/bans/${id}`, { reason }));
   }
 
   async function transfer(id: string, label: string) {
-    if ((await ask({ title: t('Besitz übertragen'), text: t('{name} wird neuer Besitzer. Das lässt sich nur vom neuen Besitzer rückgängig machen.', { name: label }), confirm: t('Übertragen'), danger: true }))) await attempt(api('PATCH', `/guilds/${g.id}`, { owner_id: id }));
+    if ((await ask({ title: t('common_transfer_ownership'), text: t('common_name_becomes_new_owner_only', { name: label }), confirm: t('common_transfer'), danger: true }))) await attempt(api('PATCH', `/guilds/${g.id}`, { owner_id: id }));
   }
 
   let invites = $state<any[]>([]);
@@ -140,7 +140,7 @@
   async function copy(code: string) {
     try {
       await navigator.clipboard.writeText(link(code));
-      toast(t('Link kopiert'));
+      toast(t('guild_settings_link_copied'));
     } catch {
       toast(link(code));
     }
@@ -162,24 +162,24 @@
 
   let audit = $state<any[]>([]);
   const ACTIONS: Record<string, string> = {
-    server_update: 'hat die Servereinstellungen geändert',
-    role_create: 'hat eine Rolle angelegt',
-    role_update: 'hat eine Rolle geändert',
-    role_delete: 'hat eine Rolle gelöscht',
-    channel_create: 'hat einen Kanal angelegt',
-    channel_update: 'hat einen Kanal geändert',
-    channel_delete: 'hat einen Kanal gelöscht',
-    channel_rules: 'hat Kanalregeln geändert',
-    member_roles: 'hat Rollen geändert von',
-    timeout: 'hat einen Timeout vergeben an',
-    timeout_end: 'hat den Timeout aufgehoben von',
-    kick: 'hat entfernt',
-    ban: 'hat gebannt',
-    unban: 'hat den Bann aufgehoben von',
-    message_delete: 'hat eine Nachricht gelöscht von',
-    emoji_create: 'hat ein Emoji hochgeladen',
-    sticker_create: 'hat einen Sticker hochgeladen',
-    emoji_delete: 'hat ein Emoji oder einen Sticker gelöscht',
+    server_update: 'guild_settings_changed_server_settings',
+    role_create: 'guild_settings_created_role',
+    role_update: 'guild_settings_changed_role',
+    role_delete: 'guild_settings_deleted_role',
+    channel_create: 'guild_settings_created_channel',
+    channel_update: 'guild_settings_changed_channel',
+    channel_delete: 'guild_settings_deleted_channel',
+    channel_rules: 'guild_settings_changed_channel_rules',
+    member_roles: 'guild_settings_changed_roles',
+    timeout: 'guild_settings_timed_out',
+    timeout_end: 'guild_settings_ended_timeout',
+    kick: 'guild_settings_kicked',
+    ban: 'guild_settings_banned',
+    unban: 'guild_settings_unbanned',
+    message_delete: 'guild_settings_deleted_message',
+    emoji_create: 'guild_settings_uploaded_emoji',
+    sticker_create: 'guild_settings_uploaded_sticker',
+    emoji_delete: 'guild_settings_deleted_emoji_sticker',
   };
 
   async function loadAudit() {
@@ -187,10 +187,10 @@
   }
 
   async function timeout(id: string, label: string) {
-    const minutes = await askText({ title: t('Timeout für {name}', { name: label }), text: t('Dauer in Minuten, z. B. 10, 60 oder 1440.'), input: { value: '60', type: 'number', label: t('Minuten') }, confirm: t('Timeout') });
+    const minutes = await askText({ title: t('common_time_out_name', { name: label }), text: t('common_duration_minutes_e_g_10'), input: { value: '60', type: 'number', label: t('common_minutes') }, confirm: t('common_timeout') });
     if (minutes === null) return;
     const n = Number(minutes);
-    if (!Number.isFinite(n) || n <= 0) return toast(t('Bitte eine Zahl größer 0 eingeben'));
+    if (!Number.isFinite(n) || n <= 0) return toast(t('common_please_enter_number_greater_than'));
     await attempt(api('PATCH', `/guilds/${g.id}/members/${id}`, { timeout_minutes: Math.round(n) }));
   }
 
@@ -211,13 +211,13 @@
     data.append('kind', emojiKind);
     data.append('file', file);
     const res = await fetch(`${base()}/api/guilds/${g.id}/emojis`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: data }).catch(() => null);
-    if (!res?.ok) return toast((await res?.json().catch(() => null))?.error ?? t('Upload fehlgeschlagen'));
+    if (!res?.ok) return toast((await res?.json().catch(() => null))?.error ?? t('guild_settings_upload_failed'));
     emojiName = '';
     form.reset();
   }
 
   async function deleteEmoji(id: string, label: string) {
-    if ((await ask({ title: t('Emoji löschen'), text: t('„{name}“ wird gelöscht und in alten Nachrichten nicht mehr angezeigt.', { name: label }), confirm: t('Löschen'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/emojis/${id}`));
+    if ((await ask({ title: t('guild_settings_delete_emoji'), text: t('guild_settings_name_deleted_no_longer_shown', { name: label }), confirm: t('common_delete'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/emojis/${id}`));
   }
 
   $effect(() => {
@@ -229,7 +229,7 @@
   const date = new Intl.DateTimeFormat(locale(), { dateStyle: 'medium', timeStyle: 'short' });
 </script>
 
-<SettingsPage title={t('{server}-Einstellungen', { server: w('server') }).replace(/^./, (c) => c.toUpperCase())} sections={tabs} bind:current={tab} onclose={() => (app.modal = null)}>
+<SettingsPage title={t('common_server_settings', { server: w('server') }).replace(/^./, (c) => c.toUpperCase())} sections={tabs} bind:current={tab} onclose={() => (app.modal = null)}>
   <div class="layout">
     <div class="pane">
       {#if tab === 'overview'}
@@ -238,24 +238,24 @@
             <form class="stack" onsubmit={saveOverview}>
               <div class="row">
                 <Avatar id={g.id} name={g.name} image={g.icon} size={64} square />
-                <label class="btn">{t('Icon ändern')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={pickIcon} hidden /></label>
+                <label class="btn">{t('guild_settings_change_icon')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={pickIcon} hidden /></label>
               </div>
-              <label class="field"><span>{t('Name')}</span><input class="input" bind:value={name} maxlength="60" required /></label>
-              <label class="field"><span>{t('Beschreibung')}</span><textarea class="input" rows="3" maxlength="300" bind:value={description}></textarea></label>
-              <button class="btn primary">{t('Änderungen speichern')}</button>
+              <label class="field"><span>{t('common_name')}</span><input class="input" bind:value={name} maxlength="60" required /></label>
+              <label class="field"><span>{t('common_description')}</span><textarea class="input" rows="3" maxlength="300" bind:value={description}></textarea></label>
+              <button class="btn primary">{t('common_save_changes')}</button>
             </form>
           {:else}
             <div class="row">
               <Avatar id={g.id} name={g.name} image={g.icon} size={64} square />
-              <div><h3>{g.name}</h3><p class="muted">{g.description || t('Keine Beschreibung')}</p></div>
+              <div><h3>{g.name}</h3><p class="muted">{g.description || t('guild_settings_no_description')}</p></div>
             </div>
           {/if}
           <hr />
           {#if owner}
-            <p class="muted">{t('Löschen entfernt alle Kanäle und Nachrichten endgültig.')}</p>
-            <button class="btn danger" onclick={destroy}>{t('{server} löschen', { server: w('server') })}</button>
+            <p class="muted">{t('guild_settings_deleting_permanently_removes_all_channels')}</p>
+            <button class="btn danger" onclick={destroy}>{t('guild_settings_delete_server_named', { server: w('server') })}</button>
           {:else}
-            <button class="btn danger" onclick={leave}>{t('{server} verlassen', { server: w('server') })}</button>
+            <button class="btn danger" onclick={leave}>{t('common_leave_server', { server: w('server') })}</button>
           {/if}
         </div>
       {:else if tab === 'roles'}
@@ -268,26 +268,26 @@
                   <span class="ellipsis">{r.name}</span>
                 </button>
                 {#if !r.is_default && editable(r)}
-                  <button class="icon" onclick={() => move(r, -1)} aria-label={t('{name} nach oben', { name: r.name })}><Icon name="up" size={14} /></button>
-                  <button class="icon" onclick={() => move(r, 1)} aria-label={t('{name} nach unten', { name: r.name })}><Icon name="down" size={14} /></button>
+                  <button class="icon" onclick={() => move(r, -1)} aria-label={t('guild_settings_move_name_up', { name: r.name })}><Icon name="up" size={14} /></button>
+                  <button class="icon" onclick={() => move(r, 1)} aria-label={t('guild_settings_move_name_down', { name: r.name })}><Icon name="down" size={14} /></button>
                 {/if}
               </div>
             {/each}
-            <button class="btn small" onclick={addRole}><Icon name="plus" size={14} /> {t('Rolle anlegen')}</button>
-            <p class="muted note">{t('Weiter oben stehende Rollen haben Vorrang und können niedrigere verwalten.')} <a href={docs('permissions')} target="_blank" rel="noopener noreferrer">{t('Alle Rechte erklärt')}</a></p>
+            <button class="btn small" onclick={addRole}><Icon name="plus" size={14} /> {t('guild_settings_create_role')}</button>
+            <p class="muted note">{t('guild_settings_roles_higher_up_take_precedence')} <a href={docs('permissions')} target="_blank" rel="noopener noreferrer">{t('guild_settings_all_permissions_explained')}</a></p>
           </div>
           {#if role}
             <form class="stack" onsubmit={saveRole}>
               <fieldset disabled={!editable(role)} class="stack">
                 {#if !role.is_default}
-                  <label class="field"><span>{t('Name')}</span><input class="input" bind:value={draft.name} maxlength="40" required /></label>
+                  <label class="field"><span>{t('common_name')}</span><input class="input" bind:value={draft.name} maxlength="40" required /></label>
                   <div class="row wrap">
-                    <label class="row"><input type="checkbox" bind:checked={draft.colored} /> {t('Eigene Farbe')}</label>
-                    {#if draft.colored}<input type="color" bind:value={draft.color} aria-label={t('Rollenfarbe')} />{/if}
-                    <label class="row"><input type="checkbox" bind:checked={draft.hoist} /> {t('In der Mitgliederliste getrennt anzeigen')}</label>
+                    <label class="row"><input type="checkbox" bind:checked={draft.colored} /> {t('guild_settings_custom_colour')}</label>
+                    {#if draft.colored}<input type="color" bind:value={draft.color} aria-label={t('guild_settings_role_colour')} />{/if}
+                    <label class="row"><input type="checkbox" bind:checked={draft.hoist} /> {t('guild_settings_show_separately_member_list')}</label>
                   </div>
                 {:else}
-                  <p class="muted">{t('Diese Rolle hat jedes Mitglied. Ihre Berechtigungen gelten für alle.')}</p>
+                  <p class="muted">{t('guild_settings_every_member_has_role_its')}</p>
                 {/if}
                 <div class="perms">
                   {#each PERMISSIONS as p (p.bit)}
@@ -303,14 +303,14 @@
                   {/each}
                 </div>
                 <div class="row">
-                  <button class="btn primary">{t('Rolle speichern')}</button>
-                  {#if !role.is_default}<button type="button" class="btn danger" onclick={deleteRole}>{t('Löschen')}</button>{/if}
+                  <button class="btn primary">{t('guild_settings_save_role')}</button>
+                  {#if !role.is_default}<button type="button" class="btn danger" onclick={deleteRole}>{t('common_delete')}</button>{/if}
                 </div>
               </fieldset>
-              {#if !editable(role)}<p class="muted">{t('Diese Rolle steht nicht unter deiner höchsten Rolle, du kannst sie nicht ändern.')}</p>{/if}
+              {#if !editable(role)}<p class="muted">{t('guild_settings_role_not_below_highest_role')}</p>{/if}
             </form>
           {:else}
-            <p class="muted">{t('Wähle links eine Rolle aus.')}</p>
+            <p class="muted">{t('guild_settings_pick_role_left')}</p>
           {/if}
         </div>
       {:else if tab === 'members'}
@@ -322,22 +322,22 @@
                 <Avatar id={m.id} name={m.display_name} image={m.avatar} size={36} />
                 <div class="grow">
                   <strong class="ellipsis">{label}</strong>
-                  {#if m.id === g.owner_id}<span class="crown" title={t('Besitzer')}><Icon name="crown" size={14} /></span>{/if}
-                  <p class="muted ellipsis">@{m.username}{timedOut(m.timeout_until) ? t(', Timeout bis {date}', { date: date.format(new Date(m.timeout_until!)) }) : ''}</p>
+                  {#if m.id === g.owner_id}<span class="crown" title={t('common_owner')}><Icon name="crown" size={14} /></span>{/if}
+                  <p class="muted ellipsis">@{m.username}{timedOut(m.timeout_until) ? t('guild_settings_timed_out_until_date', { date: date.format(new Date(m.timeout_until!)) }) : ''}</p>
                 </div>
                 {#if (m.id === app.me!.id && can(P.CHANGE_NICKNAME, g)) || canModerate(g, m.id, P.MANAGE_NICKNAMES)}
-                  <button class="btn small" onclick={() => nickname(m.id, m.nickname)}>{t('Spitzname')}</button>
+                  <button class="btn small" onclick={() => nickname(m.id, m.nickname)}>{t('common_nickname')}</button>
                 {/if}
                 {#if canModerate(g, m.id, P.MODERATE_MEMBERS)}
                   {#if timedOut(m.timeout_until)}
-                    <button class="btn small" onclick={() => attempt(api('PATCH', `/guilds/${g.id}/members/${m.id}`, { timeout_minutes: 0 }))}>{t('Timeout aufheben')}</button>
+                    <button class="btn small" onclick={() => attempt(api('PATCH', `/guilds/${g.id}/members/${m.id}`, { timeout_minutes: 0 }))}>{t('common_end_timeout')}</button>
                   {:else}
-                    <button class="btn small" onclick={() => timeout(m.id, label)}>{t('Timeout')}</button>
+                    <button class="btn small" onclick={() => timeout(m.id, label)}>{t('common_timeout')}</button>
                   {/if}
                 {/if}
-                {#if canModerate(g, m.id, P.KICK_MEMBERS)}<button class="btn small danger" onclick={() => kick(m.id, label)}>{t('Entfernen')}</button>{/if}
-                {#if canModerate(g, m.id, P.BAN_MEMBERS)}<button class="btn small danger" onclick={() => ban(m.id, label)}>{t('Bannen')}</button>{/if}
-                {#if owner && m.id !== app.me!.id}<button class="btn small" onclick={() => transfer(m.id, label)}>{t('Besitz übertragen')}</button>{/if}
+                {#if canModerate(g, m.id, P.KICK_MEMBERS)}<button class="btn small danger" onclick={() => kick(m.id, label)}>{t('common_remove')}</button>{/if}
+                {#if canModerate(g, m.id, P.BAN_MEMBERS)}<button class="btn small danger" onclick={() => ban(m.id, label)}>{t('common_ban')}</button>{/if}
+                {#if owner && m.id !== app.me!.id}<button class="btn small" onclick={() => transfer(m.id, label)}>{t('common_transfer_ownership')}</button>{/if}
               </div>
               {#if can(P.MANAGE_ROLES, g) && g.roles.some((r) => !r.is_default)}
                 <div class="chips">
@@ -352,65 +352,65 @@
       {:else if tab === 'invites'}
         <div class="stack">
           <div class="row wrap">
-            <label class="field"><span>{t('Gültig')}</span>
+            <label class="field"><span>{t('guild_settings_valid')}</span>
               <select class="input" bind:value={hours}>
-                <option value={1}>{t('1 Stunde')}</option>
-                <option value={24}>{t('1 Tag')}</option>
-                <option value={168}>{t('7 Tage')}</option>
-                <option value={0}>{t('Unbegrenzt')}</option>
+                <option value={1}>{t('common_1_hour')}</option>
+                <option value={24}>{t('common_1_day')}</option>
+                <option value={168}>{t('common_7_days')}</option>
+                <option value={0}>{t('common_unlimited')}</option>
               </select>
             </label>
-            <label class="field"><span>{t('Nutzungen')}</span>
+            <label class="field"><span>{t('guild_settings_uses')}</span>
               <select class="input" bind:value={maxUses}>
-                <option value={0}>{t('Unbegrenzt')}</option>
+                <option value={0}>{t('common_unlimited')}</option>
                 <option value={1}>1</option>
                 <option value={10}>10</option>
                 <option value={100}>100</option>
               </select>
             </label>
-            <button class="btn primary end" onclick={createInvite}>{t('{invite} erstellen', { invite: w('invite') })}</button>
+            <button class="btn primary end" onclick={createInvite}>{t('guild_settings_create_invite', { invite: w('invite') })}</button>
           </div>
           {#if created}
             <div class="row found">
               <code class="grow ellipsis">{link(created)}</code>
-              <button class="btn small" onclick={() => copy(created!)}><Icon name="copy" size={14} /> {t('Kopieren')}</button>
+              <button class="btn small" onclick={() => copy(created!)}><Icon name="copy" size={14} /> {t('guild_settings_copy')}</button>
             </div>
           {/if}
           {#each invites as inv (inv.code)}
             <div class="row line">
               <code>{inv.code}</code>
-              <span class="muted grow ellipsis">{t('von {name}, {uses} genutzt', { name: inv.creator, uses: inv.uses + (inv.max_uses ? `/${inv.max_uses}` : '') })}{inv.expires_at ? t(', bis {date}', { date: date.format(new Date(inv.expires_at)) }) : ''}</span>
-              <button class="icon" onclick={() => copy(inv.code)} aria-label={t('Link kopieren')}><Icon name="copy" size={15} /></button>
-              <button class="icon" onclick={() => deleteInvite(inv.code)} aria-label={t('Einladung löschen')}><Icon name="trash" size={15} /></button>
+              <span class="muted grow ellipsis">{t('guild_settings_name_uses_used', { name: inv.creator, uses: inv.uses + (inv.max_uses ? `/${inv.max_uses}` : '') })}{inv.expires_at ? t('guild_settings_until_date', { date: date.format(new Date(inv.expires_at)) }) : ''}</span>
+              <button class="icon" onclick={() => copy(inv.code)} aria-label={t('guild_settings_copy_link')}><Icon name="copy" size={15} /></button>
+              <button class="icon" onclick={() => deleteInvite(inv.code)} aria-label={t('guild_settings_delete_invite')}><Icon name="trash" size={15} /></button>
             </div>
           {/each}
         </div>
       {:else if tab === 'emojis'}
         <div class="stack">
           <form class="row wrap" onsubmit={addEmoji}>
-            <label class="field"><span>{t('Art')}</span>
+            <label class="field"><span>{t('common_type')}</span>
               <select class="input" bind:value={emojiKind}>
-                <option value="emoji">{t('Emoji')}</option>
-                <option value="sticker">{t('Sticker')}</option>
+                <option value="emoji">{t('guild_settings_emoji')}</option>
+                <option value="sticker">{t('common_stickers')}</option>
               </select>
             </label>
-            <label class="field grow"><span>{t('Name (a–z, 0–9, _)')}</span><input class="input" bind:value={emojiName} minlength="2" maxlength="32" pattern="[A-Za-z0-9_]+" required /></label>
-            <label class="field"><span>{t('Bild')}</span><input name="file" type="file" accept="image/png,image/jpeg,image/gif,image/webp" required /></label>
-            <button class="btn primary end">{t('Hochladen')}</button>
+            <label class="field grow"><span>{t('guild_settings_name_z_0_9')}</span><input class="input" bind:value={emojiName} minlength="2" maxlength="32" pattern="[A-Za-z0-9_]+" required /></label>
+            <label class="field"><span>{t('guild_settings_image')}</span><input name="file" type="file" accept="image/png,image/jpeg,image/gif,image/webp" required /></label>
+            <button class="btn primary end">{t('guild_settings_upload')}</button>
           </form>
-          <p class="muted">{t('Emojis schreibst du im Chat als')} <code>{t(':name:')}</code>{t(', Sticker findest du im Emoji-Menü. Emojis bis 1 MB, Sticker bis 2 MB.')}</p>
+          <p class="muted">{t('guild_settings_type_emojis_chat_as')} <code>{t('guild_settings_name')}</code>{t('guild_settings_stickers_emoji_menu_emojis_up')}</p>
           {#each ['emoji', 'sticker'] as kind}
             {@const list = g.emojis.filter((e) => e.kind === kind)}
-            <h3>{kind === 'emoji' ? t('Emojis') : t('Sticker')} ({list.length})</h3>
+            <h3>{kind === 'emoji' ? t('common_emojis') : t('common_stickers')} ({list.length})</h3>
             <div class="emojis">
               {#each list as e (e.id)}
                 <div class="emoji" class:sticker={kind === 'sticker'}>
                   <img src={asset(e.file)} alt={e.name} />
                   <span class="ellipsis">{kind === 'emoji' ? `:${e.name}:` : e.name}</span>
-                  <button class="icon" onclick={() => deleteEmoji(e.id, e.name)} aria-label={t('{name} löschen', { name: e.name })}><Icon name="trash" size={14} /></button>
+                  <button class="icon" onclick={() => deleteEmoji(e.id, e.name)} aria-label={t('common_delete_name', { name: e.name })}><Icon name="trash" size={14} /></button>
                 </div>
               {:else}
-                <p class="muted">{t('Noch nichts hochgeladen.')}</p>
+                <p class="muted">{t('guild_settings_nothing_uploaded_yet')}</p>
               {/each}
             </div>
           {/each}
@@ -423,7 +423,7 @@
               <p class="muted">{date.format(new Date(a.created_at))}</p>
             </div>
           {:else}
-            <p class="muted">{t('Noch keine Einträge.')}</p>
+            <p class="muted">{t('guild_settings_no_entries_yet')}</p>
           {/each}
         </div>
       {:else if tab === 'bans'}
@@ -432,12 +432,12 @@
             <div class="row line">
               <div class="grow">
                 <strong>{b.display_name}</strong> <span class="muted">@{b.username}</span>
-                <p class="muted">{b.reason || t('Kein Grund angegeben')}</p>
+                <p class="muted">{b.reason || t('guild_settings_no_reason_given')}</p>
               </div>
-              <button class="btn small" onclick={() => unban(b.id)}>{t('Bann aufheben')}</button>
+              <button class="btn small" onclick={() => unban(b.id)}>{t('guild_settings_unban')}</button>
             </div>
           {:else}
-            <p class="muted">{t('Niemand ist gebannt.')}</p>
+            <p class="muted">{t('guild_settings_nobody_banned')}</p>
           {/each}
         </div>
       {/if}

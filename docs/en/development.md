@@ -16,7 +16,7 @@ The app runs at http://localhost:8080 and creates its tables on start. For hot r
 ## Layout
 
 - `server/` Rust backend: Axum, WebSocket gateway, PostgreSQL through sqlx, migrations in `server/migrations`
-- `web/` Svelte 5 interface, translations in `web/src/lib/i18n.svelte.ts` (German keys, English values)
+- `web/` Svelte 5 interface, texts in `web/src/lib/lang/` (`de.ts`, `en.ts`, `da.ts`, one key per text such as `chat_delete_message`, checked by `python3 scripts/check_i18n.py`)
 - `web/src-tauri/` Tauri 2 shell for the apps
 - `deploy/` stack for servers
 - `.github/workflows/image.yml` server image, `.github/workflows/apps.yml` apps and releases

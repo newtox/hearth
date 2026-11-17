@@ -42,12 +42,12 @@
       e,
       list.length
         ? list.map((r) => ({ label: r.name, color: r.color, action: () => mod.toggleRole(g, userId, r.id) }))
-        : [{ label: t('Keine weiteren Rollen verfügbar'), disabled: true }],
+        : [{ label: t('mod_view_no_more_roles_available'), disabled: true }],
     );
   }
 </script>
 
-<Modal title={t('Moderatorenansicht')} onclose={close}>
+<Modal title={t('mod_view_moderator_view')} onclose={close}>
   {#if m}
     {@const label = mod.label(m)}
     <div class="stack view">
@@ -59,35 +59,35 @@
         </div>
       </div>
       <div class="row actions">
-        {#if m.id !== app.me?.id}<button class="act" onclick={() => (openDm(m.id), close())} title={t('Nachricht senden')} aria-label={t('Nachricht senden')}><Icon name="message" /></button>{/if}
+        {#if m.id !== app.me?.id}<button class="act" onclick={() => (openDm(m.id), close())} title={t('common_send_message')} aria-label={t('common_send_message')}><Icon name="message" /></button>{/if}
         {#if canModerate(g, m.id, P.MODERATE_MEMBERS)}
-          <button class="act" class:on={mod.timedOut(m)} onclick={() => (mod.timedOut(m) ? mod.endTimeout(g, m) : mod.timeout(g, m))} title={mod.timedOut(m) ? t('Timeout aufheben') : t('Timeout')} aria-label={mod.timedOut(m) ? t('Timeout aufheben') : t('Timeout')}><Icon name="clock" /></button>
+          <button class="act" class:on={mod.timedOut(m)} onclick={() => (mod.timedOut(m) ? mod.endTimeout(g, m) : mod.timeout(g, m))} title={mod.timedOut(m) ? t('common_end_timeout') : t('common_timeout')} aria-label={mod.timedOut(m) ? t('common_end_timeout') : t('common_timeout')}><Icon name="clock" /></button>
         {/if}
-        {#if canModerate(g, m.id, P.KICK_MEMBERS)}<button class="act danger" onclick={() => mod.kick(g, m)} title={t('Entfernen')} aria-label={t('Entfernen')}><Icon name="userMinus" /></button>{/if}
-        {#if canModerate(g, m.id, P.BAN_MEMBERS)}<button class="act danger" onclick={() => mod.ban(g, m)} title={t('Bannen')} aria-label={t('Bannen')}><Icon name="ban" /></button>{/if}
-        <button class="act" onclick={() => mod.copy(m.id)} title={t('Nutzer-ID kopieren')} aria-label={t('Nutzer-ID kopieren')}><Icon name="id" /></button>
+        {#if canModerate(g, m.id, P.KICK_MEMBERS)}<button class="act danger" onclick={() => mod.kick(g, m)} title={t('common_remove')} aria-label={t('common_remove')}><Icon name="userMinus" /></button>{/if}
+        {#if canModerate(g, m.id, P.BAN_MEMBERS)}<button class="act danger" onclick={() => mod.ban(g, m)} title={t('common_ban')} aria-label={t('common_ban')}><Icon name="ban" /></button>{/if}
+        <button class="act" onclick={() => mod.copy(m.id)} title={t('common_copy_user_id')} aria-label={t('common_copy_user_id')}><Icon name="id" /></button>
       </div>
 
       <section>
-        <h4>{t('Aktivität auf diesem {server}', { server: w('server') })}</h4>
+        <h4>{t('mod_view_activity_server', { server: w('server') })}</h4>
         <div class="rows">
-          <div class="line"><Icon name="message" size={17} /><span class="grow">{t('Nachrichten')}</span><b>{summary ? number.format(summary.messages) : '…'}</b></div>
-          <div class="line"><Icon name="link" size={17} /><span class="grow">{t('Links')}</span><b>{summary ? number.format(summary.links) : '…'}</b></div>
-          <div class="line"><Icon name="image" size={17} /><span class="grow">{t('Medien')}</span><b>{summary ? number.format(summary.media) : '…'}</b></div>
+          <div class="line"><Icon name="message" size={17} /><span class="grow">{t('mod_view_messages')}</span><b>{summary ? number.format(summary.messages) : '…'}</b></div>
+          <div class="line"><Icon name="link" size={17} /><span class="grow">{t('mod_view_links')}</span><b>{summary ? number.format(summary.links) : '…'}</b></div>
+          <div class="line"><Icon name="image" size={17} /><span class="grow">{t('mod_view_media')}</span><b>{summary ? number.format(summary.media) : '…'}</b></div>
           {#if can(P.MANAGE_GUILD, g)}
-            <button class="line" onclick={() => (app.modal = { kind: 'guild', tab: 'audit' })}><Icon name="list" size={17} /><span class="grow">{t('Protokolleinträge')}</span><b>{summary ? number.format(summary.audit) : '…'}</b><Icon name="right" size={15} /></button>
+            <button class="line" onclick={() => (app.modal = { kind: 'guild', tab: 'audit' })}><Icon name="list" size={17} /><span class="grow">{t('mod_view_audit_log_entries')}</span><b>{summary ? number.format(summary.audit) : '…'}</b><Icon name="right" size={15} /></button>
           {:else}
-            <div class="line"><Icon name="list" size={17} /><span class="grow">{t('Protokolleinträge')}</span><b>{summary ? number.format(summary.audit) : '…'}</b></div>
+            <div class="line"><Icon name="list" size={17} /><span class="grow">{t('mod_view_audit_log_entries')}</span><b>{summary ? number.format(summary.audit) : '…'}</b></div>
           {/if}
         </div>
       </section>
 
       <section>
-        <h4 class="row"><span class="grow">{t('Berechtigungen')}</span><small class="muted">{perms === -1 ? t('alle') : granted.length}</small></h4>
+        <h4 class="row"><span class="grow">{t('common_permissions')}</span><small class="muted">{perms === -1 ? t('mod_view_all') : granted.length}</small></h4>
         {#if m.id === g.owner_id}
-          <p class="muted">{t('Besitzer haben immer alle Berechtigungen.')}</p>
+          <p class="muted">{t('mod_view_owners_always_have_every_permission')}</p>
         {:else if perms === -1}
-          <p class="muted">{t('Hat über eine Rolle „Administrator“ und damit alle Berechtigungen.')}</p>
+          <p class="muted">{t('mod_view_has_administrator_through_role_therefore')}</p>
         {/if}
         <div class="chips">
           {#each granted as p (p.bit)}
@@ -103,22 +103,22 @@
             <span class="role" style:--c={r.color ?? 'var(--muted)'}>
               <i></i>{r.name}
               {#if can(P.MANAGE_ROLES, g) && mod.roleEditable(g, r)}
-                <button onclick={() => mod.toggleRole(g, m.id, r.id)} aria-label={t('{name} entfernen', { name: r.name })}><Icon name="close" size={12} /></button>
+                <button onclick={() => mod.toggleRole(g, m.id, r.id)} aria-label={t('common_remove_name', { name: r.name })}><Icon name="close" size={12} /></button>
               {/if}
             </span>
           {/each}
-          {#if can(P.MANAGE_ROLES, g)}<button class="add" onclick={addRole} aria-label={t('Rolle hinzufügen')} title={t('Rolle hinzufügen')}><Icon name="plus" size={14} /></button>{/if}
-          {#if !roles.length && !can(P.MANAGE_ROLES, g)}<span class="muted">{t('Keine Rollen')}</span>{/if}
+          {#if can(P.MANAGE_ROLES, g)}<button class="add" onclick={addRole} aria-label={t('mod_view_add_role')} title={t('mod_view_add_role')}><Icon name="plus" size={14} /></button>{/if}
+          {#if !roles.length && !can(P.MANAGE_ROLES, g)}<span class="muted">{t('mod_view_no_roles')}</span>{/if}
         </div>
       </section>
 
       <section>
-        <h4>{t('Konto')}</h4>
+        <h4>{t('mod_view_account')}</h4>
         <div class="rows">
-          <div class="line"><Icon name="user" size={17} /><span class="grow">{t('Registriert')}</span><b>{summary ? date.format(new Date(summary.created_at)) : '…'}</b></div>
-          <div class="line"><Icon name="userPlus" size={17} /><span class="grow">{t('Beigetreten')}</span><b>{date.format(new Date(m.joined_at))}</b></div>
+          <div class="line"><Icon name="user" size={17} /><span class="grow">{t('mod_view_registered')}</span><b>{summary ? date.format(new Date(summary.created_at)) : '…'}</b></div>
+          <div class="line"><Icon name="userPlus" size={17} /><span class="grow">{t('mod_view_joined')}</span><b>{date.format(new Date(m.joined_at))}</b></div>
           {#if mod.timedOut(m)}
-            <div class="line warn"><Icon name="clock" size={17} /><span class="grow">{t('Timeout bis')}</span><b>{new Date(m.timeout_until!).toLocaleString(locale())}</b></div>
+            <div class="line warn"><Icon name="clock" size={17} /><span class="grow">{t('mod_view_timed_out_until')}</span><b>{new Date(m.timeout_until!).toLocaleString(locale())}</b></div>
           {/if}
         </div>
       </section>

@@ -47,14 +47,14 @@
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
 <div class="veil" onclick={onclose} role="presentation"></div>
-<div class="panel picker" role="dialog" aria-label={t('Emoji auswählen')}>
+<div class="panel picker" role="dialog" aria-label={t('emoji_picker_pick_emoji')}>
   {#if stickers}
     <div class="row tabs">
-      <button class:on={tab === 'emoji'} onclick={() => (tab = 'emoji')}>{t('Emojis')}</button>
-      <button class:on={tab === 'sticker'} onclick={() => (tab = 'sticker')}>{t('Sticker')}</button>
+      <button class:on={tab === 'emoji'} onclick={() => (tab = 'emoji')}>{t('common_emojis')}</button>
+      <button class:on={tab === 'sticker'} onclick={() => (tab = 'sticker')}>{t('common_stickers')}</button>
     </div>
   {/if}
-  <input class="input search" bind:this={search} bind:value={query.text} onkeydown={enter} placeholder={tab === 'sticker' ? t('Sticker suchen') : t('Emoji suchen')} aria-label={tab === 'sticker' ? t('Sticker suchen') : t('Emoji suchen')} />
+  <input class="input search" bind:this={search} bind:value={query.text} onkeydown={enter} placeholder={tab === 'sticker' ? t('emoji_picker_search_stickers') : t('emoji_picker_search_emoji')} aria-label={tab === 'sticker' ? t('emoji_picker_search_stickers') : t('emoji_picker_search_emoji')} />
   <div class="scroll body">
     {#if tab === 'emoji'}
       {#if shownCustom.length}
@@ -70,13 +70,13 @@
           <button onclick={() => onpick(e.glyph, 'unicode')} title=":{e.words[0]}:">{e.glyph}</button>
         {/each}
       </div>
-      {#if !shownCustom.length && !shownUnicode.length}<p class="muted">{t('Nichts gefunden für „{q}“', { q: query.text })}</p>{/if}
+      {#if !shownCustom.length && !shownUnicode.length}<p class="muted">{t('emoji_picker_nothing_found_q', { q: query.text })}</p>{/if}
     {:else}
       <div class="grid big">
         {#each shownStickers as e (e.id)}
           <button onclick={() => onpick(`<sticker:${e.name}:${e.file}>`, 'sticker', e)} title={e.name}><img src={asset(e.file)} alt={e.name} /></button>
         {:else}
-          <p class="muted">{q ? t('Nichts gefunden für „{q}“', { q: query.text }) : t('Noch keine Sticker. In den Servereinstellungen unter „Emojis“ lassen sich welche hochladen.')}</p>
+          <p class="muted">{q ? t('emoji_picker_nothing_found_q', { q: query.text }) : t('emoji_picker_no_stickers_yet_upload_some')}</p>
         {/each}
       </div>
     {/if}

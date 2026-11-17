@@ -23,14 +23,14 @@
 </script>
 
 {#if dm && caller}
-  <div class="panel ring" role="alertdialog" aria-label={t('Eingehender Anruf')}>
+  <div class="panel ring" role="alertdialog" aria-label={t('ring_banner_incoming_call')}>
     <Avatar id={caller.id} name={caller.display_name} image={caller.avatar} size={44} />
     <div class="grow">
       <strong class="ellipsis">{caller.display_name}</strong>
-      <p class="muted ellipsis">{dm.kind === 'group' ? t('ruft in {name} an', { name: dmTitle(dm) }) : t('ruft dich an')}</p>
+      <p class="muted ellipsis">{dm.kind === 'group' ? t('ring_banner_calling_name', { name: dmTitle(dm) }) : t('ring_banner_calling')}</p>
     </div>
-    {#if app.me?.voice}<button class="btn primary" onclick={accept}><Icon name="phone" size={16} />{t('Annehmen')}</button>{/if}
-    <button class="btn danger" onclick={() => (app.ring = null)}>{t('Ablehnen')}</button>
+    {#if app.me?.voice}<button class="btn primary" onclick={accept}><Icon name="phone" size={16} />{t('common_accept')}</button>{/if}
+    <button class="btn danger" onclick={() => (app.ring = null)}>{t('common_decline')}</button>
   </div>
 {/if}
 

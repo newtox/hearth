@@ -42,59 +42,59 @@
   }
 
   async function rename() {
-    const next = await askText({ title: t('Gruppe umbenennen'), input: { value: dm!.name ?? '', label: t('Name der Gruppe'), placeholder: t('Leer lassen für die Namen der Mitglieder') }, confirm: t('Speichern') });
+    const next = await askText({ title: t('group_modal_rename_group'), input: { value: dm!.name ?? '', label: t('group_modal_group_name'), placeholder: t('group_modal_leave_empty_use_members_names') }, confirm: t('common_save') });
     if (next !== null) await attempt(api('PATCH', `/channels/${dm!.id}/group`, { name: next }));
   }
 
   async function leave() {
-    if (await ask({ title: t('Gruppe verlassen'), text: t('Du kannst nur wieder hinein, wenn dich jemand erneut hinzufügt.'), confirm: t('Verlassen'), danger: true })) await attempt(api('DELETE', `/channels/${dm!.id}/recipients/${app.me!.id}`));
+    if (await ask({ title: t('group_modal_leave_group'), text: t('group_modal_only_get_back_if_someone'), confirm: t('common_leave'), danger: true })) await attempt(api('DELETE', `/channels/${dm!.id}/recipients/${app.me!.id}`));
   }
 </script>
 
-<Modal title={dm ? dmTitle(dm) : t('Neue Gruppe')} onclose={() => (app.modal = null)}>
+<Modal title={dm ? dmTitle(dm) : t('common_new_group')} onclose={() => (app.modal = null)}>
   {#if dm}
     <div class="stack">
       <div class="row wrap">
         <span class="picture">{#if dm.icon}<img src={asset(dm.icon)} alt="" />{:else}<Icon name="users" size={22} />{/if}</span>
         {#if groupMay(dm, 'edit')}
-          <button class="btn small" onclick={rename}><Icon name="edit" size={14} />{t('Umbenennen')}</button>
-          <label class="btn small">{t('Bild ändern')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={pickIcon} hidden /></label>
+          <button class="btn small" onclick={rename}><Icon name="edit" size={14} />{t('group_modal_rename')}</button>
+          <label class="btn small">{t('group_modal_change_picture')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={pickIcon} hidden /></label>
         {/if}
-        <button class="btn small danger" onclick={leave}>{t('Gruppe verlassen')}</button>
+        <button class="btn small danger" onclick={leave}>{t('group_modal_leave_group')}</button>
       </div>
-      <h3>{t('Mitglieder')} ({dm.recipients.length}/10)</h3>
+      <h3>{t('common_members')} ({dm.recipients.length}/10)</h3>
       {#each [...dm.recipients].sort((a, b) => groupRole(dm, b.id) - groupRole(dm, a.id)) as r (r.id)}
         {@const role = GROUP_ROLES[groupRole(dm, r.id)]}
         <div class="row line">
           <button class="row grow who" onclick={() => (app.profile = r.id)}>
             <Avatar id={r.id} name={r.display_name} image={r.avatar} size={32} status={presenceOf(r)} />
             <span class="ellipsis" style:color={role.color}>{r.display_name}</span>
-            {#if r.id === dm.owner_id}<span class="crown" title={t('Besitzer')}><Icon name="crown" size={14} /></span>{/if}
+            {#if r.id === dm.owner_id}<span class="crown" title={t('common_owner')}><Icon name="crown" size={14} /></span>{/if}
           </button>
           {#if admin && (r.id !== dm.owner_id || owner) && !(owner && r.id === app.me?.id)}
-            <select class="input role" value={groupRole(dm, r.id)} onchange={(e) => attempt(api('PUT', `/channels/${dm.id}/recipients/${r.id}/role`, { role: Number(e.currentTarget.value) }))} aria-label={t('Rolle von {name}', { name: r.display_name })}>
+            <select class="input role" value={groupRole(dm, r.id)} onchange={(e) => attempt(api('PUT', `/channels/${dm.id}/recipients/${r.id}/role`, { role: Number(e.currentTarget.value) }))} aria-label={t('group_modal_role_name', { name: r.display_name })}>
               {#each GROUP_ROLES as o}<option value={o.id}>{t(o.name)}</option>{/each}
             </select>
           {:else}
             <span class="tag" style:--c={role.color}>{t(role.name)}</span>
           {/if}
           {#if r.id !== app.me?.id && r.id !== dm.owner_id && groupMay(dm, 'kick') && (owner || groupRole(dm, r.id) < myRole)}
-            <button class="btn small" onclick={() => attempt(api('DELETE', `/channels/${dm.id}/recipients/${r.id}`))}>{t('Entfernen')}</button>
+            <button class="btn small" onclick={() => attempt(api('DELETE', `/channels/${dm.id}/recipients/${r.id}`))}>{t('common_remove')}</button>
           {/if}
         </div>
       {/each}
       {#if candidates.length && dm.recipients.length < 10 && groupMay(dm, 'invite')}
-        <h3>{t('Freunde hinzufügen')}</h3>
+        <h3>{t('common_add_friends')}</h3>
         {#each candidates as f (f.id)}
           <div class="row line">
             <Avatar id={f.id} name={f.display_name} image={f.avatar} size={32} />
             <span class="grow ellipsis">{f.display_name}</span>
-            <button class="btn small" onclick={() => attempt(api('PUT', `/channels/${dm.id}/recipients/${f.id}`))}><Icon name="plus" size={14} />{t('Hinzufügen')}</button>
+            <button class="btn small" onclick={() => attempt(api('PUT', `/channels/${dm.id}/recipients/${f.id}`))}><Icon name="plus" size={14} />{t('group_modal_add')}</button>
           </div>
         {/each}
       {/if}
-      <h3>{t('Berechtigungen')}</h3>
-      <p class="muted">{t('Ab welcher Rolle etwas erlaubt ist. Rollen vergeben und diese Einstellungen ändern können nur Administratoren.')}</p>
+      <h3>{t('common_permissions')}</h3>
+      <p class="muted">{t('group_modal_lowest_role_allowed_do_each')}</p>
       {#each GROUP_RULES as rule (rule.key)}
         <label class="row line">
           <span class="grow">{t(rule.name)}</span>
@@ -107,12 +107,12 @@
   {:else}
     <form class="stack" onsubmit={create}>
       <label class="field">
-        <span>{t('Name (optional)')}</span>
+        <span>{t('group_modal_name_optional')}</span>
         <input class="input" bind:value={name} maxlength="60" />
       </label>
       <div>
-        <h3>{t('Freunde auswählen')}</h3>
-        <p class="muted">{t('Bis zu 9 Freunde. Hinzufügen lassen sich nur Leute aus deiner Freundesliste.')}</p>
+        <h3>{t('group_modal_pick_friends')}</h3>
+        <p class="muted">{t('group_modal_up_9_friends_only_add')}</p>
       </div>
       {#each app.friends.friends as f (f.id)}
         <label class="row line pick">
@@ -121,9 +121,9 @@
           <span class="grow ellipsis">{f.display_name}</span>
         </label>
       {:else}
-        <p class="muted">{t('Du hast noch keine Freunde, mit denen du eine Gruppe gründen könntest.')}</p>
+        <p class="muted">{t('group_modal_have_no_friends_yet_start')}</p>
       {/each}
-      <button class="btn primary" disabled={!picked.length}>{t('Gruppe erstellen')}</button>
+      <button class="btn primary" disabled={!picked.length}>{t('group_modal_create_group')}</button>
     </form>
   {/if}
 </Modal>

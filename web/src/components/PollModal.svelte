@@ -19,29 +19,29 @@
   }
 </script>
 
-<Modal title={t('Umfrage erstellen')} {onclose}>
+<Modal title={t('common_create_poll')} {onclose}>
   <form class="stack" onsubmit={create}>
-    <label class="field"><span>{t('Frage')}</span><input class="input" bind:value={question} maxlength="200" required /></label>
+    <label class="field"><span>{t('poll_modal_question')}</span><input class="input" bind:value={question} maxlength="200" required /></label>
     <div class="field">
-      <span>{t('Antwortmöglichkeiten')}</span>
+      <span>{t('poll_modal_answers')}</span>
       {#each options as _, i}
         <div class="row">
-          <input class="input" bind:value={options[i]} maxlength="80" placeholder={t('Antwort {n}', { n: i + 1 })} required={i < 2} />
-          {#if options.length > 2}<button type="button" class="icon" onclick={() => (options = options.filter((_, j) => j !== i))} aria-label={t('Antwort entfernen')}><Icon name="close" size={16} /></button>{/if}
+          <input class="input" bind:value={options[i]} maxlength="80" placeholder={t('poll_modal_answer_n', { n: i + 1 })} required={i < 2} />
+          {#if options.length > 2}<button type="button" class="icon" onclick={() => (options = options.filter((_, j) => j !== i))} aria-label={t('poll_modal_remove_answer')}><Icon name="close" size={16} /></button>{/if}
         </div>
       {/each}
-      {#if options.length < 10}<button type="button" class="btn small add" onclick={() => (options = [...options, ''])}><Icon name="plus" size={14} />{t('Antwort hinzufügen')}</button>{/if}
+      {#if options.length < 10}<button type="button" class="btn small add" onclick={() => (options = [...options, ''])}><Icon name="plus" size={14} />{t('poll_modal_add_answer')}</button>{/if}
     </div>
-    <label class="row"><input type="checkbox" bind:checked={multi} /> {t('Mehrere Antworten erlauben')}</label>
-    <label class="field"><span>{t('Laufzeit')}</span>
+    <label class="row"><input type="checkbox" bind:checked={multi} /> {t('poll_modal_allow_multiple_answers')}</label>
+    <label class="field"><span>{t('poll_modal_duration')}</span>
       <select class="input" bind:value={hours}>
-        <option value={1}>{t('1 Stunde')}</option>
-        <option value={24}>{t('1 Tag')}</option>
-        <option value={168}>{t('7 Tage')}</option>
-        <option value={0}>{t('Unbegrenzt')}</option>
+        <option value={1}>{t('common_1_hour')}</option>
+        <option value={24}>{t('common_1_day')}</option>
+        <option value={168}>{t('common_7_days')}</option>
+        <option value={0}>{t('common_unlimited')}</option>
       </select>
     </label>
-    <button class="btn primary">{t('Umfrage erstellen')}</button>
+    <button class="btn primary">{t('common_create_poll')}</button>
   </form>
 </Modal>
 

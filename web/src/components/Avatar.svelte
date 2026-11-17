@@ -4,7 +4,7 @@
 
   let { id, name, image = null, size = 36, online = undefined, status = undefined, square = false }: { id: string; name: string; image?: string | null; size?: number; online?: boolean; status?: string; square?: boolean } = $props();
 
-  const LABELS: Record<string, string> = { online: 'Online', idle: 'Abwesend', dnd: 'Bitte nicht stören', invisible: 'Unsichtbar', offline: 'Offline' };
+  const LABELS: Record<string, string> = { online: 'common_online', idle: 'common_idle', dnd: 'common_do_not_disturb', invisible: 'common_invisible', offline: 'common_offline' };
   const state = $derived(status ?? (online === undefined ? undefined : online ? 'online' : 'offline'));
 
   const hue = $derived([...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7));

@@ -46,15 +46,15 @@ export async function toggleRole(g: Guild, memberId: string, roleId: string) {
 }
 
 export async function nickname(g: Guild, m: Member) {
-  const nick = await askText({ title: t('Spitzname ändern'), input: { value: m.nickname ?? '', label: t('Spitzname'), placeholder: m.display_name }, text: t('Leer lassen, um den Spitznamen zu entfernen.'), confirm: t('Speichern') });
+  const nick = await askText({ title: t('common_change_nickname'), input: { value: m.nickname ?? '', label: t('common_nickname'), placeholder: m.display_name }, text: t('common_leave_empty_remove_nickname'), confirm: t('common_save') });
   if (nick !== null) await attempt(api('PATCH', `/guilds/${g.id}/members/${m.id}`, { nickname: nick }));
 }
 
 export async function timeout(g: Guild, m: Member) {
-  const minutes = await askText({ title: t('Timeout für {name}', { name: label(m) }), text: t('Dauer in Minuten, z. B. 10, 60 oder 1440.'), input: { value: '60', type: 'number', label: t('Minuten') }, confirm: t('Timeout') });
+  const minutes = await askText({ title: t('common_time_out_name', { name: label(m) }), text: t('common_duration_minutes_e_g_10'), input: { value: '60', type: 'number', label: t('common_minutes') }, confirm: t('common_timeout') });
   if (minutes === null) return;
   const n = Number(minutes);
-  if (!Number.isFinite(n) || n <= 0) return toast(t('Bitte eine Zahl größer 0 eingeben'));
+  if (!Number.isFinite(n) || n <= 0) return toast(t('common_please_enter_number_greater_than'));
   await attempt(api('PATCH', `/guilds/${g.id}/members/${m.id}`, { timeout_minutes: Math.round(n) }));
 }
 
@@ -63,16 +63,16 @@ export async function endTimeout(g: Guild, m: Member) {
 }
 
 export async function kick(g: Guild, m: Member) {
-  if ((await ask({ title: t('{name} entfernen', { name: label(m) }), text: t('{name} kann über eine neue Einladung wieder beitreten.', { name: label(m) }), confirm: t('Entfernen'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${m.id}`));
+  if ((await ask({ title: t('common_remove_name', { name: label(m) }), text: t('common_name_rejoin_new_invite', { name: label(m) }), confirm: t('common_remove'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${m.id}`));
 }
 
 export async function ban(g: Guild, m: Member) {
-  const reason = await askText({ title: t('{name} bannen', { name: label(m) }), text: t('{name} wird entfernt und kann nicht wieder beitreten, bis der Bann aufgehoben wird.', { name: label(m) }), input: { label: t('Grund (optional)') }, confirm: t('Bannen'), danger: true });
+  const reason = await askText({ title: t('common_ban_name', { name: label(m) }), text: t('common_name_removed_cannot_rejoin_until', { name: label(m) }), input: { label: t('common_reason_optional') }, confirm: t('common_ban'), danger: true });
   if (reason !== null) await attempt(api('PUT', `/guilds/${g.id}/bans/${m.id}`, { reason }));
 }
 
 export async function transfer(g: Guild, m: Member) {
-  if ((await ask({ title: t('Besitz übertragen'), text: t('{name} wird neuer Besitzer. Das lässt sich nur vom neuen Besitzer rückgängig machen.', { name: label(m) }), confirm: t('Übertragen'), danger: true }))) await attempt(api('PATCH', `/guilds/${g.id}`, { owner_id: m.id }));
+  if ((await ask({ title: t('common_transfer_ownership'), text: t('common_name_becomes_new_owner_only', { name: label(m) }), confirm: t('common_transfer'), danger: true }))) await attempt(api('PATCH', `/guilds/${g.id}`, { owner_id: m.id }));
 }
 
 export async function copy(text: string) {
@@ -86,5 +86,5 @@ export async function copy(text: string) {
     document.execCommand('copy');
     area.remove();
   }
-  toast(t('In die Zwischenablage kopiert'));
+  toast(t('mod_copied_clipboard'));
 }

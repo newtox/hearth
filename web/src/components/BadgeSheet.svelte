@@ -8,8 +8,8 @@
   let { badge, name, onprogress, onclose }: { badge: Badge; name: string; onprogress?: () => void; onclose: () => void } = $props();
 
   const BUILT_IN: Record<string, string> = {
-    '00000000-0000-7000-8000-000000000002': 'Gehört zum Team, das diese Instanz entwickelt und betreibt.',
-    '00000000-0000-7000-8000-000000000003': 'Unterstützt den Betrieb dieser Instanz.',
+    '00000000-0000-7000-8000-000000000002': 'badge_sheet_part_team_builds_runs_instance',
+    '00000000-0000-7000-8000-000000000003': 'badge_sheet_supports_running_instance',
   };
 
   const label = $derived(badgeLabel(badge));
@@ -19,7 +19,7 @@
       ? t(TRACKS[badge.track].hint)
       : BUILT_IN[badge.id]
         ? t(BUILT_IN[badge.id])
-        : label.description || t('Wird von den Admins dieser Instanz vergeben.'),
+        : label.description || t('badge_sheet_given_admins_instance'),
   );
   const date = new Intl.DateTimeFormat(locale(), { dateStyle: 'long' });
 
@@ -36,27 +36,27 @@
 <div class="veil" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
   <div class="sheet" role="dialog" aria-modal="true" aria-label={title}>
     <span class="grip" aria-hidden="true"></span>
-    <button class="x" onclick={onclose} aria-label={t('Schließen')}><Icon name="close" /></button>
+    <button class="x" onclick={onclose} aria-label={t('common_close')}><Icon name="close" /></button>
     <div class="art" style:--c={badge.color}><BadgeIcon {badge} size={84} /></div>
     <h2>{title}</h2>
     <p class="meta">
       {#if badge.track}
-        <span>{t('Verdientes Abzeichen')}</span>
-        <span class="level" style:--c={badge.color}>{t('Stufe {tier} von 10', { tier: (badge.tier ?? 0) + 1 })}</span>
+        <span>{t('badge_sheet_earned_badge')}</span>
+        <span class="level" style:--c={badge.color}>{t('common_level_tier_10', { tier: (badge.tier ?? 0) + 1 })}</span>
       {:else}
-        <span>{t('Abzeichen dieser Instanz')}</span>
-        {#if badge.granted_at}<span>{t('seit {date}', { date: date.format(new Date(badge.granted_at)) })}</span>{/if}
+        <span>{t('badge_sheet_instance_badge')}</span>
+        {#if badge.granted_at}<span>{t('badge_sheet_since_date', { date: date.format(new Date(badge.granted_at)) })}</span>{/if}
       {/if}
     </p>
     <div class="box">
-      <small>{badge.track ? t('So bekommt man es') : t('Beschreibung')}</small>
+      <small>{badge.track ? t('badge_sheet_how_get') : t('common_description')}</small>
       <p>{text}</p>
       {#if badge.track}
-        <p class="muted">{t('{name} hat bisher {amount}.', { name, amount: amount(badge.track, badge.hours ?? 0) })}</p>
+        <p class="muted">{t('badge_sheet_name_has_amount_so_far', { name, amount: amount(badge.track, badge.hours ?? 0) })}</p>
       {/if}
     </div>
     {#if badge.track && onprogress}
-      <button class="btn" onclick={onprogress}>{t('Fortschritt ansehen')}</button>
+      <button class="btn" onclick={onprogress}>{t('badge_sheet_view_progress')}</button>
     {/if}
   </div>
 </div>

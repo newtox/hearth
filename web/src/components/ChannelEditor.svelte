@@ -17,8 +17,8 @@
   const voiceBits = [P.VIEW_CHANNEL, P.CONNECT, P.SPEAK, P.STREAM];
   const rules = $derived(CHANNEL_PERMISSIONS.filter((p) => (kind === 'voice' ? voiceBits.includes(p.bit) : p.bit === P.VIEW_CHANNEL || !voiceBits.includes(p.bit))));
   const types = [
-    { id: 'text' as const, icon: 'hash', name: 'Textkanal', hint: 'Nachrichten, Bilder, Umfragen und Emojis' },
-    { id: 'voice' as const, icon: 'volume', name: 'Sprachkanal', hint: 'Zusammen reden, Kamera und Bildschirm teilen' },
+    { id: 'text' as const, icon: 'hash', name: 'channel_editor_text_channel', hint: 'channel_editor_messages_images_polls_emojis' },
+    { id: 'voice' as const, icon: 'volume', name: 'channel_editor_voice_channel', hint: 'channel_editor_talk_together_share_camera_screen' },
   ];
   const categories = $derived(g.channels.filter((c) => c.kind === 'category'));
 
@@ -38,7 +38,7 @@
   }
 
   async function remove() {
-    if (existing && (await ask({ title: t(kind === 'category' ? 'Kategorie löschen' : 'Kanal löschen'), text: t(kind === 'category' ? '„{name}“ wird gelöscht. Die Kanäle darin bleiben erhalten.' : '„{name}“ wird mit allen Nachrichten gelöscht. Das lässt sich nicht rückgängig machen.', { name: existing.name }), confirm: t('Löschen'), danger: true }))) {
+    if (existing && (await ask({ title: t(kind === 'category' ? 'channel_editor_delete_category' : 'channel_editor_delete_channel'), text: t(kind === 'category' ? 'channel_editor_name_deleted_channels_kept' : 'channel_editor_name_deleted_all_its_messages', { name: existing.name }), confirm: t('common_delete'), danger: true }))) {
       await attempt(api('DELETE', `/channels/${existing.id}`));
       close();
     }
@@ -71,12 +71,12 @@
   }
 </script>
 
-<Modal title={t((kind === 'category' ? 'Kategorie' : kind === 'voice' ? 'Sprachkanal' : 'Kanal') + (existing ? ' bearbeiten' : ' anlegen'))} onclose={close} wide={!!existing && kind !== 'category'}>
+<Modal title={existing ? t(kind === 'category' ? 'common_edit_category' : kind === 'voice' ? 'channel_editor_edit_voice_channel' : 'channel_editor_edit_channel') : t(kind === 'category' ? 'channel_editor_create_category' : kind === 'voice' ? 'channel_editor_create_voice_channel' : 'common_create_channel')} onclose={close} wide={!!existing && kind !== 'category'}>
   <div class="stack">
     <form class="stack" onsubmit={save}>
       {#if !existing && kind !== 'category'}
-        <div class="field" role="radiogroup" aria-label={t('Kanaltyp')}>
-          <span>{t('Kanaltyp')}</span>
+        <div class="field" role="radiogroup" aria-label={t('channel_editor_channel_type')}>
+          <span>{t('channel_editor_channel_type')}</span>
           {#each types as k (k.id)}
             <label class="type" class:on={kind === k.id}>
               <Icon name={k.icon} size={22} />
@@ -87,40 +87,40 @@
         </div>
       {/if}
       <label class="field">
-        <span>{t('Name')}</span>
+        <span>{t('common_name')}</span>
         <input class="input" bind:value={name} maxlength="60" required />
       </label>
       {#if kind === 'text'}
         <label class="field">
-          <span>{t('Thema')}</span>
-          <input class="input" bind:value={topic} maxlength="300" placeholder={t('Worum geht es hier?')} />
+          <span>{t('channel_editor_topic')}</span>
+          <input class="input" bind:value={topic} maxlength="300" placeholder={t('channel_editor_what_about')} />
         </label>
       {/if}
       {#if kind !== 'category'}
         <label class="field">
-          <span>{t('Kategorie')}</span>
+          <span>{t('channel_editor_category')}</span>
           <select class="input" bind:value={parent}>
-            <option value="">{t('Keine')}</option>
+            <option value="">{t('channel_editor_none')}</option>
             {#each categories as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
           </select>
         </label>
       {/if}
       <div class="row">
-        <button class="btn primary">{existing ? t('Änderungen speichern') : t('Anlegen')}</button>
-        {#if existing}<button type="button" class="btn danger" onclick={remove}>{t('Löschen')}</button>{/if}
+        <button class="btn primary">{existing ? t('common_save_changes') : t('channel_editor_create')}</button>
+        {#if existing}<button type="button" class="btn danger" onclick={remove}>{t('common_delete')}</button>{/if}
       </div>
     </form>
 
     {#if existing && kind !== 'category' && can(P.MANAGE_ROLES)}
       <div>
-        <h3>{t('Kanalregeln')}</h3>
-        <p class="muted">{t('Pro Rolle oder Mitglied erlauben, verbieten oder die Server-Einstellung übernehmen. Regeln für ein Mitglied gehen vor. Änderungen gelten sofort.')}</p>
+        <h3>{t('channel_editor_channel_rules')}</h3>
+        <p class="muted">{t('channel_editor_allow_deny_inherit_server_setting')}</p>
       </div>
       <div class="rules">
         <table>
           <thead>
             <tr>
-              <th>{t('Rolle oder Mitglied')}</th>
+              <th>{t('channel_editor_role_member')}</th>
               {#each rules as p}<th>{t(p.name)}</th>{/each}
             </tr>
           </thead>
@@ -131,10 +131,10 @@
                 {#each rules as p}
                   {@const s = rule(r.id, p.bit)}
                   <td>
-                    <div class="tri" role="group" aria-label={t('{perm} für {role}', { perm: t(p.name), role: r.name })}>
-                      <button class:on={s === -1} class="no" onclick={() => setState(r.id, p.bit, -1, r.kind)} aria-pressed={s === -1}>{t('Nein')}</button>
-                      <button class:on={s === 0} onclick={() => setState(r.id, p.bit, 0, r.kind)} aria-pressed={s === 0}>{t('Erben')}</button>
-                      <button class:on={s === 1} class="yes" onclick={() => setState(r.id, p.bit, 1, r.kind)} aria-pressed={s === 1}>{t('Ja')}</button>
+                    <div class="tri" role="group" aria-label={t('channel_editor_perm_role', { perm: t(p.name), role: r.name })}>
+                      <button class:on={s === -1} class="no" onclick={() => setState(r.id, p.bit, -1, r.kind)} aria-pressed={s === -1}>{t('channel_editor_no')}</button>
+                      <button class:on={s === 0} onclick={() => setState(r.id, p.bit, 0, r.kind)} aria-pressed={s === 0}>{t('channel_editor_inherit')}</button>
+                      <button class:on={s === 1} class="yes" onclick={() => setState(r.id, p.bit, 1, r.kind)} aria-pressed={s === 1}>{t('channel_editor_yes')}</button>
                     </div>
                   </td>
                 {/each}
@@ -145,9 +145,9 @@
       </div>
       {#if addable.length}
         <label class="field">
-          <span>{t('Regel für ein einzelnes Mitglied hinzufügen')}</span>
+          <span>{t('channel_editor_add_rule_single_member')}</span>
           <select class="input" value="" onchange={(e) => ((extra = [...extra, e.currentTarget.value]), (e.currentTarget.value = ''))}>
-            <option value="">{t('Mitglied auswählen')}</option>
+            <option value="">{t('channel_editor_pick_member')}</option>
             {#each addable as m (m.id)}<option value={m.id}>{m.nickname || m.display_name}</option>{/each}
           </select>
         </label>

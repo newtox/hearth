@@ -1,12 +1,12 @@
 import { lang, type Lang } from './i18n.svelte';
 
 export const THEMES = [
-  { id: 'hell', name: 'Hell', style: 'modern', color: '#ffffff', swatch: '#ffffff' },
-  { id: 'asche', name: 'Asche', style: 'modern', color: '#34363c', swatch: '#34363c' },
-  { id: 'dunkel', name: 'Dunkel', style: 'modern', color: '#1b1b1f', swatch: '#1b1b1f' },
-  { id: 'onyx', name: 'Onyx', style: 'modern', color: '#000000', swatch: '#000000' },
-  { id: 'modern', name: 'Mitternacht', style: 'modern', color: '#1a1b2e', swatch: '#23254a' },
-  { id: 'pergament', name: 'Pergament', style: 'pergament', color: '#24170f', swatch: '#ecdcb8' },
+  { id: 'hell', name: 'theme_light', style: 'modern', color: '#ffffff', swatch: '#ffffff' },
+  { id: 'asche', name: 'theme_ash', style: 'modern', color: '#34363c', swatch: '#34363c' },
+  { id: 'dunkel', name: 'theme_dark', style: 'modern', color: '#1b1b1f', swatch: '#1b1b1f' },
+  { id: 'onyx', name: 'theme_onyx', style: 'modern', color: '#000000', swatch: '#000000' },
+  { id: 'modern', name: 'theme_midnight', style: 'modern', color: '#1a1b2e', swatch: '#23254a' },
+  { id: 'pergament', name: 'theme_parchment', style: 'pergament', color: '#24170f', swatch: '#ecdcb8' },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]['id'];

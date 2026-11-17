@@ -40,7 +40,7 @@
     <form class="panel dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" onsubmit={submit}>
       <header class="row">
         <h2 id="dialog-title" class="grow">{d.title}</h2>
-        <button type="button" class="x" onclick={cancel} aria-label={t('Schließen')}><Icon name="close" /></button>
+        <button type="button" class="x" onclick={cancel} aria-label={t('common_close')}><Icon name="close" /></button>
       </header>
       <div class="body stack">
         {#if d.text}<p class="muted">{d.text}</p>{/if}
@@ -56,10 +56,10 @@
             <input class="input" bind:this={field} bind:value type={d.input.type ?? 'text'} placeholder={d.input.placeholder} maxlength="512" />
           </label>
         {/if}
-        {#if d.tip}<p class="tip"><strong>{t('Tipp:')}</strong> {d.tip}</p>{/if}
+        {#if d.tip}<p class="tip"><strong>{t('dialog_tip')}</strong> {d.tip}</p>{/if}
       </div>
       <footer class="row">
-        <button type="button" class="btn grow" onclick={cancel}>{t('Abbrechen')}</button>
+        <button type="button" class="btn grow" onclick={cancel}>{t('common_cancel')}</button>
         <button class="btn grow" class:primary={!d.danger} class:danger={d.danger} bind:this={confirmButton} disabled={blocked}>{d.confirm}</button>
       </footer>
     </form>

@@ -146,10 +146,10 @@ export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
     current.voiceChannel = ch.id;
     play('join');
     Object.assign(voice, { channelId: ch.id, guildId: ch.guild_id ?? null, canSpeak: res.can_speak, canStream: res.can_stream });
-    if (res.can_speak) await r.localParticipant.setMicrophoneEnabled(true).catch(() => toast(t('Kein Zugriff auf das Mikrofon. Du hörst zu, bist aber stumm.')));
+    if (res.can_speak) await r.localParticipant.setMicrophoneEnabled(true).catch(() => toast(t('voice_no_access_microphone_listen_but')));
     sync();
   } catch (e) {
-    toast(e instanceof ApiError ? e.message : t('Der Sprachserver ist nicht erreichbar'));
+    toast(e instanceof ApiError ? e.message : t('voice_voice_server_unreachable'));
     const r = room;
     cleanup();
     r?.disconnect();
@@ -167,7 +167,7 @@ export async function leaveVoice() {
 
 export async function toggleMute() {
   if (!room || !voice.canSpeak) return;
-  await room.localParticipant.setMicrophoneEnabled(voice.muted).catch(() => toast(t('Kein Zugriff auf das Mikrofon')));
+  await room.localParticipant.setMicrophoneEnabled(voice.muted).catch(() => toast(t('voice_no_access_microphone')));
   sync();
   play(voice.muted ? 'mute' : 'unmute');
 }
@@ -177,7 +177,7 @@ export async function toggleShare() {
   try {
     await room.localParticipant.setScreenShareEnabled(!voice.sharing, { audio: true });
   } catch {
-    if (!voice.sharing) toast(t('Bildschirmfreigabe abgebrochen oder nicht erlaubt'));
+    if (!voice.sharing) toast(t('voice_screen_sharing_was_cancelled_not'));
   }
   sync();
   api('POST', '/voice/stream', { on: voice.sharing }).catch(() => {});

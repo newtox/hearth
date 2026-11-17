@@ -28,7 +28,7 @@
 
   async function create(e: SubmitEvent) {
     e.preventDefault();
-    finish(await attempt(api<Guild>('POST', '/guilds', { name, category: t('Allgemeines'), channel: t('allgemein') })));
+    finish(await attempt(api<Guild>('POST', '/guilds', { name, category: t('create_join_general'), channel: t('create_join_general_channel') })));
   }
 
   async function look(e: SubmitEvent) {
@@ -43,14 +43,14 @@
   if (initial) attempt(api('GET', `/invites/${encodeURIComponent(initial)}`)).then((p) => (preview = p ?? null));
 </script>
 
-<Modal title={t('{server} erstellen oder beitreten', { server: w('server') })} onclose={() => (app.modal = null)}>
+<Modal title={t('common_create_join_server', { server: w('server') })} onclose={() => (app.modal = null)}>
   <div class="stack">
     <form class="stack" onsubmit={look}>
       <label class="field">
-        <span>{t('Einladungscode oder Link')}</span>
+        <span>{t('create_join_invite_code_link')}</span>
         <div class="row">
-          <input class="input" bind:value={code} placeholder={t('z. B. aB3dE5fG7h')} required />
-          <button class="btn">{t('Prüfen')}</button>
+          <input class="input" bind:value={code} placeholder={t('create_join_e_g_ab3de5fg7h')} required />
+          <button class="btn">{t('create_join_check')}</button>
         </div>
       </label>
     </form>
@@ -61,16 +61,16 @@
           <strong class="ellipsis">{preview.name}</strong>
           <p class="muted">{preview.members} {w('members')}</p>
         </div>
-        <button class="btn primary" onclick={join}>{t('Beitreten')}</button>
+        <button class="btn primary" onclick={join}>{t('common_join')}</button>
       </div>
     {/if}
     <hr />
     <form class="stack" onsubmit={create}>
       <label class="field">
-        <span>{t('Oder einen neuen {server} gründen', { server: w('server') })}</span>
+        <span>{t('create_join_start_new_server', { server: w('server') })}</span>
         <div class="row">
-          <input class="input" bind:value={name} placeholder={t('Name')} maxlength="60" required />
-          <button class="btn primary">{t('Erstellen')}</button>
+          <input class="input" bind:value={name} placeholder={t('common_name')} maxlength="60" required />
+          <button class="btn primary">{t('create_join_create')}</button>
         </div>
       </label>
     </form>

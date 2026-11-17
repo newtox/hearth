@@ -3,33 +3,33 @@ import { fromEnglish, locale, t } from './i18n.svelte';
 import type { Activity, Badge } from './store.svelte';
 
 export function activityText(a: Activity) {
-  if (a.kind === 'playing') return t('Spielt {name}', { name: a.name });
-  if (a.kind === 'listening') return t('Hört {name}', { name: a.name });
-  if (a.kind === 'watching') return t('Schaut {name}', { name: a.name });
+  if (a.kind === 'playing') return t('activity_playing_name', { name: a.name });
+  if (a.kind === 'listening') return t('activity_listening_name', { name: a.name });
+  if (a.kind === 'watching') return t('activity_watching_name', { name: a.name });
   return a.name;
 }
 
 export function elapsed(since: string) {
   const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(since)) / 60000));
-  if (minutes < 1) return t('gerade eben');
-  if (minutes < 60) return t('seit {n} Min.', { n: minutes });
-  return t('seit {n} Std.', { n: Math.floor(minutes / 60) });
+  if (minutes < 1) return t('activity_just_now');
+  if (minutes < 60) return t('activity_n_min', { n: minutes });
+  return t('activity_n_h', { n: Math.floor(minutes / 60) });
 }
 
 export const TRACKS: Record<string, { name: string; hint: string; years?: boolean }> = {
-  play: { name: 'Spielzeit', hint: 'Zählt, solange ein Spiel als deine Aktivität läuft.' },
-  stream: { name: 'Streamzeit', hint: 'Zählt, solange du in einem Sprachkanal deinen Bildschirm teilst.' },
-  voice: { name: 'Sprachzeit', hint: 'Zählt, solange du in einem Sprachkanal bist.' },
-  age: { name: 'Kontoalter', hint: 'Zählt ab dem Tag der Registrierung. Die Zeit erledigt den Rest.', years: true },
+  play: { name: 'activity_playtime', hint: 'activity_counts_while_game_running_as' },
+  stream: { name: 'activity_stream_time', hint: 'activity_counts_while_share_screen_voice' },
+  voice: { name: 'activity_voice_time', hint: 'activity_counts_while_voice_channel' },
+  age: { name: 'activity_account_age', hint: 'activity_counts_from_day_registered_time', years: true },
 };
 
 export function amount(track: string, n: number) {
-  if (TRACKS[track]?.years) return n === 1 ? t('1 Jahr') : t('{n} Jahre', { n });
-  return n === 1 ? t('1 Stunde') : t('{n} Stunden', { n: n.toLocaleString(locale()) });
+  if (TRACKS[track]?.years) return n === 1 ? t('activity_1_year') : t('activity_n_years', { n });
+  return n === 1 ? t('common_1_hour') : t('activity_n_hours', { n: n.toLocaleString(locale()) });
 }
 
 export function badgeLabel(b: Badge) {
-  if (b.track) return { name: t(TRACKS[b.track].name), description: `${amount(b.track, b.hours ?? 0)}, ${t('Stufe {tier} von 10', { tier: (b.tier ?? 0) + 1 })}` };
+  if (b.track) return { name: t(TRACKS[b.track].name), description: `${amount(b.track, b.hours ?? 0)}, ${t('common_level_tier_10', { tier: (b.tier ?? 0) + 1 })}` };
   return { name: fromEnglish(b.name), description: fromEnglish(b.description) };
 }
 

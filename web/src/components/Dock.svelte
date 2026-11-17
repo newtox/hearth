@@ -26,11 +26,11 @@
         {#if guildUnread(g)}<i class="pip"></i>{/if}
       </button>
     {/each}
-    <button class="tab add" onclick={() => (app.modal = { kind: 'create' })} title={t('{server} erstellen oder beitreten', { server: w('server') })} aria-label={t('{server} erstellen oder beitreten', { server: w('server') })}>
+    <button class="tab add" onclick={() => (app.modal = { kind: 'create' })} title={t('common_create_join_server', { server: w('server') })} aria-label={t('common_create_join_server', { server: w('server') })}>
       <Icon name="plus" />
     </button>
   </div>
-  <button class="tab me" onclick={(e) => openMenu(e, statusMenu())} oncontextmenu={(e) => openMenu(e, statusMenu())} title={t('Status und Einstellungen')} aria-haspopup="menu">
+  <button class="tab me" onclick={(e) => openMenu(e, statusMenu())} oncontextmenu={(e) => openMenu(e, statusMenu())} title={t('dock_status_settings')} aria-haspopup="menu">
     <Avatar id={app.me!.id} name={app.me!.display_name} image={app.me!.avatar} size={28} status={app.connected ? (app.me!.status ?? 'online') : 'offline'} />
     <span class="label ellipsis">{app.me!.display_name}</span>
   </button>

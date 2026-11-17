@@ -35,13 +35,13 @@
       else if (mode === 'forgot') {
         await api('POST', '/auth/forgot', { login: username, lang });
         sent = true;
-      } else if (password !== repeat) error = t('Die neuen Passwörter stimmen nicht überein');
+      } else if (password !== repeat) error = t('common_new_passwords_do_not_match');
       else {
         await resetPassword(resetToken, password);
         history.replaceState(null, '', location.pathname);
       }
     } catch (err) {
-      error = err instanceof Error ? err.message : t('Fehler');
+      error = err instanceof Error ? err.message : t('common_error');
     }
     busy = false;
   }
@@ -53,52 +53,52 @@
   <form class="panel stack" onsubmit={submit}>
     <div>
       <h1>Hearth</h1>
-      <p class="muted">{theme.id === 'pergament' ? t('Tritt ans Feuer, Reisender.') : t('Dein Platz am Feuer.')}</p>
+      <p class="muted">{theme.id === 'pergament' ? t('auth_step_up_fire_traveller') : t('auth_place_fire')}</p>
     </div>
     {#if mode === 'forgot' || mode === 'reset'}
-      <h2>{mode === 'forgot' ? t('Passwort vergessen') : t('Neues Passwort festlegen')}</h2>
+      <h2>{mode === 'forgot' ? t('auth_forgot_password') : t('auth_choose_new_password')}</h2>
     {/if}
     {#if isApp && mode !== 'reset'}
       <label class="field">
-        <span>{t('Server-Adresse')}</span>
+        <span>{t('auth_server_address')}</span>
         <input class="input" bind:value={server} placeholder="https://chat.example.de" inputmode="url" autocapitalize="off" required />
       </label>
     {/if}
     {#if mode === 'forgot' && sent}
-      <p role="status">{t('Wenn es dieses Konto gibt, ist jetzt eine E-Mail mit einem Link unterwegs. Er gilt eine Stunde.')}</p>
+      <p role="status">{t('auth_if_account_exists_email_link')}</p>
     {:else if mode !== 'reset'}
     <label class="field">
-      <span>{mode === 'register' ? t('Benutzername') : t('Benutzername oder E-Mail')}</span>
+      <span>{mode === 'register' ? t('common_username') : t('auth_username_email')}</span>
       <input class="input" bind:value={username} autocomplete="username" required />
     </label>
     {/if}
     {#if mode === 'register'}
       <label class="field">
-        <span>{t('E-Mail')}</span>
+        <span>{t('common_email')}</span>
         <input class="input" type="email" bind:value={email} autocomplete="email" required />
       </label>
     {/if}
     {#if mode !== 'forgot'}
       <label class="field">
-        <span>{mode === 'reset' ? t('Neues Passwort') : t('Passwort')}</span>
+        <span>{mode === 'reset' ? t('common_new_password') : t('common_password')}</span>
         <input class="input" type="password" bind:value={password} autocomplete={mode === 'login' ? 'current-password' : 'new-password'} minlength="8" required />
       </label>
     {/if}
     {#if mode === 'reset'}
       <label class="field">
-        <span>{t('Neues Passwort wiederholen')}</span>
+        <span>{t('common_repeat_new_password')}</span>
         <input class="input" type="password" bind:value={repeat} autocomplete="new-password" minlength="8" required />
       </label>
     {/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     {#if !(mode === 'forgot' && sent)}
-      <button class="btn primary" disabled={busy}>{mode === 'login' ? w('login') : mode === 'register' ? w('register') : mode === 'forgot' ? t('Link senden') : t('Passwort speichern')}</button>
+      <button class="btn primary" disabled={busy}>{mode === 'login' ? w('login') : mode === 'register' ? w('register') : mode === 'forgot' ? t('auth_send_link') : t('auth_save_password')}</button>
     {/if}
     {#if mode === 'login'}
-      <button type="button" class="switch" onclick={() => ((mode = 'forgot'), (error = ''), (sent = false))}>{t('Passwort vergessen?')}</button>
+      <button type="button" class="switch" onclick={() => ((mode = 'forgot'), (error = ''), (sent = false))}>{t('auth_forgot_password_question')}</button>
     {/if}
     <button type="button" class="switch" onclick={() => ((mode = mode === 'login' ? 'register' : 'login'), (error = ''))}>
-      {mode === 'login' ? t('Noch kein Konto? Konto erstellen') : t('Schon ein Konto? Anmelden')}
+      {mode === 'login' ? t('auth_no_account_yet_create_one') : t('auth_already_have_account_sign')}
     </button>
     <div class="row themes">
       {#each LANGS as l}

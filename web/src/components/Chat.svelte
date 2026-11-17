@@ -30,7 +30,7 @@
     if (!ch) return [];
     return Object.keys(app.typing[ch.id] ?? {}).map((id) => {
       const u = g?.members.find((m) => m.id === id) ?? direct?.recipients.find((r) => r.id === id) ?? null;
-      return u ? memberName(g, u) : t('Jemand');
+      return u ? memberName(g, u) : t('chat_someone');
     });
   });
 
@@ -116,7 +116,7 @@
     if (!ch || !files) return;
     for (const f of [...files].slice(0, 10 - pending.length)) {
       if (f.size > 25 * 1024 * 1024) {
-        toast(t('{name} ist größer als 25 MB', { name: f.name }));
+        toast(t('chat_name_larger_than_25_mb', { name: f.name }));
         continue;
       }
       uploading++;
@@ -250,37 +250,37 @@
     if ((e.target as HTMLElement).closest('a, input, textarea')) return;
     const own = m.author.id === app.me?.id;
     openMenu(e, [
-      has(perms, P.SEND_MESSAGES) && { label: t('Antworten'), icon: 'reply', action: () => startReply(m) },
-      has(perms, P.ADD_REACTIONS) && { label: t('Reagieren'), icon: 'smile', action: () => (picker = { message: m }) },
-      own && !!m.content && !m.poll && !m.content.match(STICKER) && { label: t('Bearbeiten'), icon: 'edit', action: () => startEdit(m) },
+      has(perms, P.SEND_MESSAGES) && { label: t('chat_reply'), icon: 'reply', action: () => startReply(m) },
+      has(perms, P.ADD_REACTIONS) && { label: t('chat_react'), icon: 'smile', action: () => (picker = { message: m }) },
+      own && !!m.content && !m.poll && !m.content.match(STICKER) && { label: t('common_edit'), icon: 'edit', action: () => startEdit(m) },
       'sep',
-      !!m.content && !m.content.match(STICKER) && { label: t('Text kopieren'), icon: 'copy', action: () => copy(m.content) },
-      !own && { label: t('Erwähnen'), icon: 'at', action: () => (app.insert = `@${m.author.username} `) },
-      canPin && { label: m.pinned ? t('Nicht mehr anheften') : t('Anheften'), icon: 'pin', action: () => togglePin(m) },
-      { label: t('Nachrichten-ID kopieren'), icon: 'id', action: () => copy(m.id) },
+      !!m.content && !m.content.match(STICKER) && { label: t('chat_copy_text'), icon: 'copy', action: () => copy(m.content) },
+      !own && { label: t('common_mention'), icon: 'at', action: () => (app.insert = `@${m.author.username} `) },
+      canPin && { label: m.pinned ? t('common_unpin') : t('chat_pin'), icon: 'pin', action: () => togglePin(m) },
+      { label: t('chat_copy_message_id'), icon: 'id', action: () => copy(m.id) },
       'sep',
-      (own || (g && has(perms, P.MANAGE_MESSAGES)) || groupDelete) && { label: t('Nachricht löschen'), icon: 'trash', danger: true, action: () => remove(m) },
+      (own || (g && has(perms, P.MANAGE_MESSAGES)) || groupDelete) && { label: t('chat_delete_message'), icon: 'trash', danger: true, action: () => remove(m) },
     ]);
   }
 
   async function remove(m: Message, e?: MouseEvent) {
-    const preview = { name: memberName(g, m.author), text: m.content.match(STICKER) ? t('Sticker') : m.content || (m.poll ? t('Umfrage') : m.attachments.map((a) => a.filename).join(', ')) };
-    if (e?.shiftKey || (await ask({ title: t('Nachricht löschen'), text: t('Willst du diese Nachricht wirklich löschen?'), preview, confirm: t('Löschen'), danger: true, tip: t('Halte Umschalt beim Klick auf den Papierkorb, um diese Abfrage zu überspringen.') }))) attempt(api('DELETE', `/channels/${m.channel_id}/messages/${m.id}`));
+    const preview = { name: memberName(g, m.author), text: m.content.match(STICKER) ? t('common_stickers') : m.content || (m.poll ? t('chat_poll') : m.attachments.map((a) => a.filename).join(', ')) };
+    if (e?.shiftKey || (await ask({ title: t('chat_delete_message'), text: t('chat_sure_want_delete_message'), preview, confirm: t('common_delete'), danger: true, tip: t('chat_hold_shift_while_clicking_trash') }))) attempt(api('DELETE', `/channels/${m.channel_id}/messages/${m.id}`));
   }
 </script>
 
 {#snippet headerTools()}
-  <button class="icon headtool" class:on={app.side === 'pins'} onclick={() => ((app.side = app.side === 'pins' ? null : 'pins'), app.side && (app.pane = 'members'))} aria-label={t('Angeheftete Nachrichten')} title={t('Angeheftete Nachrichten')} aria-pressed={app.side === 'pins'}><Icon name="pin" /></button>
-  <button class="icon headtool searchtool" class:on={app.side === 'search'} onclick={() => ((app.side = 'search'), (app.pane = 'members'))} aria-label={t('Nachrichten durchsuchen')}><Icon name="search" /></button>
+  <button class="icon headtool" class:on={app.side === 'pins'} onclick={() => ((app.side = app.side === 'pins' ? null : 'pins'), app.side && (app.pane = 'members'))} aria-label={t('chat_pinned_messages')} title={t('chat_pinned_messages')} aria-pressed={app.side === 'pins'}><Icon name="pin" /></button>
+  <button class="icon headtool searchtool" class:on={app.side === 'search'} onclick={() => ((app.side = 'search'), (app.pane = 'members'))} aria-label={t('common_search_messages')}><Icon name="search" /></button>
   <label class="searchbox">
     <Icon name="search" size={15} />
-    <input type="search" bind:value={query} onkeydown={searchKey} placeholder={g ? t('{server} durchsuchen', { server: w('server') }) : t('Durchsuchen')} aria-label={t('Nachrichten durchsuchen')} />
+    <input type="search" bind:value={query} onkeydown={searchKey} placeholder={g ? t('common_search_server', { server: w('server') }) : t('common_search')} aria-label={t('common_search_messages')} />
   </label>
 {/snippet}
 
 <section class="panel pane-chat">
   <header class="row">
-    <button class="icon mobile" onclick={() => (app.pane = 'side')} aria-label={t('Kanalliste')}><Icon name="menu" /></button>
+    <button class="icon mobile" onclick={() => (app.pane = 'side')} aria-label={t('common_channel_list')}><Icon name="menu" /></button>
     {#if ch}
       {#if dmUser}
         <button class="row who" onclick={() => (app.profile = dmUser.id)} oncontextmenu={(e) => openMenu(e, memberMenu(dmUser.id, null))}>
@@ -315,9 +315,9 @@
     {#if direct}<CallBar dm={direct} />{/if}
     <div class="messages scroll" bind:this={list} {onscroll}>
       {#if app.more[ch.id]}
-        <button class="btn small older" onclick={older}>{t('Ältere Nachrichten laden')}</button>
+        <button class="btn small older" onclick={older}>{t('chat_load_older_messages')}</button>
       {:else if app.messages[ch.id]}
-        <p class="start muted">{dmUser ? t('Hier beginnt deine Unterhaltung mit {name}.', { name: title }) : direct ? t('Hier beginnt die Gruppe {name}.', { name: title }) : t('Hier beginnt #{name}.', { name: title })}</p>
+        <p class="start muted">{dmUser ? t('chat_start_conversation_name', { name: title }) : direct ? t('chat_start_group_name', { name: title }) : t('chat_start_name', { name: title })}</p>
       {/if}
       {#each messages as m, i (m.id)}
         {@const own = m.author.id === app.me?.id}
@@ -327,7 +327,7 @@
         {/if}
         <article class="msg" class:own class:joined class:mention={!own && mentionsMe(m, !!g)} class:flash={app.highlight === m.id} data-id={m.id} oncontextmenu={(e) => editing !== m.id && messageMenu(e, m)}>
           {#if !own}
-            <button class="face" onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))} aria-label={t('Profil von {name}', { name: m.author.display_name })} tabindex={joined ? -1 : 0}>
+            <button class="face" onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))} aria-label={t('chat_profile_name', { name: m.author.display_name })} tabindex={joined ? -1 : 0}>
               {#if !joined}<Avatar id={m.author.id} name={m.author.display_name} image={m.author.avatar} size={34} />{/if}
             </button>
           {/if}
@@ -336,35 +336,35 @@
               <div class="meta">
                 {#if !own}<button class="name" style:color={nameColor(m.author.id)} onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))}>{memberName(g, m.author)}</button>{/if}
                 <time datetime={m.created_at}>{time.format(new Date(m.created_at))}</time>
-                {#if m.pinned}<span class="pinmark" title={t('Angeheftet')}><Icon name="pin" size={12} /></span>{/if}
+                {#if m.pinned}<span class="pinmark" title={t('common_pinned')}><Icon name="pin" size={12} /></span>{/if}
               </div>
             {/if}
             {#if m.reply}
               {#if m.reply.deleted}
-                <p class="quote muted"><Icon name="reply" size={13} /><em>{t('Die ursprüngliche Nachricht wurde gelöscht')}</em></p>
+                <p class="quote muted"><Icon name="reply" size={13} /><em>{t('chat_original_message_was_deleted')}</em></p>
               {:else}
                 <button class="quote" onclick={() => jumpTo(g?.id ?? null, m.channel_id, m.reply!.id)}>
                   <Icon name="reply" size={13} />
                   <Avatar id={m.reply.author!.id} name={m.reply.author!.display_name} image={m.reply.author!.avatar} size={16} />
                   <strong style:color={nameColor(m.reply.author!.id)}>{memberName(g, m.reply.author!)}</strong>
-                  <span class="ellipsis">{m.reply.content?.match(STICKER) ? t('Sticker') : m.reply.content || (m.reply.attachments ? t('Datei') : '')}</span>
+                  <span class="ellipsis">{m.reply.content?.match(STICKER) ? t('common_stickers') : m.reply.content || (m.reply.attachments ? t('common_file') : '')}</span>
                 </button>
               {/if}
             {/if}
             {#if editing === m.id}
               <textarea class="input" bind:value={editText} onkeydown={(e) => editKey(e, m)} rows="2"></textarea>
               <div class="row hint">
-                <button class="btn small primary" onclick={() => saveEdit(m)}>{t('Speichern')}</button>
-                <button class="btn small" onclick={() => (editing = null)}>{t('Abbrechen')}</button>
+                <button class="btn small primary" onclick={() => saveEdit(m)}>{t('common_save')}</button>
+                <button class="btn small" onclick={() => (editing = null)}>{t('common_cancel')}</button>
               </div>
             {:else if !own && isBlocked(m.author.id) && !revealed.includes(m.id)}
-              <button class="hidden muted" onclick={() => (revealed = [...revealed, m.id])}>{t('Nachricht von blockiertem Nutzer. Anzeigen')}</button>
+              <button class="hidden muted" onclick={() => (revealed = [...revealed, m.id])}>{t('chat_message_from_blocked_user_show')}</button>
             {:else}
               {@const sticker = m.content.match(STICKER)}
               {#if sticker}
                 <img class="sticker" src={asset(sticker[2])} alt={sticker[1]} title={sticker[1]} />
               {:else if m.content}
-                <div class="bubble"><Markdown text={m.content} />{#if m.edited_at}<small class="edited"> {t('(bearbeitet)')}</small>{/if}</div>
+                <div class="bubble"><Markdown text={m.content} />{#if m.edited_at}<small class="edited"> {t('chat_edited')}</small>{/if}</div>
               {/if}
             {/if}
             {#if m.poll}<PollCard message={m} />{/if}
@@ -393,17 +393,17 @@
           </div>
           {#if editing !== m.id}
             <div class="tools">
-              {#if has(perms, P.SEND_MESSAGES)}<button class="icon" onclick={() => startReply(m)} aria-label={t('Antworten')} title={t('Antworten')}><Icon name="reply" size={15} /></button>{/if}
-              {#if has(perms, P.ADD_REACTIONS)}<button class="icon" onclick={() => (picker = { message: m })} aria-label={t('Reagieren')}><Icon name="smile" size={15} /></button>{/if}
-              {#if own && m.content && !m.poll && !m.content.match(STICKER)}<button class="icon" onclick={() => startEdit(m)} aria-label={t('Bearbeiten')}><Icon name="edit" size={15} /></button>{/if}
-              {#if own || (g && has(perms, P.MANAGE_MESSAGES)) || groupDelete}<button class="icon" onclick={(e) => remove(m, e)} aria-label={t('Löschen')}><Icon name="trash" size={15} /></button>{/if}
+              {#if has(perms, P.SEND_MESSAGES)}<button class="icon" onclick={() => startReply(m)} aria-label={t('chat_reply')} title={t('chat_reply')}><Icon name="reply" size={15} /></button>{/if}
+              {#if has(perms, P.ADD_REACTIONS)}<button class="icon" onclick={() => (picker = { message: m })} aria-label={t('chat_react')}><Icon name="smile" size={15} /></button>{/if}
+              {#if own && m.content && !m.poll && !m.content.match(STICKER)}<button class="icon" onclick={() => startEdit(m)} aria-label={t('common_edit')}><Icon name="edit" size={15} /></button>{/if}
+              {#if own || (g && has(perms, P.MANAGE_MESSAGES)) || groupDelete}<button class="icon" onclick={(e) => remove(m, e)} aria-label={t('common_delete')}><Icon name="trash" size={15} /></button>{/if}
             </div>
           {/if}
         </article>
       {/each}
     </div>
     <p class="typing muted" aria-live="polite">
-      {#if typers.length === 1}{t('{name} schreibt …', { name: typers[0] })}{:else if typers.length > 1}{t('{names} schreiben …', { names: typers.slice(0, 3).join(', ') })}{/if}
+      {#if typers.length === 1}{t('chat_name_typing', { name: typers[0] })}{:else if typers.length > 1}{t('chat_names_typing', { names: typers.slice(0, 3).join(', ') })}{/if}
     </p>
     {#if has(perms, P.SEND_MESSAGES)}
       {#if pending.length || uploading}
@@ -412,45 +412,45 @@
             <span class="chip">
               {#if a.is_image}<img src={asset(a.file)} alt="" />{:else}<Icon name="clip" size={14} />{/if}
               <span class="ellipsis">{a.filename}</span>
-              <button onclick={() => (pending = pending.filter((x) => x.id !== a.id))} aria-label={t('{name} entfernen', { name: a.filename })}><Icon name="close" size={13} /></button>
+              <button onclick={() => (pending = pending.filter((x) => x.id !== a.id))} aria-label={t('common_remove_name', { name: a.filename })}><Icon name="close" size={13} /></button>
             </span>
           {/each}
-          {#if uploading}<span class="muted">{t('Lade hoch …')}</span>{/if}
+          {#if uploading}<span class="muted">{t('chat_uploading')}</span>{/if}
         </div>
       {/if}
       {#if replying}
         <div class="replying row">
           <Icon name="reply" size={14} />
-          <span class="grow ellipsis">{t('Antwort an {name}', { name: memberName(g, replying.author) })}</span>
-          <button class="icon" onclick={() => (replying = null)} aria-label={t('Antwort abbrechen')} title={t('Antwort abbrechen')}><Icon name="close" size={14} /></button>
+          <span class="grow ellipsis">{t('chat_replying_name', { name: memberName(g, replying.author) })}</span>
+          <button class="icon" onclick={() => (replying = null)} aria-label={t('chat_cancel_reply')} title={t('chat_cancel_reply')}><Icon name="close" size={14} /></button>
         </div>
       {/if}
       <form class="composer row" onsubmit={(e) => (e.preventDefault(), send())}>
         {#if has(perms, P.ATTACH_FILES)}
-          <label class="icon tool" title={t('Datei anhängen')}>
+          <label class="icon tool" title={t('chat_attach_file')}>
             <Icon name="clip" />
             <input type="file" multiple hidden onchange={(e) => (attach(e.currentTarget.files), (e.currentTarget.value = ''))} />
           </label>
         {/if}
-        <textarea class="input" rows="1" maxlength="4000" bind:this={input} bind:value={draft} onkeydown={keydown} {oninput} onpaste={paste} placeholder={t('{message} an {target}', { message: w('message'), target: direct ? title : '#' + title })}></textarea>
-        <button type="button" class="icon tool" onclick={() => (pollOpen = true)} aria-label={t('Umfrage erstellen')} title={t('Umfrage erstellen')}><Icon name="poll" /></button>
-        <button type="button" class="icon tool" onclick={() => (picker = { message: null })} aria-label={t('Emojis und Sticker')}><Icon name="smile" /></button>
+        <textarea class="input" rows="1" maxlength="4000" bind:this={input} bind:value={draft} onkeydown={keydown} {oninput} onpaste={paste} placeholder={t('chat_message_target', { message: w('message'), target: direct ? title : '#' + title })}></textarea>
+        <button type="button" class="icon tool" onclick={() => (pollOpen = true)} aria-label={t('common_create_poll')} title={t('common_create_poll')}><Icon name="poll" /></button>
+        <button type="button" class="icon tool" onclick={() => (picker = { message: null })} aria-label={t('chat_emojis_stickers')}><Icon name="smile" /></button>
         <button class="btn primary" disabled={(!draft.trim() && !pending.length) || uploading > 0} aria-label={w('send')}><Icon name="send" /><span class="send-label">{w('send')}</span></button>
       </form>
     {:else}
-      <p class="readonly muted">{t('Du darfst in diesem Kanal nicht schreiben.')}</p>
+      <p class="readonly muted">{t('chat_not_allowed_write_channel')}</p>
     {/if}
     {#if pollOpen}<PollModal channelId={ch.id} onclose={() => (pollOpen = false)} />{/if}
     {#if picker}<EmojiPicker stickers={!picker.message} {external} onpick={pick} onclose={() => (picker = null)} />{/if}
   {:else}
     <div class="blank">
-      <h2>{app.guildId ? t('Kein Kanal sichtbar') : t('Willkommen am Feuer')}</h2>
+      <h2>{app.guildId ? t('chat_no_channel_visible') : t('chat_welcome_fire')}</h2>
       <p class="muted">
-        {#if app.guildId}{t('Hier gibt es keinen Textkanal, den du sehen darfst.')}
-        {:else if app.guilds.length}{t('Wähle einen {server} oder öffne eine Unterhaltung.', { server: w('server') })}
-        {:else}{t('Erstelle deinen ersten {server} oder tritt einem mit einem Einladungscode bei.', { server: w('server') })}{/if}
+        {#if app.guildId}{t('chat_there_no_text_channel_here')}
+        {:else if app.guilds.length}{t('chat_pick_server_open_conversation', { server: w('server') })}
+        {:else}{t('chat_create_first_server_join_one', { server: w('server') })}{/if}
       </p>
-      {#if !app.guilds.length}<button class="btn primary" onclick={() => (app.modal = { kind: 'create' })}>{t('{server} erstellen oder beitreten', { server: w('server') })}</button>{/if}
+      {#if !app.guilds.length}<button class="btn primary" onclick={() => (app.modal = { kind: 'create' })}>{t('common_create_join_server', { server: w('server') })}</button>{/if}
     </div>
   {/if}
 </section>

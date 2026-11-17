@@ -38,8 +38,8 @@
           <div class="category row" role="presentation" oncontextmenu={(e) => openMenu(e, channelMenu(g, group.category!))}>
             <span class="grow ellipsis">{group.category.name}</span>
             {#if manage}
-              <button class="icon" onclick={() => (app.modal = { kind: 'channel', channel: group.category })} aria-label={t('Kategorie bearbeiten')}><Icon name="edit" size={14} /></button>
-              <button class="icon" onclick={() => (app.modal = { kind: 'channel', channel: null, parent: group.category!.id })} aria-label={t('Kanal anlegen')}><Icon name="plus" size={15} /></button>
+              <button class="icon" onclick={() => (app.modal = { kind: 'channel', channel: group.category })} aria-label={t('common_edit_category')}><Icon name="edit" size={14} /></button>
+              <button class="icon" onclick={() => (app.modal = { kind: 'channel', channel: null, parent: group.category!.id })} aria-label={t('common_create_channel')}><Icon name="plus" size={15} /></button>
             {/if}
           </div>
         {/if}
@@ -50,7 +50,7 @@
               <span class="ellipsis">{c.name}</span>
             </button>
             {#if manage}
-              <button class="icon edit" onclick={() => (app.modal = { kind: 'channel', channel: c })} aria-label={t('{name} bearbeiten', { name: c.name })}><Icon name="edit" size={14} /></button>
+              <button class="icon edit" onclick={() => (app.modal = { kind: 'channel', channel: c })} aria-label={t('common_edit_name', { name: c.name })}><Icon name="edit" size={14} /></button>
             {/if}
           </div>
           {#if c.kind === 'voice'}
@@ -70,13 +70,13 @@
       <div class="item" class:active={!app.channelId}>
         <button class="main row" onclick={() => (select(null), (app.pane = 'chat'))}>
           <Icon name="users" size={18} />
-          <span class="grow">{t('Freunde')}</span>
+          <span class="grow">{t('common_friends')}</span>
           {#if app.friends.incoming.length}<span class="count">{app.friends.incoming.length}</span>{/if}
         </button>
       </div>
       <div class="category row">
-        <span class="grow">{t('Unterhaltungen')}</span>
-        <button class="icon" onclick={() => (app.modal = { kind: 'groupchat', dm: null })} title={t('Neue Gruppe')} aria-label={t('Neue Gruppe')}><Icon name="plus" size={15} /></button>
+        <span class="grow">{t('sidebar_conversations')}</span>
+        <button class="icon" onclick={() => (app.modal = { kind: 'groupchat', dm: null })} title={t('common_new_group')} aria-label={t('common_new_group')}><Icon name="plus" size={15} /></button>
       </div>
       {#each app.dms as d (d.id)}
         {@const p = partner(d)}
@@ -88,20 +88,20 @@
               <Avatar id={p.id} name={p.display_name} image={p.avatar} size={30} status={presenceOf(p)} />
             {/if}
             <span class="ellipsis grow">{dmTitle(d)}</span>
-            {#if d.voice.length}<span class="incall" title={t('Anruf läuft')}><Icon name="phone" size={14} /></span>{/if}
+            {#if d.voice.length}<span class="incall" title={t('common_call_progress')}><Icon name="phone" size={14} /></span>{/if}
           </button>
         </div>
       {:else}
-        <p class="muted empty">{t('Noch keine Unterhaltungen. Schreib einem Freund oder klicke in einem {server} auf ein Mitglied.', { server: w('server') })}</p>
+        <p class="muted empty">{t('sidebar_no_conversations_yet_message_friend', { server: w('server') })}</p>
       {/each}
     </div>
   {/if}
   {#if voice.channelId}
     <div class="voicebar row">
       <span class="live"></span>
-      <span class="grow ellipsis">{t('Verbunden: {name}', { name: voiceName })}</span>
-      <button class="icon" onclick={toggleMute} aria-label={voice.muted ? t('Mikrofon einschalten') : t('Stummschalten')}><Icon name={voice.muted ? 'micOff' : 'mic'} size={17} /></button>
-      <button class="icon" onclick={leaveVoice} aria-label={t('Sprachkanal verlassen')}><Icon name="leave" size={17} /></button>
+      <span class="grow ellipsis">{t('sidebar_connected_name', { name: voiceName })}</span>
+      <button class="icon" onclick={toggleMute} aria-label={voice.muted ? t('common_unmute_microphone') : t('common_mute')}><Icon name={voice.muted ? 'micOff' : 'mic'} size={17} /></button>
+      <button class="icon" onclick={leaveVoice} aria-label={t('sidebar_leave_voice_channel')}><Icon name="leave" size={17} /></button>
     </div>
   {/if}
 </aside>

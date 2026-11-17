@@ -42,7 +42,7 @@
 <div class="settings" role="dialog" aria-modal="true" aria-label={title}>
   <div class="mobilebar">
     <strong class="ellipsis">{title}</strong>
-    <button class="icon" onclick={onclose} aria-label={t('Schließen')}><Icon name="close" /></button>
+    <button class="icon" onclick={onclose} aria-label={t('common_close')}><Icon name="close" /></button>
   </div>
   <nav class="nav scroll" aria-label={title}>
     <div class="inner">
@@ -62,7 +62,7 @@
       {@render children()}
     </div>
   </main>
-  <button class="close" onclick={onclose} aria-label={t('Schließen')}>
+  <button class="close" onclick={onclose} aria-label={t('common_close')}>
     <span class="ring"><Icon name="close" /></span>
     <small>ESC</small>
   </button>

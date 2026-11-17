@@ -14,7 +14,7 @@
 
 {#if compact}
   {#if !here && app.me?.voice}
-    <button class="icon" class:live={dm.voice.length > 0} onclick={() => joinVoice(dm)} disabled={voice.connecting} title={dm.voice.length ? t('Anruf beitreten') : t('Anrufen')} aria-label={dm.voice.length ? t('Anruf beitreten') : t('Anrufen')}>
+    <button class="icon" class:live={dm.voice.length > 0} onclick={() => joinVoice(dm)} disabled={voice.connecting} title={dm.voice.length ? t('call_bar_join_call') : t('call_bar_call')} aria-label={dm.voice.length ? t('call_bar_join_call') : t('call_bar_call')}>
       <Icon name="phone" />
     </button>
   {/if}
@@ -29,14 +29,14 @@
             {#if here && voice.silent.includes(p.id)}<i><Icon name="micOff" size={11} /></i>{/if}
           </span>
         {/each}
-        <span class="muted">{here ? t('Im Anruf') : t('Anruf läuft')}</span>
+        <span class="muted">{here ? t('call_bar_in_call') : t('common_call_progress')}</span>
       </div>
       {#if here}
-        <button class="btn small" class:off={voice.muted} onclick={toggleMute} disabled={!voice.canSpeak} aria-label={voice.muted ? t('Mikrofon einschalten') : t('Stummschalten')}><Icon name={voice.muted ? 'micOff' : 'mic'} size={16} /></button>
-        {#if canShareScreen}<button class="btn small" class:primary={voice.sharing} onclick={toggleShare} disabled={!voice.canStream} aria-label={voice.sharing ? t('Freigabe beenden') : t('Bildschirm teilen')}><Icon name="screen" size={16} /></button>{/if}
-        <button class="btn small danger" onclick={leaveVoice}><Icon name="leave" size={16} />{t('Auflegen')}</button>
+        <button class="btn small" class:off={voice.muted} onclick={toggleMute} disabled={!voice.canSpeak} aria-label={voice.muted ? t('common_unmute_microphone') : t('common_mute')}><Icon name={voice.muted ? 'micOff' : 'mic'} size={16} /></button>
+        {#if canShareScreen}<button class="btn small" class:primary={voice.sharing} onclick={toggleShare} disabled={!voice.canStream} aria-label={voice.sharing ? t('common_stop_sharing') : t('common_share_screen')}><Icon name="screen" size={16} /></button>{/if}
+        <button class="btn small danger" onclick={leaveVoice}><Icon name="leave" size={16} />{t('call_bar_hang_up')}</button>
       {:else if app.me?.voice}
-        <button class="btn small primary" onclick={() => joinVoice(dm)} disabled={voice.connecting}><Icon name="phone" size={16} />{t('Beitreten')}</button>
+        <button class="btn small primary" onclick={() => joinVoice(dm)} disabled={voice.connecting}><Icon name="phone" size={16} />{t('common_join')}</button>
       {/if}
     </div>
   </div>

@@ -24,7 +24,7 @@
 {#if !app.authed}
   <Auth />
 {:else if !app.ready}
-  <div class="loading"><p class="muted">{t('Verbinde …')}</p></div>
+  <div class="loading"><p class="muted">{t('common_connecting')}</p></div>
 {:else}
   <div class="shell">
     <div class="window">

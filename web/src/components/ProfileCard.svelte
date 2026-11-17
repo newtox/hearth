@@ -42,7 +42,7 @@
   }
 
   async function kick() {
-    if (g && (await ask({ title: t('{name} entfernen', { name: user?.display_name ?? '' }), text: t('{name} kann über eine neue Einladung wieder beitreten.', { name: user?.display_name ?? '' }), confirm: t('Entfernen'), danger: true }))) {
+    if (g && (await ask({ title: t('common_remove_name', { name: user?.display_name ?? '' }), text: t('common_name_rejoin_new_invite', { name: user?.display_name ?? '' }), confirm: t('common_remove'), danger: true }))) {
       await attempt(api('DELETE', `/guilds/${g.id}/members/${userId}`));
       close();
     }
@@ -50,7 +50,7 @@
 
   async function ban() {
     if (!g) return;
-    const reason = await askText({ title: t('{name} bannen', { name: user?.display_name ?? '' }), text: t('{name} wird entfernt und kann nicht wieder beitreten, bis der Bann aufgehoben wird.', { name: user?.display_name ?? '' }), input: { label: t('Grund (optional)') }, confirm: t('Bannen'), danger: true });
+    const reason = await askText({ title: t('common_ban_name', { name: user?.display_name ?? '' }), text: t('common_name_removed_cannot_rejoin_until', { name: user?.display_name ?? '' }), input: { label: t('common_reason_optional') }, confirm: t('common_ban'), danger: true });
     if (reason === null) return;
     await attempt(api('PUT', `/guilds/${g.id}/bans/${userId}`, { reason }));
     close();
@@ -60,15 +60,15 @@
 <svelte:window onkeydown={(e) => e.key === 'Escape' && !progressTrack && !openBadge && close()} />
 
 <div class="backdrop" onclick={(e) => e.target === e.currentTarget && close()} role="presentation">
-  <div class="panel card" role="dialog" aria-modal="true" aria-label={t('Profil')}>
+  <div class="panel card" role="dialog" aria-modal="true" aria-label={t('common_profile')}>
     <div class="banner" style:background-color={user?.accent_color ?? 'var(--panel-2)'} style:background-image={user?.banner ? `url(${asset(user.banner)})` : null}>
-      <button class="x" onclick={close} aria-label={t('Schließen')}><Icon name="close" /></button>
+      <button class="x" onclick={close} aria-label={t('common_close')}><Icon name="close" /></button>
     </div>
     {#if user}
       <div class="body">
         <div class="face"><Avatar id={user.id} name={user.display_name} image={user.avatar} size={84} status={presenceOf(user)} /></div>
         <h2>{member?.nickname || user.display_name}</h2>
-        <p class="muted">@{user.username}{member?.nickname ? t(', auch bekannt als {name}', { name: user.display_name }) : ''}</p>
+        <p class="muted">@{user.username}{member?.nickname ? t('profile_card_also_known_as_name', { name: user.display_name }) : ''}</p>
         {#if (live ?? user.badges)?.length}
           <div class="badges">
             {#each live ?? user.badges ?? [] as b (b.id)}
@@ -86,7 +86,7 @@
                 <small class="muted">{shown.activity.details ? shown.activity.details + ', ' : ''}{elapsed(shown.activity.since)}</small>
               </div>
             {/if}
-            {#if shown.streaming}<span class="live"><Icon name="broadcast" size={16} /> {t('Teilt den Bildschirm')}</span>{/if}
+            {#if shown.streaming}<span class="live"><Icon name="broadcast" size={16} /> {t('common_sharing_their_screen')}</span>{/if}
           </div>
         {/if}
         {#if user.bio}<p class="bio">{user.bio}</p>{/if}
@@ -106,32 +106,32 @@
             {/each}
           </div>
         {/if}
-        <p class="muted small">{t('Dabei seit {date}', { date: since.format(new Date(user.created_at!)) })}{member ? t(', hier seit {date}', { date: since.format(new Date(member.joined_at)) }) : ''}</p>
+        <p class="muted small">{t('profile_card_joined_date', { date: since.format(new Date(user.created_at!)) })}{member ? t('profile_card_here_since_date', { date: since.format(new Date(member.joined_at)) }) : ''}</p>
         <div class="row actions">
           {#if user.id === app.me?.id}
-            <button class="btn" onclick={() => ((app.profile = null), (app.modal = { kind: 'user' }))}><Icon name="edit" size={16} /> {t('Profil bearbeiten')}</button>
-            {#if user.progress}<button class="btn" onclick={() => (progressTrack = 'play')}>{t('Fortschritt')}</button>{/if}
+            <button class="btn" onclick={() => ((app.profile = null), (app.modal = { kind: 'user' }))}><Icon name="edit" size={16} /> {t('common_edit_profile')}</button>
+            {#if user.progress}<button class="btn" onclick={() => (progressTrack = 'play')}>{t('profile_card_progress')}</button>{/if}
           {:else}
-            <button class="btn primary" onclick={() => openDm(user!.id)}><Icon name="mail" size={16} /> {t('Nachricht schreiben')}</button>
+            <button class="btn primary" onclick={() => openDm(user!.id)}><Icon name="mail" size={16} /> {t('profile_card_send_message')}</button>
             {#if isBlocked(user.id)}
-              <button class="btn" onclick={() => attempt(api('DELETE', `/blocks/${user!.id}`))}>{t('Blockierung aufheben')}</button>
+              <button class="btn" onclick={() => attempt(api('DELETE', `/blocks/${user!.id}`))}>{t('common_unblock')}</button>
             {:else if isFriend(user.id)}
-              <button class="btn" onclick={() => attempt(api('DELETE', `/friends/${user!.id}`))}>{t('Freund entfernen')}</button>
+              <button class="btn" onclick={() => attempt(api('DELETE', `/friends/${user!.id}`))}>{t('common_remove_friend')}</button>
             {:else if app.friends.incoming.some((f) => f.id === user!.id)}
-              <button class="btn" onclick={() => attempt(api('PUT', `/friends/${user!.id}`))}>{t('Anfrage annehmen')}</button>
+              <button class="btn" onclick={() => attempt(api('PUT', `/friends/${user!.id}`))}>{t('profile_card_accept_request')}</button>
             {:else if app.friends.outgoing.some((f) => f.id === user!.id)}
-              <button class="btn" disabled>{t('Anfrage gesendet')}</button>
+              <button class="btn" disabled>{t('profile_card_request_sent')}</button>
             {:else}
-              <button class="btn" onclick={() => attempt(api('POST', '/friends', { user_id: user!.id }))}><Icon name="userPlus" size={16} /> {t('Freund hinzufügen')}</button>
+              <button class="btn" onclick={() => attempt(api('POST', '/friends', { user_id: user!.id }))}><Icon name="userPlus" size={16} /> {t('profile_card_add_friend')}</button>
             {/if}
-            {#if !isBlocked(user.id)}<button class="btn danger" onclick={async () => (await ask({ title: t('{name} blockieren', { name: user!.display_name }), text: t('Ihr könnt euch dann nicht mehr schreiben, und eine Freundschaft endet.'), confirm: t('Blockieren'), danger: true })) && attempt(api('PUT', `/blocks/${user!.id}`))}>{t('Blockieren')}</button>{/if}
-            {#if g && canModerate(g, user.id, P.KICK_MEMBERS)}<button class="btn danger" onclick={kick}>{t('Entfernen')}</button>{/if}
-            {#if g && canModerate(g, user.id, P.BAN_MEMBERS)}<button class="btn danger" onclick={ban}>{t('Bannen')}</button>{/if}
+            {#if !isBlocked(user.id)}<button class="btn danger" onclick={async () => (await ask({ title: t('profile_card_block_name', { name: user!.display_name }), text: t('profile_card_no_longer_able_message_each'), confirm: t('profile_card_block'), danger: true })) && attempt(api('PUT', `/blocks/${user!.id}`))}>{t('profile_card_block')}</button>{/if}
+            {#if g && canModerate(g, user.id, P.KICK_MEMBERS)}<button class="btn danger" onclick={kick}>{t('common_remove')}</button>{/if}
+            {#if g && canModerate(g, user.id, P.BAN_MEMBERS)}<button class="btn danger" onclick={ban}>{t('common_ban')}</button>{/if}
           {/if}
         </div>
         {#if app.me?.is_admin && allBadges.length}
           <details>
-            <summary class="muted">{t('Abzeichen vergeben')}</summary>
+            <summary class="muted">{t('profile_card_grant_badges')}</summary>
             <div class="badges grant">
               {#each allBadges as b (b.id)}
                 <button class="badge" class:dim={!user.badges?.some((x) => x.id === b.id)} style:--c={b.color} onclick={() => toggleBadge(b)} aria-pressed={user.badges?.some((x) => x.id === b.id)}><BadgeIcon badge={b} size={16} />{fromEnglish(b.name)}</button>
@@ -141,7 +141,7 @@
         {/if}
       </div>
     {:else}
-      <div class="body"><p class="muted">{t('Lade Profil …')}</p></div>
+      <div class="body"><p class="muted">{t('profile_card_loading_profile')}</p></div>
     {/if}
   </div>
 </div>

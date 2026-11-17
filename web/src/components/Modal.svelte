@@ -16,7 +16,7 @@
   <div class="panel dialog" class:wide role="dialog" aria-modal="true" aria-label={title}>
     <header class="row">
       <h2 class="grow">{title}</h2>
-      <button class="x" onclick={onclose} aria-label={t('Schließen')}><Icon name="close" /></button>
+      <button class="x" onclick={onclose} aria-label={t('common_close')}><Icon name="close" /></button>
     </header>
     <div class="body scroll">
       {@render children()}

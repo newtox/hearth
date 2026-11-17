@@ -13,83 +13,83 @@
   async function add(e: SubmitEvent) {
     e.preventDefault();
     if (await attempt(api('POST', '/friends', { username: name }))) {
-      toast(t('Anfrage an {name} gesendet', { name }));
+      toast(t('friends_pane_request_sent_name', { name }));
       name = '';
     }
   }
 
   async function remove(u: User) {
-    if (await ask({ title: t('Freund entfernen'), text: t('{name} wirklich als Freund entfernen?', { name: u.display_name }), confirm: t('Entfernen'), danger: true })) attempt(api('DELETE', `/friends/${u.id}`));
+    if (await ask({ title: t('common_remove_friend'), text: t('friends_pane_really_remove_name_as_friend', { name: u.display_name }), confirm: t('common_remove'), danger: true })) attempt(api('DELETE', `/friends/${u.id}`));
   }
 </script>
 
 <section class="panel pane-chat">
   <header class="row">
-    <button class="icon mobile" onclick={() => (app.pane = 'side')} aria-label={t('Kanalliste')}><Icon name="menu" /></button>
+    <button class="icon mobile" onclick={() => (app.pane = 'side')} aria-label={t('common_channel_list')}><Icon name="menu" /></button>
     <Icon name="users" />
-    <h3 class="grow">{t('Freunde')}</h3>
+    <h3 class="grow">{t('common_friends')}</h3>
   </header>
   <div class="body scroll">
     <form class="row" onsubmit={add}>
-      <input class="input" bind:value={name} placeholder={t('Benutzername eines Freundes')} autocapitalize="off" required />
-      <button class="btn primary"><Icon name="userPlus" size={16} />{t('Anfrage senden')}</button>
+      <input class="input" bind:value={name} placeholder={t('friends_pane_username_friend')} autocapitalize="off" required />
+      <button class="btn primary"><Icon name="userPlus" size={16} />{t('friends_pane_send_request')}</button>
     </form>
 
     {#if app.friends.incoming.length}
-      <h4>{t('Eingegangene Anfragen')}</h4>
+      <h4>{t('friends_pane_incoming_requests')}</h4>
       {#each app.friends.incoming as u (u.id)}
         <div class="row line">
           <button class="row who grow" onclick={() => (app.profile = u.id)}>
             <Avatar id={u.id} name={u.display_name} image={u.avatar} size={38} />
             <span class="names"><strong class="ellipsis">{u.display_name}</strong><small class="muted">@{u.username}</small></span>
           </button>
-          <button class="btn small primary" onclick={() => attempt(api('PUT', `/friends/${u.id}`))}>{t('Annehmen')}</button>
-          <button class="btn small" onclick={() => attempt(api('DELETE', `/friends/${u.id}`))}>{t('Ablehnen')}</button>
+          <button class="btn small primary" onclick={() => attempt(api('PUT', `/friends/${u.id}`))}>{t('common_accept')}</button>
+          <button class="btn small" onclick={() => attempt(api('DELETE', `/friends/${u.id}`))}>{t('common_decline')}</button>
         </div>
       {/each}
     {/if}
 
     {#if app.friends.outgoing.length}
-      <h4>{t('Gesendete Anfragen')}</h4>
+      <h4>{t('friends_pane_sent_requests')}</h4>
       {#each app.friends.outgoing as u (u.id)}
         <div class="row line">
           <button class="row who grow" onclick={() => (app.profile = u.id)}>
             <Avatar id={u.id} name={u.display_name} image={u.avatar} size={38} />
             <span class="names"><strong class="ellipsis">{u.display_name}</strong><small class="muted">@{u.username}</small></span>
           </button>
-          <button class="btn small" onclick={() => attempt(api('DELETE', `/friends/${u.id}`))}>{t('Zurückziehen')}</button>
+          <button class="btn small" onclick={() => attempt(api('DELETE', `/friends/${u.id}`))}>{t('friends_pane_cancel')}</button>
         </div>
       {/each}
     {/if}
 
     {#if app.friends.blocked.length}
-      <h4>{t('Blockiert')}</h4>
+      <h4>{t('friends_pane_blocked')}</h4>
       {#each app.friends.blocked as u (u.id)}
         <div class="row line">
           <button class="row who grow" onclick={() => (app.profile = u.id)}>
             <Avatar id={u.id} name={u.display_name} image={u.avatar} size={38} />
             <span class="names"><strong class="ellipsis">{u.display_name}</strong><small class="muted">@{u.username}</small></span>
           </button>
-          <button class="btn small" onclick={() => attempt(api('DELETE', `/blocks/${u.id}`))}>{t('Blockierung aufheben')}</button>
+          <button class="btn small" onclick={() => attempt(api('DELETE', `/blocks/${u.id}`))}>{t('common_unblock')}</button>
         </div>
       {/each}
     {/if}
 
-    <h4>{t('Alle Freunde')} ({sorted.length})</h4>
+    <h4>{t('friends_pane_all_friends')} ({sorted.length})</h4>
     {#each sorted as u (u.id)}
       <div class="row line" class:off={!u.online}>
         <button class="row who grow" onclick={() => (app.profile = u.id)}>
           <Avatar id={u.id} name={u.display_name} image={u.avatar} size={38} status={presenceOf(u)} />
           <span class="names">
             <strong class="ellipsis">{u.display_name}</strong>
-            <small class="muted ellipsis">{u.activity ? activityText(u.activity) : u.online ? t('Online') : t('Offline')}</small>
+            <small class="muted ellipsis">{u.activity ? activityText(u.activity) : u.online ? t('common_online') : t('common_offline')}</small>
           </span>
         </button>
-        <button class="btn small" onclick={() => openDm(u.id)}><Icon name="mail" size={15} />{t('Nachricht')}</button>
-        <button class="icon" onclick={() => remove(u)} aria-label={t('{name} entfernen', { name: u.display_name })}><Icon name="close" size={16} /></button>
+        <button class="btn small" onclick={() => openDm(u.id)}><Icon name="mail" size={15} />{t('friends_pane_message')}</button>
+        <button class="icon" onclick={() => remove(u)} aria-label={t('common_remove_name', { name: u.display_name })}><Icon name="close" size={16} /></button>
       </div>
     {:else}
-      <p class="muted">{t('Noch keine Freunde. Schick oben eine Anfrage mit dem Benutzernamen.')}</p>
+      <p class="muted">{t('friends_pane_no_friends_yet_send_request')}</p>
     {/each}
   </div>
 </section>

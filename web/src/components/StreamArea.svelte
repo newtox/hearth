@@ -26,17 +26,17 @@
         {:else}
           <div class="closed">
             <Icon name="broadcast" size={28} />
-            <strong>{t('{name} teilt den Bildschirm', { name: s.name })}</strong>
-            <button class="btn primary small" onclick={() => watchStream(s.userId, true)}><Icon name="screen" size={15} />{t('Stream ansehen')}</button>
+            <strong>{t('stream_area_name_sharing_their_screen', { name: s.name })}</strong>
+            <button class="btn primary small" onclick={() => watchStream(s.userId, true)}><Icon name="screen" size={15} />{t('stream_area_watch_stream')}</button>
           </div>
         {/if}
         <figcaption>
           <div class="line">
-            <span class="ellipsis">{s.local ? t('Dein Stream') : s.name}</span>
+            <span class="ellipsis">{s.local ? t('stream_area_stream') : s.name}</span>
             <span class="count" title={list.join(', ')}><Icon name="users" size={13} />{list.length}</span>
-            {#if s.watching && !s.local}<button onclick={() => watchStream(s.userId, false)}>{t('Nicht mehr ansehen')}</button>{/if}
+            {#if s.watching && !s.local}<button onclick={() => watchStream(s.userId, false)}>{t('stream_area_stop_watching')}</button>{/if}
           </div>
-          {#if list.length}<p class="who ellipsis">{t('Schaut zu: {names}', { names: list.join(', ') })}</p>{/if}
+          {#if list.length}<p class="who ellipsis">{t('stream_area_watching_names', { names: list.join(', ') })}</p>{/if}
         </figcaption>
       </figure>
     {/each}

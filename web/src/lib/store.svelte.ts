@@ -259,7 +259,7 @@ export async function attempt<T>(p: Promise<T>): Promise<T | undefined> {
   try {
     return await p;
   } catch (e) {
-    toast(e instanceof Error ? e.message : t('Unbekannter Fehler'));
+    toast(e instanceof Error ? e.message : t('store_unknown_error'));
     return undefined;
   }
 }
@@ -289,7 +289,7 @@ export function isFriend(id: string) {
 
 export function dmTitle(dm: Dm) {
   if (dm.kind === 'dm') return partner(dm).display_name;
-  return dm.name || dm.recipients.filter((r) => r.id !== app.me?.id).map((r) => r.display_name).join(', ') || t('Leere Gruppe');
+  return dm.name || dm.recipients.filter((r) => r.id !== app.me?.id).map((r) => r.display_name).join(', ') || t('store_empty_group');
 }
 
 export function partner(dm: Dm) {
@@ -403,7 +403,7 @@ function spotifyNotice() {
   const params = new URLSearchParams(location.search);
   const result = params.get('spotify');
   if (!result) return;
-  toast(result === 'linked' ? t('Spotify ist verbunden') : t('Spotify konnte nicht verbunden werden'));
+  toast(result === 'linked' ? t('store_spotify_linked') : t('store_spotify_could_not_linked'));
   history.replaceState(null, '', location.pathname);
 }
 
@@ -621,7 +621,7 @@ function desktopNotice(m: Message) {
   const author = g ? memberName(g, m.author) : m.author.display_name;
   const where = dm ? (dm.kind === 'group' ? dmTitle(dm) : '') : `#${g!.channels.find((c) => c.id === m.channel_id)?.name ?? ''}`;
   const title = where ? `${author} (${where})` : author;
-  const body = m.content.match(/^<sticker:/) ? t('Sticker') : m.content ? m.content.slice(0, 160) : m.poll ? m.poll.question : t('Datei');
+  const body = m.content.match(/^<sticker:/) ? t('common_stickers') : m.content ? m.content.slice(0, 160) : m.poll ? m.poll.question : t('common_file');
   notify(title, body, m.channel_id, () => jumpTo(g?.id ?? null, m.channel_id, m.id));
 }
 
@@ -636,7 +636,7 @@ export async function jumpTo(guildId: string | null, channelId: string, messageI
     await loadMessages(channelId, true);
   }
   if (app.messages[channelId]?.some((m) => m.id === messageId)) app.highlight = messageId;
-  else toast(t('Die Nachricht wurde nicht gefunden'));
+  else toast(t('store_message_could_not_found'));
 }
 
 export async function runSearch(query: string) {

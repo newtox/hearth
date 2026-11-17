@@ -53,38 +53,38 @@
       <time class="muted" datetime={m.created_at}>{when.format(new Date(m.created_at))}</time>
     </div>
     {#if m.content && !m.content.startsWith('<sticker:')}<div class="text"><Markdown text={m.content} /></div>{/if}
-    {#if m.attachments.length}<p class="muted small"><Icon name="clip" size={13} /> {m.attachments.length === 1 ? m.attachments[0].filename : t('{n} Dateien', { n: m.attachments.length })}</p>{/if}
+    {#if m.attachments.length}<p class="muted small"><Icon name="clip" size={13} /> {m.attachments.length === 1 ? m.attachments[0].filename : t('side_panel_n_files', { n: m.attachments.length })}</p>{/if}
     <div class="row actions">
-      <button class="btn small" onclick={() => open(m)}>{t('Springen')}</button>
-      {#if !showChannel && canPin}<button class="btn small" onclick={() => unpin(m)}>{t('Nicht mehr anheften')}</button>{/if}
+      <button class="btn small" onclick={() => open(m)}>{t('side_panel_jump')}</button>
+      {#if !showChannel && canPin}<button class="btn small" onclick={() => unpin(m)}>{t('common_unpin')}</button>{/if}
     </div>
   </article>
 {/snippet}
 
 <aside class="panel pane-members side">
   <header class="row">
-    <h3 class="grow">{app.side === 'pins' ? t('Angeheftet') : t('Suchergebnisse')}</h3>
-    <button class="icon" onclick={() => ((app.side = null), (app.pane = 'chat'))} aria-label={t('Schließen')} title={t('Schließen')}><Icon name="close" size={16} /></button>
+    <h3 class="grow">{app.side === 'pins' ? t('common_pinned') : t('side_panel_search_results')}</h3>
+    <button class="icon" onclick={() => ((app.side = null), (app.pane = 'chat'))} aria-label={t('common_close')} title={t('common_close')}><Icon name="close" size={16} /></button>
   </header>
   <div class="list scroll">
     {#if app.side === 'pins'}
       {#if pins === null}
-        <p class="muted pad">{t('Lädt …')}</p>
+        <p class="muted pad">{t('side_panel_loading')}</p>
       {:else}
-        {#each pins as m (m.id)}{@render item(m, false)}{:else}<p class="muted pad">{t('Hier ist noch nichts angeheftet. Über das Menü einer Nachricht lässt sie sich anheften.')}</p>{/each}
+        {#each pins as m (m.id)}{@render item(m, false)}{:else}<p class="muted pad">{t('side_panel_nothing_pinned_here_yet_pin')}</p>{/each}
       {/if}
     {:else}
       <label class="search">
         <Icon name="search" size={15} />
-        <input type="search" bind:value={query} onkeydown={searchKey} placeholder={g ? t('{server} durchsuchen', { server: w('server') }) : t('Durchsuchen')} aria-label={t('Nachrichten durchsuchen')} />
+        <input type="search" bind:value={query} onkeydown={searchKey} placeholder={g ? t('common_search_server', { server: w('server') }) : t('common_search')} aria-label={t('common_search_messages')} />
       </label>
       {#if !app.search.query}
-        <p class="muted pad">{t('Tipp: „von:name“ sucht nach Verfasser.')}</p>
+        <p class="muted pad">{t('side_panel_tip_from_name_searches_author')}</p>
       {:else if app.search.loading}
-        <p class="muted pad">{t('Sucht …')}</p>
+        <p class="muted pad">{t('side_panel_searching')}</p>
       {:else}
-        <p class="muted pad">{app.search.total === 1 ? t('1 Treffer') : t('{n} Treffer', { n: app.search.total })}{#if app.search.total > app.search.results.length}, {t('die neuesten {n} werden gezeigt', { n: app.search.results.length })}{/if}</p>
-        {#each app.search.results as m (m.id)}{@render item(m, !!g)}{:else}<p class="muted pad">{t('Nichts gefunden. Tipp: „von:name“ sucht nach Verfasser.')}</p>{/each}
+        <p class="muted pad">{app.search.total === 1 ? t('side_panel_1_result') : t('side_panel_n_results', { n: app.search.total })}{#if app.search.total > app.search.results.length}, {t('side_panel_showing_newest_n', { n: app.search.results.length })}{/if}</p>
+        {#each app.search.results as m (m.id)}{@render item(m, !!g)}{:else}<p class="muted pad">{t('side_panel_nothing_found_tip_from_name')}</p>{/each}
       {/if}
     {/if}
   </div>

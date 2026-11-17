@@ -48,10 +48,10 @@ async function send(method: string, path: string, init: RequestInit) {
   try {
     res = await fetch(`${base()}/api${path}`, { ...init, method, headers });
   } catch {
-    throw new ApiError(0, t('Server nicht erreichbar'));
+    throw new ApiError(0, t('api_server_unreachable'));
   }
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(res.status, data?.error ? serverError(data.error) : `${t('Fehler')} ${res.status}`);
+  if (!res.ok) throw new ApiError(res.status, data?.error ? serverError(data.error) : `${t('common_error')} ${res.status}`);
   return data;
 }
 
