@@ -326,6 +326,19 @@ async def main():
     check("blocking ended the friendship", len(call("GET", "/friends", e)[1]["friends"]) == 0)
     await we.close()
 
+    tm = call("POST", f"/channels/{general}/messages", c, {"content": "Thema für einen Thread"})[1]
+    s, th = call("POST", f"/channels/{general}/threads", c, {"name": "Raidplanung", "message_id": tm["id"]})
+    check("create thread", s == 200 and th["kind"] == "thread" and th["parent_id"] == general and th["starter_id"] == tm["id"], th)
+    check("one thread per message", call("POST", f"/channels/{general}/threads", a, {"name": "Doppelt", "message_id": tm["id"]})[0] == 400)
+    check("thread in snapshot", any(x["id"] == th["id"] for x in call("GET", f"/guilds/{gid}", a)[1]["channels"]))
+    check("post in thread", call("POST", f"/channels/{th['id']}/messages", a, {"content": "im thread"})[0] == 200 and call("GET", f"/channels/{th['id']}/messages", c)[1][0]["content"] == "im thread")
+    s, hth = call("POST", f"/channels/{secret['id']}/threads", a, {"name": "Geheimthread"})
+    check("thread in hidden channel stays hidden", s == 200 and call("GET", f"/channels/{hth['id']}/messages", c)[0] == 404 and not any(x["id"] == hth["id"] for x in call("GET", f"/guilds/{gid}", c)[1]["channels"]))
+    check("no thread inside a thread", call("POST", f"/channels/{th['id']}/threads", c, {"name": "x"})[0] == 400)
+    check("others cannot delete the thread", call("DELETE", f"/channels/{th['id']}", e)[0] == 404)
+    check("creator deletes own thread", call("DELETE", f"/channels/{th['id']}", c)[0] == 200)
+    check("deleting a channel removes its threads", call("DELETE", f"/channels/{secret['id']}", a)[0] == 200 and call("GET", f"/channels/{hth['id']}/messages", a)[0] == 404)
+
     codes = [call("POST", f"/channels/{general}/messages", c, {"content": f"flut {i}"})[0] for i in range(12)]
     check("message rate limit", 429 in codes and codes[0] == 200, codes)
 

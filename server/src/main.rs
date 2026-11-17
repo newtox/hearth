@@ -118,6 +118,7 @@ async fn main() {
         .route("/channels/{cid}/overwrites/{target}", put(channels::put_overwrite).delete(channels::delete_overwrite))
         .route("/channels/{cid}/messages", get(messages::list).post(messages::create))
         .route("/channels/{cid}/messages/{mid}", patch(messages::update).delete(messages::delete))
+        .route("/channels/{cid}/threads", post(channels::create_thread))
         .route("/channels/{cid}/typing", post(messages::typing));
 
     let uploads = ServeDir::new(&upload_dir);

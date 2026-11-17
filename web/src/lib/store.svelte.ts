@@ -82,7 +82,8 @@ export interface Overwrite {
 export interface Channel {
   id: string;
   guild_id: string | null;
-  kind: 'text' | 'category' | 'voice';
+  kind: 'text' | 'category' | 'voice' | 'thread';
+  starter_id?: string | null;
   name: string;
   topic: string;
   parent_id: string | null;
@@ -479,7 +480,7 @@ export function select(guildId: string | null, channelId?: string) {
   if (target) {
     delete app.unread[target];
     if (channelId) app.pane = 'chat';
-    if (!app.messages[target] && (!g || g.channels.find((c) => c.id === target)?.kind === 'text')) loadMessages(target);
+    if (!app.messages[target] && (!g || ['text', 'thread'].includes(g.channels.find((c) => c.id === target)?.kind ?? ''))) loadMessages(target);
   }
 }
 

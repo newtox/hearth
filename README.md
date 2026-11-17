@@ -89,6 +89,8 @@ Limitations:
 - Accounts with Argon2 passwords and revocable sessions
 - Servers with categories, text and voice channels, icon, description, ownership transfer
 - Roles with hierarchy, colour, 20 permissions, per-role channel rules
+- Threads started from any message in a text channel
+- Polls with single or multiple choice and an optional end time
 - Real-time chat: Markdown, attachments up to 25 MB, reactions, custom emojis and stickers, typing indicator, unread markers
 - Friends list with requests, direct messages between friends or members of shared servers
 - Group chats with up to 10 friends, a group picture, three roles (administrator, moderator, member) and per-group permission settings

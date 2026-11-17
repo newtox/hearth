@@ -25,7 +25,7 @@ pub async fn snapshot(st: &AppState, guild_id: Uuid, user_id: Uuid) -> Result<Va
     let channels: Vec<Value> = channels
         .iter()
         .filter_map(|c| {
-            let ows: Vec<&Overwrite> = overwrites.iter().filter(|o| o.channel_id == c.id).collect();
+            let ows: Vec<&Overwrite> = overwrites.iter().filter(|o| o.channel_id == c.rules_id()).collect();
             let p = ctx.in_channel(&ows);
             if p & perms::VIEW_CHANNEL == 0 {
                 return None;

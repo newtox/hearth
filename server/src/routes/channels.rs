@@ -19,7 +19,7 @@ pub async fn access(st: &AppState, uid: Uuid, cid: Uuid, need: i64) -> Result<Ac
     let p = match channel.guild_id {
         Some(gid) => {
             let ctx = perms::ctx(&st.db, gid, uid).await?;
-            let ows = overwrites(st, cid).await?;
+            let ows = overwrites(st, channel.rules_id()).await?;
             ctx.in_channel(&ows.iter().collect::<Vec<_>>())
         }
         None => {
@@ -49,7 +49,7 @@ pub async fn viewers(st: &AppState, channel: &Channel) -> Result<Vec<Uuid>> {
         .bind(st.hub.online_ids())
         .fetch_all(&st.db)
         .await?;
-    let ows = overwrites(st, channel.id).await?;
+    let ows = overwrites(st, channel.rules_id()).await?;
     let refs: Vec<&Overwrite> = ows.iter().collect();
     let mut out = Vec::with_capacity(online.len());
     for u in online {
@@ -98,7 +98,7 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gi
     let name = clean_name(b.name.as_deref().unwrap_or(""), 60, "Name")?;
     let parent = b.parent_id.flatten();
     check_parent(&st, gid, parent, kind).await?;
-    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM channels WHERE guild_id = $1").bind(gid).fetch_one(&st.db).await?;
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM channels WHERE guild_id = $1 AND kind <> 'thread'").bind(gid).fetch_one(&st.db).await?;
     if count >= 200 {
         return bad("At most 200 channels per server");
     }
@@ -133,8 +133,10 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
     if topic.chars().count() > 300 {
         return bad("Topic: at most 300 characters");
     }
-    let parent = b.parent_id.unwrap_or(ch.parent_id);
-    check_parent(&st, gid, parent, &ch.kind).await?;
+    let parent = if ch.kind == "thread" { ch.parent_id } else { b.parent_id.unwrap_or(ch.parent_id) };
+    if ch.kind != "thread" {
+        check_parent(&st, gid, parent, &ch.kind).await?;
+    }
     let channel: Channel = sqlx::query_as(&format!(
         "UPDATE channels SET name = $1, topic = $2, parent_id = $3, position = $4 WHERE id = $5 RETURNING {CHANNEL_COLS}"
     ))
@@ -151,8 +153,20 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
 }
 
 pub async fn delete(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid): Path<Uuid>) -> Result<Json<Value>> {
-    let (ch, gid, _) = guild_channel(&st, uid, cid).await?;
-    let files: Vec<String> = sqlx::query_scalar("SELECT file FROM attachments WHERE channel_id = $1").bind(cid).fetch_all(&st.db).await?;
+    let own_thread: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM channels WHERE id = $1 AND kind = 'thread' AND owner_id = $2)").bind(cid).bind(uid).fetch_one(&st.db).await?;
+    let (ch, gid) = if own_thread {
+        let a = access(&st, uid, cid, 0).await?;
+        let gid = a.channel.guild_id.ok_or(AppError::Forbidden)?;
+        (a.channel, gid)
+    } else {
+        let (ch, gid, _) = guild_channel(&st, uid, cid).await?;
+        (ch, gid)
+    };
+    let files: Vec<String> = sqlx::query_scalar("SELECT file FROM attachments WHERE channel_id = $1 OR channel_id IN (SELECT id FROM channels WHERE parent_id = $1 AND kind = 'thread')")
+        .bind(cid)
+        .fetch_all(&st.db)
+        .await?;
+    sqlx::query("DELETE FROM channels WHERE parent_id = $1 AND kind = 'thread'").bind(cid).execute(&st.db).await?;
     sqlx::query("DELETE FROM channels WHERE id = $1").bind(cid).execute(&st.db).await?;
     for f in files {
         super::remove_upload(&st, Some(f)).await;
@@ -225,4 +239,45 @@ pub async fn delete_overwrite(State(st): State<AppState>, AuthUser(uid): AuthUse
     sqlx::query("DELETE FROM overwrites WHERE channel_id = $1 AND target_id = $2").bind(cid).bind(target).execute(&st.db).await?;
     refresh(&st, gid).await?;
     Ok(Json(json!({})))
+}
+
+#[derive(Deserialize)]
+pub struct ThreadBody {
+    name: String,
+    message_id: Option<Uuid>,
+}
+
+pub async fn create_thread(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid): Path<Uuid>, Json(b): Json<ThreadBody>) -> Result<Json<Channel>> {
+    let a = access(&st, uid, cid, perms::SEND_MESSAGES).await?;
+    let (Some(gid), "text") = (a.channel.guild_id, a.channel.kind.as_str()) else {
+        return bad("Threads can only be started in text channels");
+    };
+    let name = clean_name(&b.name, 60, "Name")?;
+    if let Some(mid) = b.message_id {
+        let ok: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM messages WHERE id = $1 AND channel_id = $2)").bind(mid).bind(cid).fetch_one(&st.db).await?;
+        if !ok {
+            return Err(AppError::NotFound);
+        }
+        let taken: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM channels WHERE starter_id = $1)").bind(mid).fetch_one(&st.db).await?;
+        if taken {
+            return bad("This message already has a thread");
+        }
+    }
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM channels WHERE guild_id = $1 AND kind = 'thread'").bind(gid).fetch_one(&st.db).await?;
+    if count >= 500 {
+        return bad("At most 500 threads per server");
+    }
+    let channel: Channel = sqlx::query_as(&format!(
+        "INSERT INTO channels (id, guild_id, kind, name, parent_id, owner_id, starter_id) VALUES ($1, $2, 'thread', $3, $4, $5, $6) RETURNING {CHANNEL_COLS}"
+    ))
+    .bind(Uuid::now_v7())
+    .bind(gid)
+    .bind(name)
+    .bind(cid)
+    .bind(uid)
+    .bind(b.message_id)
+    .fetch_one(&st.db)
+    .await?;
+    refresh(&st, gid).await?;
+    Ok(Json(channel))
 }
