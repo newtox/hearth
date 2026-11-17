@@ -3,6 +3,7 @@ mod error;
 mod gateway;
 mod hub;
 mod limit;
+mod mail;
 mod models;
 #[allow(dead_code)]
 mod perms;
@@ -10,7 +11,7 @@ mod routes;
 
 use axum::{extract::DefaultBodyLimit, http::{header, HeaderValue}, routing::{delete, get, patch, post, put}, Router};
 use hub::Hub;
-use routes::{badges, channels, connections, emojis, friends, groups, guilds, integrations, invites, members, messages, roles, spotify, stats, users, voice};
+use routes::{account, badges, channels, connections, emojis, friends, groups, guilds, integrations, invites, members, messages, roles, spotify, stats, users, voice};
 use sqlx::postgres::PgPoolOptions;
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tower_http::{cors::CorsLayer, services::{ServeDir, ServeFile}, set_header::SetResponseHeaderLayer, trace::TraceLayer};
@@ -25,6 +26,7 @@ pub struct AppState {
     pub livekit: Option<Arc<voice::LiveKit>>,
     pub spotify: Option<Arc<spotify::Spotify>>,
     pub connections: Option<Arc<connections::Connections>>,
+    pub mailer: Option<Arc<mail::Mailer>>,
 }
 
 #[tokio::main]
@@ -53,6 +55,7 @@ async fn main() {
         livekit,
         spotify: spotify::Spotify::from_env().map(Arc::new),
         connections: connections::Connections::from_env().map(Arc::new),
+        mailer: mail::Mailer::from_env().map(Arc::new),
     };
     if state.spotify.is_some() {
         tokio::spawn(spotify::poll(state.clone()));
@@ -73,6 +76,13 @@ async fn main() {
         .route("/auth/register", post(auth::register))
         .route("/auth/login", post(auth::login))
         .route("/auth/logout", post(auth::logout))
+        .route("/auth/forgot", post(account::forgot))
+        .route("/auth/reset", post(account::reset))
+        .route("/config", get(account::config))
+        .route("/users/@me/account", patch(account::update))
+        .route("/search", get(messages::search))
+        .route("/channels/{cid}/pins", get(messages::pins))
+        .route("/channels/{cid}/pins/{mid}", put(messages::pin).delete(messages::unpin))
         .route("/users/@me", get(users::me).patch(users::update_me))
         .route("/users/@me/avatar", post(users::set_avatar))
         .route("/users/@me/banner", post(users::set_banner))

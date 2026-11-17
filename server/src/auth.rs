@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 pub struct AuthUser(pub Uuid);
 
-fn hash_token(token: &str) -> String {
+pub fn hash_token(token: &str) -> String {
     hex::encode(Sha256::digest(token.as_bytes()))
 }
 
@@ -23,7 +23,7 @@ pub async fn user_from_token(db: &PgPool, token: &str) -> Option<Uuid> {
         .flatten()
 }
 
-fn bearer(parts: &Parts) -> Option<&str> {
+pub fn bearer(parts: &Parts) -> Option<&str> {
     parts.headers.get(AUTHORIZATION)?.to_str().ok()?.strip_prefix("Bearer ")
 }
 
@@ -36,7 +36,7 @@ impl FromRequestParts<AppState> for AuthUser {
     }
 }
 
-async fn hash_password(password: String) -> Result<String> {
+pub async fn hash_password(password: String) -> Result<String> {
     tokio::task::spawn_blocking(move || {
         let salt = SaltString::encode_b64(&rand::random::<[u8; 16]>()).map_err(|e| AppError::Internal(e.to_string()))?;
         Argon2::default()
@@ -48,7 +48,7 @@ async fn hash_password(password: String) -> Result<String> {
     .map_err(|e| AppError::Internal(e.to_string()))?
 }
 
-async fn verify_password(password: String, hash: String) -> bool {
+pub async fn verify_password(password: String, hash: String) -> bool {
     tokio::task::spawn_blocking(move || {
         PasswordHash::new(&hash).map(|h| Argon2::default().verify_password(password.as_bytes(), &h).is_ok()).unwrap_or(false)
     })
@@ -56,7 +56,7 @@ async fn verify_password(password: String, hash: String) -> bool {
     .unwrap_or(false)
 }
 
-async fn create_session(db: &PgPool, user_id: Uuid) -> Result<String> {
+pub async fn create_session(db: &PgPool, user_id: Uuid) -> Result<String> {
     let token = hex::encode(rand::random::<[u8; 32]>());
     sqlx::query("INSERT INTO sessions (token_hash, user_id) VALUES ($1, $2)")
         .bind(hash_token(&token))

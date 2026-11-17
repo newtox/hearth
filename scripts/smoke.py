@@ -372,6 +372,42 @@ async def main():
     check("offline after disconnect", ev and ev["presence"] == "offline" and not ev["online"], ev)
     await sa.close()
 
+    m1 = call("POST", f"/channels/{general}/messages", a, {"content": "Raidplanung am Freitag um acht"})[1]
+    s, m2 = call("POST", f"/channels/{general}/messages", c, {"content": "Bin dabei", "reply_to": m1["id"]})
+    check("reply", s == 200 and m2["reply_to"] == m1["id"] and m2["reply"]["author"]["id"] == aid and m2["reply"]["content"].startswith("Raidplanung"), m2)
+    hidden = call("POST", f"/guilds/{gid}/channels", a, {"name": "orga"})[1]
+    call("PUT", f"/channels/{hidden['id']}/overwrites/{everyone}", a, {"kind": "role", "allow": 0, "deny": VIEW})
+    h1 = call("POST", f"/channels/{hidden['id']}/messages", a, {"content": "Raidplanung geheim"})[1]
+    check("reply only within the channel", call("POST", f"/channels/{general}/messages", a, {"content": "x", "reply_to": h1["id"]})[0] == 400)
+    s, res = call("GET", f"/search?guild_id={gid}&q=raidplan", a)
+    check("search finds both for owner", s == 200 and res["total"] == 2 and res["results"][0]["channel_name"] == "orga", res)
+    s, res = call("GET", f"/search?guild_id={gid}&q=RAIDPLAN", c)
+    check("search hides channels you cannot see", s == 200 and res["total"] == 1 and res["results"][0]["id"] == m1["id"], res)
+    s, res = call("GET", f"/search?guild_id={gid}&q=dabei&author=cora{S}", a)
+    check("search by author", s == 200 and res["total"] == 1 and res["results"][0]["reply"]["id"] == m1["id"], res)
+    check("search needs 2 characters", call("GET", f"/search?guild_id={gid}&q=r", a)[0] == 400)
+    check("search treats % literally", call("GET", f"/search?guild_id={gid}&q=%25%25", a)[1]["total"] == 0)
+    stranger, _ = user("xaver")
+    check("non-member cannot search", call("GET", f"/search?guild_id={gid}&q=raid", stranger)[0] == 404)
+    check("member cannot pin", call("PUT", f"/channels/{general}/pins/{m2['id']}", c)[0] == 403)
+    s, pinned = call("PUT", f"/channels/{general}/pins/{m2['id']}", a)
+    check("pin", s == 200 and pinned["pinned"] and [p["id"] for p in call("GET", f"/channels/{general}/pins", c)[1]] == [m2["id"]])
+    check("unpin", call("DELETE", f"/channels/{general}/pins/{m2['id']}", a)[1]["pinned"] is False and call("GET", f"/channels/{general}/pins", c)[1] == [])
+    call("DELETE", f"/channels/{general}/messages/{m1['id']}", a)
+    after = next(m for m in call("GET", f"/channels/{general}/messages", c)[1] if m["id"] == m2["id"])
+    check("reply to a deleted message", after["reply"] == {"id": m1["id"], "deleted": True}, after.get("reply"))
+    call("DELETE", f"/channels/{hidden['id']}", a)
+
+    check("account change needs password", call("PATCH", "/users/@me/account", c, {"password": "falsch123", "email": "x@example.com"})[0] == 400)
+    other = call("POST", "/auth/login", body={"login": "cora" + S, "password": "geheim1234"})[1]["token"]
+    s, me = call("PATCH", "/users/@me/account", c, {"password": "geheim1234", "new_password": "neuespasswort", "email": f"cora.neu{S}@example.com"})
+    check("change password and email", s == 200 and me["email"] == f"cora.neu{S}@example.com", me)
+    check("other sessions signed out", call("GET", "/users/@me", other)[0] == 401 and call("GET", "/users/@me", c)[0] == 200)
+    check("login with new password", call("POST", "/auth/login", body={"login": f"cora.neu{S}@example.com", "password": "neuespasswort"})[0] == 200)
+    check("username taken", call("PATCH", "/users/@me/account", c, {"password": "neuespasswort", "username": "anna" + S})[0] == 409)
+    s, cfg = call("GET", "/config")
+    check("public config", s == 200 and "password_reset" in cfg, cfg)
+
     codes = [call("POST", f"/channels/{general}/messages", c, {"content": f"flut {i}"})[0] for i in range(12)]
     check("message rate limit", 429 in codes and codes[0] == 200, codes)
 

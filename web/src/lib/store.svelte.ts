@@ -4,6 +4,7 @@ import { P, has } from './perms';
 import { startDetection } from './activity';
 import { current } from './current';
 import { play, setQuiet } from './sounds';
+import { notify } from './notify';
 
 export type Status = 'online' | 'idle' | 'dnd' | 'invisible';
 export type Presence = 'online' | 'idle' | 'dnd' | 'offline';
@@ -147,6 +148,10 @@ export interface Message {
   attachments: Attachment[];
   reactions: { emoji: string; users: string[] }[];
   poll?: Poll;
+  reply_to?: string | null;
+  reply?: { id: string; deleted?: boolean; content?: string; attachments?: boolean; author?: User };
+  pinned?: boolean;
+  channel_name?: string;
 }
 export interface Poll {
   question: string;
@@ -192,6 +197,10 @@ export const app = $state({
   modal: null as Modal,
   profile: null as string | null,
   menu: null as Menu | null,
+  side: null as null | 'pins' | 'search',
+  highlight: null as string | null,
+  pinTick: 0,
+  search: { query: '', total: 0, results: [] as Message[], loading: false, scope: '' },
   insert: '',
   toast: '',
 });
@@ -334,6 +343,13 @@ export async function login(path: 'login' | 'register', body: Record<string, str
   connect();
 }
 
+export async function resetPassword(token: string, password: string) {
+  const res = await api('POST', '/auth/reset', { token, password });
+  setToken(res.token);
+  app.authed = true;
+  connect();
+}
+
 export async function logout() {
   await api('POST', '/auth/logout').catch(() => {});
   reset();
@@ -431,6 +447,7 @@ function handle(t: string, d: any) {
         if (d.author.id !== app.me?.id) {
           app.unread[d.channel_id] = true;
           if (app.dms.some((x) => x.id === d.channel_id) && !isBlocked(d.author.id)) play('message');
+          if (!isBlocked(d.author.id)) desktopNotice(d);
         }
       }
       if (app.typing[d.channel_id]) delete app.typing[d.channel_id][d.author.id];
@@ -440,11 +457,17 @@ function handle(t: string, d: any) {
       const list = app.messages[d.channel_id];
       const i = list?.findIndex((m) => m.id === d.id) ?? -1;
       if (i >= 0) list[i] = d;
+      if (d.channel_id === app.channelId) app.pinTick++;
       break;
     }
     case 'MESSAGE_DELETE': {
       const list = app.messages[d.channel_id];
-      if (list) app.messages[d.channel_id] = list.filter((m) => m.id !== d.id);
+      if (list) {
+        app.messages[d.channel_id] = list.filter((m) => m.id !== d.id);
+        for (const m of app.messages[d.channel_id]) if (m.reply?.id === d.id) m.reply = { id: d.id, deleted: true };
+      }
+      if (d.channel_id === app.channelId) app.pinTick++;
+      app.search.results = app.search.results.filter((m) => m.id !== d.id);
       break;
     }
     case 'TYPING_START':
@@ -586,3 +609,59 @@ setInterval(() => {
 }, 2000);
 
 if (getToken()) connect();
+
+export function mentionsMe(m: Pick<Message, 'content' | 'reply'>, inGuild: boolean) {
+  const name = app.me?.username;
+  if (!name) return false;
+  if (m.reply?.author?.id === app.me?.id) return true;
+  if (inGuild && /(^|[^\w@])@everyone(?![\w.])/i.test(m.content)) return true;
+  return new RegExp(`(^|[^\\w@])@${name.replace(/\./g, '\\.')}(?![\\w.])`, 'i').test(m.content);
+}
+
+function desktopNotice(m: Message) {
+  if (app.me?.status === 'dnd') return;
+  const dm = app.dms.find((x) => x.id === m.channel_id);
+  const g = dm ? null : app.guilds.find((x) => x.channels.some((c) => c.id === m.channel_id));
+  if (!dm && !(g && mentionsMe(m, true))) return;
+  const author = g ? memberName(g, m.author) : m.author.display_name;
+  const where = dm ? (dm.kind === 'group' ? dmTitle(dm) : '') : `#${g!.channels.find((c) => c.id === m.channel_id)?.name ?? ''}`;
+  const title = where ? `${author} (${where})` : author;
+  const body = m.content.match(/^<sticker:/) ? t('Sticker') : m.content ? m.content.slice(0, 160) : m.poll ? m.poll.question : t('Datei');
+  notify(title, body, m.channel_id, () => jumpTo(g?.id ?? null, m.channel_id, m.id));
+}
+
+export async function jumpTo(guildId: string | null, channelId: string, messageId: string) {
+  app.menu = null;
+  if (app.channelId !== channelId || app.guildId !== guildId) select(guildId, channelId);
+  app.pane = 'chat';
+  for (let i = 0; i < 25; i++) {
+    if (!app.messages[channelId]) await loadMessages(channelId);
+    const list = app.messages[channelId];
+    if (!list || list.some((m) => m.id === messageId) || !app.more[channelId]) break;
+    await loadMessages(channelId, true);
+  }
+  if (app.messages[channelId]?.some((m) => m.id === messageId)) app.highlight = messageId;
+  else toast(t('Die Nachricht wurde nicht gefunden'));
+}
+
+export async function runSearch(query: string) {
+  const ch = channel();
+  const g = guild();
+  if (!ch && !g) return;
+  let text = query.trim();
+  let author = '';
+  const from = text.match(/(?:^|\s)(?:from|von|fra):@?([a-z0-9_.]+)/i);
+  if (from) {
+    author = from[1];
+    text = text.replace(from[0], ' ').trim();
+  }
+  app.side = 'search';
+  app.pane = 'members';
+  app.search = { query, total: 0, results: [], loading: true, scope: g ? g.id : ch!.id };
+  const params = new URLSearchParams(g ? { guild_id: g.id } : { channel_id: ch!.id });
+  if (text) params.set('q', text);
+  if (author) params.set('author', author);
+  const res = await attempt(api<{ total: number; results: Message[] }>('GET', `/search?${params}`));
+  if (app.search.query !== query) return;
+  app.search = { query, total: res?.total ?? 0, results: res?.results ?? [], loading: false, scope: app.search.scope };
+}

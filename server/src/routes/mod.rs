@@ -1,3 +1,4 @@
+pub mod account;
 pub mod badges;
 pub mod channels;
 pub mod connections;
