@@ -177,3 +177,23 @@ pub async fn bans(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gid)
     .await?;
     Ok(Json(json!(rows.into_iter().map(|r| json!({ "id": r.0, "username": r.1, "display_name": r.2, "reason": r.3 })).collect::<Vec<_>>())))
 }
+
+pub async fn summary(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((gid, target)): Path<(Uuid, Uuid)>) -> Result<Json<Value>> {
+    let ctx = perms::ctx(&st.db, gid, uid).await?;
+    let moderator = perms::ADMINISTRATOR | perms::MODERATE_MEMBERS | perms::KICK_MEMBERS | perms::BAN_MEMBERS | perms::MANAGE_ROLES | perms::MANAGE_NICKNAMES | perms::MANAGE_MESSAGES;
+    if !ctx.owner && ctx.base & moderator == 0 {
+        return Err(AppError::Forbidden);
+    }
+    perms::ctx(&st.db, gid, target).await?;
+    let (messages, links, media): (i64, i64, i64) = sqlx::query_as(
+        "SELECT count(*), count(*) FILTER (WHERE m.content ~* 'https?://'), count(*) FILTER (WHERE EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id)) \
+         FROM messages m JOIN channels c ON c.id = m.channel_id WHERE c.guild_id = $1 AND m.author_id = $2",
+    )
+    .bind(gid)
+    .bind(target)
+    .fetch_one(&st.db)
+    .await?;
+    let audit: i64 = sqlx::query_scalar("SELECT count(*) FROM audit_log WHERE guild_id = $1 AND target = $2").bind(gid).bind(user_label(&st, target).await).fetch_one(&st.db).await?;
+    let created: chrono::DateTime<chrono::Utc> = sqlx::query_scalar("SELECT created_at FROM users WHERE id = $1").bind(target).fetch_one(&st.db).await?;
+    Ok(Json(json!({ "messages": messages, "links": links, "media": media, "audit": audit, "created_at": created })))
+}

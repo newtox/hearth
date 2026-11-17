@@ -151,7 +151,18 @@ export type Modal =
   | { kind: 'channel'; channel: Channel | null; parent?: string | null; type?: 'text' | 'category' | 'voice' }
   | { kind: 'user' }
   | { kind: 'groupchat'; dm: Dm | null }
+  | { kind: 'mod'; userId: string }
   | null;
+
+type Flag = boolean | (() => boolean);
+export type MenuItem =
+  | { label: string; icon?: string; danger?: boolean; disabled?: Flag; checked?: Flag; color?: string | null; keep?: boolean; action?: () => void; items?: MenuItem[] }
+  | 'sep';
+export interface Menu {
+  x: number;
+  y: number;
+  items: MenuItem[];
+}
 
 export const app = $state({
   authed: !!getToken(),
@@ -171,6 +182,8 @@ export const app = $state({
   pane: 'chat' as 'side' | 'chat' | 'members',
   modal: null as Modal,
   profile: null as string | null,
+  menu: null as Menu | null,
+  insert: '',
   toast: '',
 });
 

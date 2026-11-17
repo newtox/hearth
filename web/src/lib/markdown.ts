@@ -2,9 +2,10 @@ export type Node =
   | { t: 'text'; v: string }
   | { t: 'bold' | 'italic' | 'strike'; c: Node[] }
   | { t: 'code' | 'block' | 'link'; v: string }
-  | { t: 'emoji'; name: string; file: string };
+  | { t: 'emoji'; name: string; file: string }
+  | { t: 'mention'; v: string };
 
-const INLINE = /(`[^`\n]+`)|(\*\*[^*]+?\*\*)|(~~[^~]+?~~)|(\*[^*\n]+?\*)|(https?:\/\/[^\s<]+)|<:([a-z0-9_]{2,32}):([a-z0-9]+\.[a-z0-9]+)>/gi;
+const INLINE = /(`[^`\n]+`)|(\*\*[^*]+?\*\*)|(~~[^~]+?~~)|(\*[^*\n]+?\*)|(https?:\/\/[^\s<]+)|<:([a-z0-9_]{2,32}):([a-z0-9]+\.[a-z0-9]+)>|(?<![\w@])@(everyone|[a-z0-9_.]{2,32})(?![\w.])/gi;
 export const STICKER = /^<sticker:([a-z0-9_]{2,32}):([a-z0-9]+\.[a-z0-9]+)>$/i;
 export const CUSTOM = /^<:([a-z0-9_]{2,32}):([a-z0-9]+\.[a-z0-9]+)>$/i;
 
@@ -18,6 +19,7 @@ function inline(text: string): Node[] {
     else if (m[3]) out.push({ t: 'strike', c: inline(m[3].slice(2, -2)) });
     else if (m[4]) out.push({ t: 'italic', c: inline(m[4].slice(1, -1)) });
     else if (m[5]) out.push({ t: 'link', v: m[5] });
+    else if (m[8]) out.push({ t: 'mention', v: m[8].toLowerCase() });
     else out.push({ t: 'emoji', name: m[6], file: m[7] });
     last = m.index + m[0].length;
   }

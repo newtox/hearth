@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { guildMenu, openMenu } from '../lib/menus';
   import { t } from '../lib/i18n.svelte';
   import { app, dmUnread, guildUnread, select } from '../lib/store.svelte';
   import { w } from '../lib/theme.svelte';
@@ -19,7 +20,7 @@
   </button>
   <div class="tabs">
     {#each app.guilds as g (g.id)}
-      <button class="tab banner" class:active={app.guildId === g.id} onclick={() => open(g.id)} title={g.name}>
+      <button class="tab banner" class:active={app.guildId === g.id} onclick={() => open(g.id)} oncontextmenu={(e) => openMenu(e, guildMenu(g))} title={g.name}>
         <Avatar id={g.id} name={g.name} image={g.icon} size={26} square />
         <span class="label ellipsis">{g.name}</span>
         {#if guildUnread(g)}<i class="pip"></i>{/if}

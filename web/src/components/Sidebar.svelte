@@ -4,6 +4,7 @@
   import { asset } from '../lib/api';
   import { w } from '../lib/theme.svelte';
   import { leaveVoice, toggleMute, voice, voiceMembers } from '../lib/voice.svelte';
+  import { channelMenu, guildMenu, memberMenu, openBelow, openMenu } from '../lib/menus';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
 
@@ -16,19 +17,25 @@
     for (const cat of g.channels.filter((c) => c.kind === 'category')) groups.push({ category: cat, items: text.filter((c) => c.parent_id === cat.id) });
     return groups.filter((x) => x.items.length || (x.category && manage));
   });
+  let menuFromHeader = $state(false);
+  $effect(() => {
+    if (!app.menu) menuFromHeader = false;
+  });
   const voiceName = $derived(app.guilds.flatMap((x) => x.channels).find((c) => c.id === voice.channelId)?.name ?? '');
 </script>
 
 <aside class="panel pane-side">
   {#if g}
-    <header class="row">
-      <h3 class="grow ellipsis">{g.name}</h3>
-      <button class="icon" onclick={() => (app.modal = { kind: 'guild' })} title={t('{server}-Einstellungen', { server: w('server') })} aria-label={t('{server}-Einstellungen', { server: w('server') })}><Icon name="gear" /></button>
+    <header>
+      <button class="title row" class:open={!!app.menu && menuFromHeader} aria-haspopup="menu" onclick={(e) => { menuFromHeader = true; openBelow(e.currentTarget, guildMenu(g)); }} oncontextmenu={(e) => openMenu(e, guildMenu(g))}>
+        <h3 class="grow ellipsis">{g.name}</h3>
+        <Icon name="chevron" size={18} />
+      </button>
     </header>
     <div class="list scroll">
       {#each tree as group (group.category?.id ?? 'none')}
         {#if group.category}
-          <div class="category row">
+          <div class="category row" role="presentation" oncontextmenu={(e) => openMenu(e, channelMenu(g, group.category!))}>
             <span class="grow ellipsis">{group.category.name}</span>
             {#if manage}
               <button class="icon" onclick={() => (app.modal = { kind: 'channel', channel: group.category })} aria-label={t('Kategorie bearbeiten')}><Icon name="edit" size={14} /></button>
@@ -37,7 +44,7 @@
           </div>
         {/if}
         {#each group.items as c (c.id)}
-          <div class="item" class:active={c.id === app.channelId} class:unread={app.unread[c.id]}>
+          <div class="item" class:active={c.id === app.channelId} class:unread={app.unread[c.id]} role="presentation" oncontextmenu={(e) => openMenu(e, channelMenu(g, c))}>
             <button class="main row" onclick={() => select(g.id, c.id)}>
               <Icon name={c.kind === 'voice' ? 'volume' : 'hash'} size={16} />
               <span class="ellipsis">{c.name}</span>
@@ -47,7 +54,7 @@
             {/if}
           </div>
           {#each g.channels.filter((x) => x.kind === 'thread' && x.parent_id === c.id) as th (th.id)}
-            <div class="item sub" class:active={th.id === app.channelId} class:unread={app.unread[th.id]}>
+            <div class="item sub" class:active={th.id === app.channelId} class:unread={app.unread[th.id]} role="presentation" oncontextmenu={(e) => openMenu(e, channelMenu(g, th))}>
               <button class="main row" onclick={() => select(g.id, th.id)}>
                 <Icon name="thread" size={14} />
                 <span class="ellipsis">{th.name}</span>
@@ -57,7 +64,7 @@
           {/each}
           {#if c.kind === 'voice'}
             {#each voiceMembers(c.id) as m (m.id)}
-              <button class="row inside" onclick={() => (app.profile = m.id)}>
+              <button class="row inside" onclick={() => (app.profile = m.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.id, g))}>
                 <Avatar id={m.id} name={m.display_name} image={m.avatar} size={20} />
                 <span class="ellipsis">{m.nickname || m.display_name}</span>
               </button>
@@ -65,13 +72,6 @@
           {/if}
         {/each}
       {/each}
-      {#if manage}
-        <div class="row new">
-          <button class="btn small" onclick={() => (app.modal = { kind: 'channel', channel: null, parent: null })}><Icon name="plus" size={14} /> {t('Kanal')}</button>
-          <button class="btn small" onclick={() => (app.modal = { kind: 'channel', channel: null, type: 'voice' })}><Icon name="plus" size={14} /> {t('Sprachkanal')}</button>
-          <button class="btn small" onclick={() => (app.modal = { kind: 'channel', channel: null, type: 'category' })}><Icon name="plus" size={14} /> {t('Kategorie')}</button>
-        </div>
-      {/if}
     </div>
   {:else}
     <header><h3>{w('dms')}</h3></header>
@@ -126,6 +126,36 @@
   header {
     padding: 14px 14px 10px;
     border-bottom: 1px solid var(--line);
+  }
+  header:has(.title) {
+    padding: 6px;
+  }
+  .title {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: var(--radius-s);
+    text-align: left;
+    color: var(--ink);
+  }
+  .title h3 {
+    margin: 0;
+  }
+  .title :global(svg) {
+    flex: none;
+    color: var(--muted);
+    transition: transform 0.15s;
+  }
+  .title:hover,
+  .title.open {
+    background: var(--panel-2);
+  }
+  .title.open :global(svg) {
+    transform: rotate(180deg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .title :global(svg) {
+      transition: none;
+    }
   }
   .list {
     flex: 1;
@@ -232,10 +262,6 @@
     height: 9px;
     border-radius: 50%;
     background: var(--ok);
-  }
-  .new {
-    padding: 14px 4px 4px;
-    flex-wrap: wrap;
   }
   .empty {
     padding: 10px;

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { memberMenu, openMenu } from '../lib/menus';
+  import { copy } from '../lib/moderation';
   import { locale, t } from '../lib/i18n.svelte';
   import { tick } from 'svelte';
   import { api, asset, upload } from '../lib/api';
@@ -63,6 +65,19 @@
   let editText = $state('');
   let list = $state<HTMLDivElement>();
   let input = $state<HTMLTextAreaElement>();
+
+  function mentionsMe(content: string) {
+    const name = app.me?.username;
+    return !!name && new RegExp(`(^|[^\\w@])@${name.replace(/\./g, '\\.')}(?![\\w.])`, 'i').test(content);
+  }
+
+  $effect(() => {
+    const text = app.insert;
+    if (!text) return;
+    app.insert = '';
+    draft = draft && !/\s$/.test(draft) ? `${draft} ${text}` : draft + text;
+    input?.focus();
+  });
   let lastTyping = 0;
   let stick = true;
   let shown = '';
@@ -210,6 +225,22 @@
     }
   }
 
+  function messageMenu(e: MouseEvent, m: Message) {
+    if ((e.target as HTMLElement).closest('a, input, textarea')) return;
+    const own = m.author.id === app.me?.id;
+    openMenu(e, [
+      has(perms, P.ADD_REACTIONS) && { label: t('Reagieren'), icon: 'smile', action: () => (picker = { message: m }) },
+      canThread && !threadOf(m.id) && { label: t('Thread starten'), icon: 'thread', action: () => startThread(m) },
+      own && !!m.content && !m.poll && !m.content.match(STICKER) && { label: t('Bearbeiten'), icon: 'edit', action: () => startEdit(m) },
+      'sep',
+      !!m.content && !m.content.match(STICKER) && { label: t('Text kopieren'), icon: 'copy', action: () => copy(m.content) },
+      !own && { label: t('Erwähnen'), icon: 'at', action: () => (app.insert = `@${m.author.username} `) },
+      { label: t('Nachrichten-ID kopieren'), icon: 'id', action: () => copy(m.id) },
+      'sep',
+      (own || (g && has(perms, P.MANAGE_MESSAGES)) || groupDelete) && { label: t('Nachricht löschen'), icon: 'trash', danger: true, action: () => remove(m) },
+    ]);
+  }
+
   function remove(m: Message) {
     if (confirm(t('Nachricht löschen?'))) attempt(api('DELETE', `/channels/${m.channel_id}/messages/${m.id}`));
   }
@@ -220,7 +251,7 @@
     <button class="icon mobile" onclick={() => (app.pane = 'side')} aria-label={t('Kanalliste')}><Icon name="menu" /></button>
     {#if ch}
       {#if dmUser}
-        <button class="row who" onclick={() => (app.profile = dmUser.id)}>
+        <button class="row who" onclick={() => (app.profile = dmUser.id)} oncontextmenu={(e) => openMenu(e, memberMenu(dmUser.id, null))}>
           <Avatar id={dmUser.id} name={dmUser.display_name} image={dmUser.avatar} size={28} online={!!dmUser.online} />
           <h3 class="ellipsis">{title}</h3>
         </button>
@@ -264,16 +295,16 @@
         {#if newDay(m, messages[i - 1])}
           <div class="day"><span>{day.format(new Date(m.created_at))}</span></div>
         {/if}
-        <article class="msg" class:own class:joined>
+        <article class="msg" class:own class:joined class:mention={!own && mentionsMe(m.content)} oncontextmenu={(e) => editing !== m.id && messageMenu(e, m)}>
           {#if !own}
-            <button class="face" onclick={() => (app.profile = m.author.id)} aria-label={t('Profil von {name}', { name: m.author.display_name })} tabindex={joined ? -1 : 0}>
+            <button class="face" onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))} aria-label={t('Profil von {name}', { name: m.author.display_name })} tabindex={joined ? -1 : 0}>
               {#if !joined}<Avatar id={m.author.id} name={m.author.display_name} image={m.author.avatar} size={34} />{/if}
             </button>
           {/if}
           <div class="content">
             {#if !joined}
               <div class="meta">
-                {#if !own}<button class="name" style:color={nameColor(m.author.id)} onclick={() => (app.profile = m.author.id)}>{memberName(g, m.author)}</button>{/if}
+                {#if !own}<button class="name" style:color={nameColor(m.author.id)} onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))}>{memberName(g, m.author)}</button>{/if}
                 <time datetime={m.created_at}>{time.format(new Date(m.created_at))}</time>
               </div>
             {/if}
@@ -612,6 +643,10 @@
     background: var(--bubble);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+  .mention .bubble {
+    background: color-mix(in srgb, var(--accent) 16%, var(--bubble));
+    box-shadow: inset 3px 0 0 var(--accent);
   }
   .own .bubble {
     background: var(--bubble-own);

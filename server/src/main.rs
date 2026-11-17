@@ -112,6 +112,7 @@ async fn main() {
         .route("/guilds/{gid}/roles", post(roles::create).put(roles::reorder))
         .route("/guilds/{gid}/roles/{rid}", patch(roles::update).delete(roles::delete))
         .route("/guilds/{gid}/members/{uid}", patch(members::update).delete(members::kick))
+        .route("/guilds/{gid}/members/{uid}/summary", get(members::summary))
         .route("/guilds/{gid}/integrations", get(integrations::list))
         .route("/guilds/{gid}/integrations/{key}", post(integrations::start).delete(integrations::remove))
         .route("/guilds/{gid}/integrations/{key}/sync", post(integrations::sync_now))

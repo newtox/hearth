@@ -15,6 +15,8 @@
   import ChannelEditor from './components/ChannelEditor.svelte';
   import GuildSettings from './components/GuildSettings.svelte';
   import UserSettings from './components/UserSettings.svelte';
+  import ContextMenu from './components/ContextMenu.svelte';
+  import ModView from './components/ModView.svelte';
 </script>
 
 {#if !app.authed}
@@ -37,6 +39,8 @@
   {#if app.modal?.kind === 'guild' && guild()}<GuildSettings tab={app.modal.tab} />{/if}
   {#if app.modal?.kind === 'user'}<UserSettings />{/if}
   {#if app.modal?.kind === 'groupchat'}<GroupModal dm={app.modal.dm} />{/if}
+  {#if app.modal?.kind === 'mod' && guild()}<ModView userId={app.modal.userId} />{/if}
+  <ContextMenu />
   {#if app.ring}<RingBanner />{/if}
   {#if app.profile}<ProfileCard userId={app.profile} />{/if}
 {/if}
