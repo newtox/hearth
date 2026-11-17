@@ -29,6 +29,7 @@
     });
   });
 
+  const external = $derived(!!direct || has(perms, P.USE_EXTERNAL_EMOJIS));
   const groupDelete = $derived(direct?.kind === 'group' && groupMay(direct, 'delete'));
   let revealed = $state<string[]>([]);
 
@@ -58,7 +59,7 @@
 
   function encode(text: string) {
     return text.replace(/(^|[^<\w]):([a-z0-9_]{2,32}):/gi, (all, pre, name) => {
-      const e = findEmoji(name);
+      const e = findEmoji(name, 'emoji', external);
       return e ? `${pre}<:${e.name}:${e.file}>` : all;
     });
   }
@@ -333,7 +334,7 @@
     {:else}
       <p class="readonly muted">{t('Du darfst in diesem Kanal nicht schreiben.')}</p>
     {/if}
-    {#if picker}<EmojiPicker stickers={!picker.message} onpick={pick} onclose={() => (picker = null)} />{/if}
+    {#if picker}<EmojiPicker stickers={!picker.message} {external} onpick={pick} onclose={() => (picker = null)} />{/if}
   {:else}
     <div class="blank">
       <h2>{app.guildId ? t('Kein Kanal sichtbar') : t('Willkommen am Feuer')}</h2>

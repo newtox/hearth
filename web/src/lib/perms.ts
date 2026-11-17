@@ -18,6 +18,7 @@ export const P = {
   STREAM: 1 << 17,
   MODERATE_MEMBERS: 1 << 18,
   MANAGE_EMOJIS: 1 << 19,
+  USE_EXTERNAL_EMOJIS: 1 << 20,
 };
 
 export const PERMISSIONS: { bit: number; name: string; hint: string }[] = [
@@ -25,6 +26,7 @@ export const PERMISSIONS: { bit: number; name: string; hint: string }[] = [
   { bit: P.SEND_MESSAGES, name: 'Nachrichten senden', hint: 'In Textkanälen schreiben' },
   { bit: P.ATTACH_FILES, name: 'Dateien anhängen', hint: 'Bilder und Dateien hochladen' },
   { bit: P.ADD_REACTIONS, name: 'Reaktionen hinzufügen', hint: '' },
+  { bit: P.USE_EXTERNAL_EMOJIS, name: 'Externe Emojis verwenden', hint: 'Emojis und Sticker aus anderen Servern posten' },
   { bit: P.MANAGE_MESSAGES, name: 'Nachrichten verwalten', hint: 'Nachrichten anderer löschen' },
   { bit: P.MANAGE_CHANNELS, name: 'Kanäle verwalten', hint: 'Kanäle anlegen, ändern und löschen' },
   { bit: P.MANAGE_ROLES, name: 'Rollen verwalten', hint: 'Rollen unterhalb der eigenen anlegen, ändern und vergeben' },
@@ -42,7 +44,7 @@ export const PERMISSIONS: { bit: number; name: string; hint: string }[] = [
   { bit: P.ADMINISTRATOR, name: 'Administrator', hint: 'Alle Berechtigungen, umgeht Kanalregeln' },
 ];
 
-export const CHANNEL_PERMISSIONS = PERMISSIONS.filter((p) => [P.VIEW_CHANNEL, P.SEND_MESSAGES, P.ATTACH_FILES, P.ADD_REACTIONS, P.MANAGE_MESSAGES, P.CONNECT, P.SPEAK, P.STREAM].includes(p.bit));
+export const CHANNEL_PERMISSIONS = PERMISSIONS.filter((p) => [P.VIEW_CHANNEL, P.SEND_MESSAGES, P.ATTACH_FILES, P.ADD_REACTIONS, P.USE_EXTERNAL_EMOJIS, P.MANAGE_MESSAGES, P.CONNECT, P.SPEAK, P.STREAM].includes(p.bit));
 
 export function has(perms: number | undefined, bit: number) {
   return ((perms ?? 0) & bit) === bit;

@@ -6,6 +6,32 @@ use serde_json::{json, Value};
 use std::time::Duration;
 use uuid::Uuid;
 
+fn emoji_files(content: &str) -> Vec<&str> {
+    content
+        .split('<')
+        .skip(1)
+        .filter_map(|part| {
+            let mut fields = part.split('>').next()?.split(':');
+            let kind = fields.next()?;
+            let (_, file, None) = (fields.next()?, fields.next()?, fields.next()) else { return None };
+            (kind.is_empty() || kind == "sticker").then_some(file)
+        })
+        .collect()
+}
+
+async fn check_emojis(st: &AppState, a: &super::channels::Access, content: &str) -> Result<()> {
+    let Some(gid) = a.channel.guild_id else { return Ok(()) };
+    if a.perms & perms::USE_EXTERNAL_EMOJIS != 0 {
+        return Ok(());
+    }
+    let used = emoji_files(content);
+    if used.is_empty() {
+        return Ok(());
+    }
+    let own: Vec<String> = sqlx::query_scalar("SELECT file FROM emojis WHERE guild_id = $1").bind(gid).fetch_all(&st.db).await?;
+    if used.iter().all(|f| own.iter().any(|o| o == f)) { Ok(()) } else { bad("You cannot use emojis from other servers here") }
+}
+
 async fn to_json(st: &AppState, rows: &[MessageRow]) -> Result<Vec<Value>> {
     let ids: Vec<Uuid> = rows.iter().map(|r| r.id).collect();
     let attachments: Vec<Attachment> = sqlx::query_as("SELECT id, message_id, filename, file, size, is_image FROM attachments WHERE message_id = ANY($1) ORDER BY id")
@@ -110,6 +136,7 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
     if content.chars().count() > 4000 || (content.is_empty() && b.attachment_ids.is_empty()) {
         return bad("Message: 1–4000 characters");
     }
+    check_emojis(&st, &a, content).await?;
     if b.attachment_ids.len() > 10 {
         return bad("At most 10 attachments per message");
     }
@@ -146,6 +173,7 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((c
     if content.is_empty() || content.chars().count() > 4000 {
         return bad("Message: 1–4000 characters");
     }
+    check_emojis(&st, &a, content).await?;
     let done = sqlx::query("UPDATE messages SET content = $1, edited_at = now() WHERE id = $2 AND channel_id = $3 AND author_id = $4")
         .bind(content)
         .bind(mid)
@@ -207,6 +235,9 @@ pub async fn react(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((ci
     st.limits.check(format!("react:{uid}"), 30, Duration::from_secs(10))?;
     if !valid_emoji(&b.emoji) {
         return bad("Invalid emoji");
+    }
+    if b.on {
+        check_emojis(&st, &a, &b.emoji).await?;
     }
     let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM messages WHERE id = $1 AND channel_id = $2)").bind(mid).bind(cid).fetch_one(&st.db).await?;
     if !exists {

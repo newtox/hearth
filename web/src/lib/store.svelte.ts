@@ -233,10 +233,10 @@ export function can(bit: number, g: Guild | null = guild()) {
   return has(g?.permissions, bit);
 }
 
-export function findEmoji(name: string, kind: 'emoji' | 'sticker' = 'emoji') {
+export function findEmoji(name: string, kind: 'emoji' | 'sticker' = 'emoji', external = true) {
   const lower = name.toLowerCase();
   const own = guild()?.emojis.find((e) => e.kind === kind && e.name === lower);
-  if (own) return own;
+  if (own || !external) return own ?? null;
   for (const g of app.guilds) {
     const e = g.emojis.find((x) => x.kind === kind && x.name === lower);
     if (e) return e;

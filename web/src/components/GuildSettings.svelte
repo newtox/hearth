@@ -268,7 +268,7 @@
               <div class="roleitem" class:on={r.id === roleId}>
                 <button class="row grow" onclick={() => pickRole(r)}>
                   <span class="swatch" style:background={r.color ?? 'var(--muted)'}></span>
-                  <span class="ellipsis">{r.is_default ? t('@alle') : r.name}</span>
+                  <span class="ellipsis">{r.name}</span>
                 </button>
                 {#if !r.is_default && editable(r)}
                   <button class="icon" onclick={() => move(r, -1)} aria-label={t('{name} nach oben', { name: r.name })}><Icon name="up" size={14} /></button>

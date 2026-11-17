@@ -3,12 +3,12 @@
   import { asset } from '../lib/api';
   import { app, guild, type Emoji } from '../lib/store.svelte';
 
-  let { stickers = false, onpick, onclose }: { stickers?: boolean; onpick: (value: string, kind: 'unicode' | 'custom' | 'sticker', emoji?: Emoji) => void; onclose: () => void } = $props();
+  let { stickers = false, external = true, onpick, onclose }: { stickers?: boolean; external?: boolean; onpick: (value: string, kind: 'unicode' | 'custom' | 'sticker', emoji?: Emoji) => void; onclose: () => void } = $props();
 
   const UNICODE = '😀 😂 🤣 😊 😍 😘 😎 🤔 😅 😇 🙃 😉 😢 😭 😡 🤯 😱 🥳 😴 🤝 👍 👎 👏 🙏 💪 👀 🔥 ✨ 🎉 ❤️ 💔 💯 ✅ ❌ ⚠️ ❓ ⭐ 🌙 ☀️ 🍕 🍺 ☕ 🎮 🎲 🏆 ⚔️ 🛡️ 🐉 👑 💎 🗝️ 📜 🧪 🚀 💤 🎵'.split(' ');
 
   let tab = $state<'emoji' | 'sticker'>('emoji');
-  const sorted = $derived([...app.guilds].sort((a, b) => Number(b.id === guild()?.id) - Number(a.id === guild()?.id)));
+  const sorted = $derived([...app.guilds].filter((x) => external || x.id === guild()?.id).sort((a, b) => Number(b.id === guild()?.id) - Number(a.id === guild()?.id)));
   const custom = $derived(sorted.flatMap((g) => g.emojis.filter((e) => e.kind === 'emoji')));
   const stickerList = $derived(sorted.flatMap((g) => g.emojis.filter((e) => e.kind === 'sticker')));
 </script>

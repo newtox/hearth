@@ -165,6 +165,17 @@ async def main():
     check("create sticker", r2.status_code == 200, r2.text)
     check("ben cannot create emoji", requests.post(f"{BASE}/api/guilds/{gid}/emojis", headers={"Authorization": f"Bearer {b}"}, data={"name": "nope"}, files={"file": ("p.png", png, "image/png")}).status_code == 403)
     check("emojis in snapshot", [e["kind"] for e in call("GET", f"/guilds/{gid}", c)[1]["emojis"]] == ["emoji", "sticker"])
+    ext = "<:fremd:0192abcdef.png>"
+    check("external emoji allowed by default", call("POST", f"/channels/{general}/messages", c, {"content": ext})[0] == 200)
+    everyone_perms = next(x for x in call("GET", f"/guilds/{gid}", a)[1]["roles"] if x["is_default"])["permissions"]
+    call("PATCH", f"/guilds/{gid}/roles/{everyone}", a, {"permissions": everyone_perms & ~(1 << 20)})
+    check("external emoji blocked without permission", call("POST", f"/channels/{general}/messages", c, {"content": ext})[0] == 400)
+    check("external reaction blocked", call("POST", f"/channels/{general}/messages/{m['id']}/reactions", c, {"emoji": ext, "on": True})[0] == 400)
+    check("own server emoji still fine", call("POST", f"/channels/{general}/messages", c, {"content": f"<:party:{r.json()['file']}>"})[0] == 200)
+    check("unicode emoji still fine", call("POST", f"/channels/{general}/messages/{m['id']}/reactions", c, {"emoji": "🎉", "on": True})[0] == 200)
+    check("member rule re-allows", call("PUT", f"/channels/{general}/overwrites/{cid_user}", a, {"kind": "member", "allow": 1 << 20, "deny": 0})[0] == 200 and call("POST", f"/channels/{general}/messages", c, {"content": ext})[0] == 200)
+    call("DELETE", f"/channels/{general}/overwrites/{cid_user}", a)
+    call("PATCH", f"/guilds/{gid}/roles/{everyone}", a, {"permissions": everyone_perms})
     check("delete emoji", call("DELETE", f"/guilds/{gid}/emojis/{r.json()['id']}", a)[0] == 200 and requests.get(f"{BASE}/uploads/{r.json()['file']}").status_code == 404)
 
     check("mod without permission cannot timeout", call("PATCH", f"/guilds/{gid}/members/{cid_user}", b, {"timeout_minutes": 10})[0] == 403)
