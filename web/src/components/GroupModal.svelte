@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask, askText } from '../lib/dialog.svelte';
   import { api, asset, upload } from '../lib/api';
   import { GROUP_ROLES, GROUP_RULES, groupMay, groupRole } from '../lib/groups';
   import { t } from '../lib/i18n.svelte';
@@ -41,12 +42,12 @@
   }
 
   async function rename() {
-    const next = prompt(t('Name der Gruppe (leer lassen für die Namen der Mitglieder):'), dm!.name);
+    const next = await askText({ title: t('Gruppe umbenennen'), input: { value: dm!.name ?? '', label: t('Name der Gruppe'), placeholder: t('Leer lassen für die Namen der Mitglieder') }, confirm: t('Speichern') });
     if (next !== null) await attempt(api('PATCH', `/channels/${dm!.id}/group`, { name: next }));
   }
 
   async function leave() {
-    if (confirm(t('Gruppe wirklich verlassen?'))) await attempt(api('DELETE', `/channels/${dm!.id}/recipients/${app.me!.id}`));
+    if (await ask({ title: t('Gruppe verlassen'), text: t('Du kannst nur wieder hinein, wenn dich jemand erneut hinzufügt.'), confirm: t('Verlassen'), danger: true })) await attempt(api('DELETE', `/channels/${dm!.id}/recipients/${app.me!.id}`));
   }
 </script>
 

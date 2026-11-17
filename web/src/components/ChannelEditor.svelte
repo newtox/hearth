@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from '../lib/dialog.svelte';
   import { t } from '../lib/i18n.svelte';
   import { untrack } from 'svelte';
   import { api } from '../lib/api';
@@ -12,9 +13,13 @@
 
   const g = $derived(guild()!);
   const existing = $derived(modal.channel ? (g.channels.find((c) => c.id === modal.channel!.id) ?? modal.channel) : null);
-  const kind = modal.channel?.kind ?? modal.type ?? 'text';
+  let kind = $state<'text' | 'category' | 'voice'>(modal.channel?.kind ?? modal.type ?? 'text');
   const voiceBits = [P.VIEW_CHANNEL, P.CONNECT, P.SPEAK, P.STREAM];
-  const rules = CHANNEL_PERMISSIONS.filter((p) => (kind === 'voice' ? voiceBits.includes(p.bit) : p.bit === P.VIEW_CHANNEL || !voiceBits.includes(p.bit)));
+  const rules = $derived(CHANNEL_PERMISSIONS.filter((p) => (kind === 'voice' ? voiceBits.includes(p.bit) : p.bit === P.VIEW_CHANNEL || !voiceBits.includes(p.bit))));
+  const types = [
+    { id: 'text' as const, icon: 'hash', name: 'Textkanal', hint: 'Nachrichten, Bilder, Umfragen und Emojis' },
+    { id: 'voice' as const, icon: 'volume', name: 'Sprachkanal', hint: 'Zusammen reden, Kamera und Bildschirm teilen' },
+  ];
   const categories = $derived(g.channels.filter((c) => c.kind === 'category'));
 
   let name = $state(modal.channel?.name ?? '');
@@ -33,7 +38,7 @@
   }
 
   async function remove() {
-    if (existing && confirm(t('„{name}“ mit allen Nachrichten löschen?', { name: existing.name }))) {
+    if (existing && (await ask({ title: t(kind === 'category' ? 'Kategorie löschen' : 'Kanal löschen'), text: t(kind === 'category' ? '„{name}“ wird gelöscht. Die Kanäle darin bleiben erhalten.' : '„{name}“ wird mit allen Nachrichten gelöscht. Das lässt sich nicht rückgängig machen.', { name: existing.name }), confirm: t('Löschen'), danger: true }))) {
       await attempt(api('DELETE', `/channels/${existing.id}`));
       close();
     }
@@ -69,6 +74,18 @@
 <Modal title={t((kind === 'category' ? 'Kategorie' : kind === 'voice' ? 'Sprachkanal' : 'Kanal') + (existing ? ' bearbeiten' : ' anlegen'))} onclose={close} wide={!!existing && kind !== 'category'}>
   <div class="stack">
     <form class="stack" onsubmit={save}>
+      {#if !existing && kind !== 'category'}
+        <div class="field" role="radiogroup" aria-label={t('Kanaltyp')}>
+          <span>{t('Kanaltyp')}</span>
+          {#each types as k (k.id)}
+            <label class="type" class:on={kind === k.id}>
+              <Icon name={k.icon} size={22} />
+              <span class="grow"><strong>{t(k.name)}</strong><small class="muted">{t(k.hint)}</small></span>
+              <input type="radio" name="kind" value={k.id} bind:group={kind} />
+            </label>
+          {/each}
+        </div>
+      {/if}
       <label class="field">
         <span>{t('Name')}</span>
         <input class="input" bind:value={name} maxlength="60" required />
@@ -140,6 +157,29 @@
 </Modal>
 
 <style>
+  .type {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: var(--radius-s);
+    background: var(--panel-2);
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .type.on {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, var(--panel-2));
+  }
+  .type strong,
+  .type small {
+    display: block;
+  }
+  .type input {
+    accent-color: var(--accent);
+    width: 18px;
+    height: 18px;
+  }
   .rules {
     overflow-x: auto;
   }

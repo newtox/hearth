@@ -1,3 +1,4 @@
+import { ask } from './dialog.svelte';
 import { api } from './api';
 import { t } from './i18n.svelte';
 import { w } from './theme.svelte';
@@ -79,7 +80,7 @@ async function invite(g: Guild) {
 }
 
 async function leave(g: Guild) {
-  if (confirm(t('„{name}“ wirklich verlassen?', { name: g.name }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${app.me!.id}`));
+  if ((await ask({ title: t('„{name}“ verlassen', { name: g.name }), text: t('Du kannst nur mit einer neuen Einladung wieder beitreten.'), confirm: t('Verlassen'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${app.me!.id}`));
 }
 
 export function guildMenu(g: Guild): Entry[] {
@@ -113,7 +114,7 @@ export function channelMenu(g: Guild, c: Channel): Entry[] {
 
 const STATUSES: { id: Status; name: string; hint: string; color: string }[] = [
   { id: 'online', name: 'Online', hint: '', color: 'var(--ok)' },
-  { id: 'idle', name: 'Abwesend', hint: 'Kommt auch automatisch nach 10 Minuten ohne Eingabe', color: '#f0b232' },
+  { id: 'idle', name: 'Abwesend', hint: '', color: '#f0b232' },
   { id: 'dnd', name: 'Bitte nicht stören', hint: 'Keine Töne für Nachrichten und Anrufe', color: 'var(--danger)' },
   { id: 'invisible', name: 'Unsichtbar', hint: 'Du wirst als offline angezeigt, kannst aber alles nutzen', color: 'var(--muted)' },
 ];

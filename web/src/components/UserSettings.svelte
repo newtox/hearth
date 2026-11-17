@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from '../lib/dialog.svelte';
   import { LANGS, fromEnglish, lang, setLang, t } from '../lib/i18n.svelte';
   import { api, asset, upload } from '../lib/api';
   import { customGames, detection } from '../lib/activity';
@@ -85,7 +86,7 @@
   }
 
   async function removeBadge(b: Badge) {
-    if (confirm(t('Abzeichen „{name}“ löschen? Es wird allen entzogen.', { name: b.name }))) {
+    if (await ask({ title: t('Abzeichen löschen'), text: t('„{name}“ wird gelöscht und allen entzogen.', { name: b.name }), confirm: t('Löschen'), danger: true })) {
       await attempt(api('DELETE', `/badges/${b.id}`));
       loadBadges();
     }
@@ -111,7 +112,7 @@
     { id: 'activity', name: t('Aktivität'), group: t('App-Einstellungen') },
     ...(app.me!.is_admin ? [{ id: 'badges', name: t('Globale Abzeichen'), group: t('Instanz') }] : []),
     { id: 'help', name: t('Hilfe') },
-    { id: 'logout', name: t('Abmelden'), danger: true, action: () => confirm(t('Wirklich abmelden?')) && logout() },
+    { id: 'logout', name: t('Abmelden'), danger: true, action: async () => (await ask({ title: t('Abmelden'), text: t('Willst du dich wirklich abmelden?'), confirm: t('Abmelden'), danger: true })) && logout() },
   ]);
 
   let showEmail = $state(false);

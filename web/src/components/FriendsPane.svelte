@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from '../lib/dialog.svelte';
   import { activityText } from '../lib/activity';
   import { api } from '../lib/api';
   import { t } from '../lib/i18n.svelte';
@@ -17,8 +18,8 @@
     }
   }
 
-  function remove(u: User) {
-    if (confirm(t('{name} als Freund entfernen?', { name: u.display_name }))) attempt(api('DELETE', `/friends/${u.id}`));
+  async function remove(u: User) {
+    if (await ask({ title: t('Freund entfernen'), text: t('{name} wirklich als Freund entfernen?', { name: u.display_name }), confirm: t('Entfernen'), danger: true })) attempt(api('DELETE', `/friends/${u.id}`));
   }
 </script>
 

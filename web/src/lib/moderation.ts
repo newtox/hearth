@@ -1,3 +1,4 @@
+import { ask, askText } from './dialog.svelte';
 import { api } from './api';
 import { t } from './i18n.svelte';
 import { app, attempt, topPosition, toast, type Guild, type Member, type Role } from './store.svelte';
@@ -45,12 +46,12 @@ export async function toggleRole(g: Guild, memberId: string, roleId: string) {
 }
 
 export async function nickname(g: Guild, m: Member) {
-  const nick = prompt(t('Spitzname (leer lassen zum Entfernen):'), m.nickname ?? '');
+  const nick = await askText({ title: t('Spitzname ändern'), input: { value: m.nickname ?? '', label: t('Spitzname'), placeholder: m.display_name }, text: t('Leer lassen, um den Spitznamen zu entfernen.'), confirm: t('Speichern') });
   if (nick !== null) await attempt(api('PATCH', `/guilds/${g.id}/members/${m.id}`, { nickname: nick }));
 }
 
 export async function timeout(g: Guild, m: Member) {
-  const minutes = prompt(t('Timeout für {name} in Minuten (z. B. 10, 60, 1440):', { name: label(m) }), '60');
+  const minutes = await askText({ title: t('Timeout für {name}', { name: label(m) }), text: t('Dauer in Minuten, z. B. 10, 60 oder 1440.'), input: { value: '60', type: 'number', label: t('Minuten') }, confirm: t('Timeout') });
   if (minutes === null) return;
   const n = Number(minutes);
   if (!Number.isFinite(n) || n <= 0) return toast(t('Bitte eine Zahl größer 0 eingeben'));
@@ -62,16 +63,16 @@ export async function endTimeout(g: Guild, m: Member) {
 }
 
 export async function kick(g: Guild, m: Member) {
-  if (confirm(t('{name} wirklich entfernen?', { name: label(m) }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${m.id}`));
+  if ((await ask({ title: t('{name} entfernen', { name: label(m) }), text: t('{name} kann über eine neue Einladung wieder beitreten.', { name: label(m) }), confirm: t('Entfernen'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${m.id}`));
 }
 
 export async function ban(g: Guild, m: Member) {
-  const reason = prompt(t('Grund für den Bann von {name}:', { name: label(m) }), '');
+  const reason = await askText({ title: t('{name} bannen', { name: label(m) }), text: t('{name} wird entfernt und kann nicht wieder beitreten, bis der Bann aufgehoben wird.', { name: label(m) }), input: { label: t('Grund (optional)') }, confirm: t('Bannen'), danger: true });
   if (reason !== null) await attempt(api('PUT', `/guilds/${g.id}/bans/${m.id}`, { reason }));
 }
 
 export async function transfer(g: Guild, m: Member) {
-  if (confirm(t('Besitz an {name} übertragen? Das lässt sich nur vom neuen Besitzer rückgängig machen.', { name: label(m) }))) await attempt(api('PATCH', `/guilds/${g.id}`, { owner_id: m.id }));
+  if ((await ask({ title: t('Besitz übertragen'), text: t('{name} wird neuer Besitzer. Das lässt sich nur vom neuen Besitzer rückgängig machen.', { name: label(m) }), confirm: t('Übertragen'), danger: true }))) await attempt(api('PATCH', `/guilds/${g.id}`, { owner_id: m.id }));
 }
 
 export async function copy(text: string) {

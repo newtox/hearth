@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask, askText } from '../lib/dialog.svelte';
   import { auditDetail, locale, serverError, t } from '../lib/i18n.svelte';
   import { untrack } from 'svelte';
   import { api, asset, base, getToken, upload } from '../lib/api';
@@ -43,11 +44,11 @@
   }
 
   async function leave() {
-    if (confirm(t('„{name}“ wirklich verlassen?', { name: g.name }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${app.me!.id}`));
+    if ((await ask({ title: t('„{name}“ verlassen', { name: g.name }), text: t('Du kannst nur mit einer neuen Einladung wieder beitreten.'), confirm: t('Verlassen'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${app.me!.id}`));
   }
 
   async function destroy() {
-    if (prompt(t('Zum Löschen den Namen „{name}“ eingeben:', { name: g.name })) === g.name) await attempt(api('DELETE', `/guilds/${g.id}`));
+    if ((await askText({ title: t('„{name}“ löschen', { name: g.name }), text: t('Alle Kanäle, Nachrichten und Rollen gehen verloren. Das lässt sich nicht rückgängig machen.'), input: { label: t('Zum Bestätigen den Servernamen eingeben'), match: g.name }, confirm: t('Server löschen'), danger: true })) === g.name) await attempt(api('DELETE', `/guilds/${g.id}`));
   }
 
   let roleId = $state<string | null>(null);
@@ -76,7 +77,7 @@
   }
 
   async function deleteRole() {
-    if (role && confirm(t('Rolle „{name}“ löschen?', { name: role.name }))) {
+    if (role && (await ask({ title: t('Rolle löschen'), text: t('„{name}“ wird gelöscht und allen Mitgliedern entzogen.', { name: role.name }), confirm: t('Löschen'), danger: true }))) {
       await attempt(api('DELETE', `/guilds/${g.id}/roles/${role.id}`));
       roleId = null;
     }
@@ -97,21 +98,21 @@
   }
 
   async function nickname(memberId: string, current: string | null) {
-    const nick = prompt(t('Spitzname (leer lassen zum Entfernen):'), current ?? '');
+    const nick = await askText({ title: t('Spitzname ändern'), input: { value: current ?? '', label: t('Spitzname'), placeholder: '' }, text: t('Leer lassen, um den Spitznamen zu entfernen.'), confirm: t('Speichern') });
     if (nick !== null) await attempt(api('PATCH', `/guilds/${g.id}/members/${memberId}`, { nickname: nick }));
   }
 
   async function kick(id: string, label: string) {
-    if (confirm(t('{name} wirklich entfernen?', { name: label }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${id}`));
+    if ((await ask({ title: t('{name} entfernen', { name: label }), text: t('{name} kann über eine neue Einladung wieder beitreten.', { name: label }), confirm: t('Entfernen'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${id}`));
   }
 
   async function ban(id: string, label: string) {
-    const reason = prompt(t('Grund für den Bann von {name}:', { name: label }), '');
+    const reason = await askText({ title: t('{name} bannen', { name: label }), text: t('{name} wird entfernt und kann nicht wieder beitreten, bis der Bann aufgehoben wird.', { name: label }), input: { label: t('Grund (optional)') }, confirm: t('Bannen'), danger: true });
     if (reason !== null) await attempt(api('PUT', `/guilds/${g.id}/bans/${id}`, { reason }));
   }
 
   async function transfer(id: string, label: string) {
-    if (confirm(t('Besitz an {name} übertragen? Das lässt sich nur vom neuen Besitzer rückgängig machen.', { name: label }))) await attempt(api('PATCH', `/guilds/${g.id}`, { owner_id: id }));
+    if ((await ask({ title: t('Besitz übertragen'), text: t('{name} wird neuer Besitzer. Das lässt sich nur vom neuen Besitzer rückgängig machen.', { name: label }), confirm: t('Übertragen'), danger: true }))) await attempt(api('PATCH', `/guilds/${g.id}`, { owner_id: id }));
   }
 
   let invites = $state<any[]>([]);
@@ -186,7 +187,7 @@
   }
 
   async function timeout(id: string, label: string) {
-    const minutes = prompt(t('Timeout für {name} in Minuten (z. B. 10, 60, 1440):', { name: label }), '60');
+    const minutes = await askText({ title: t('Timeout für {name}', { name: label }), text: t('Dauer in Minuten, z. B. 10, 60 oder 1440.'), input: { value: '60', type: 'number', label: t('Minuten') }, confirm: t('Timeout') });
     if (minutes === null) return;
     const n = Number(minutes);
     if (!Number.isFinite(n) || n <= 0) return toast(t('Bitte eine Zahl größer 0 eingeben'));
@@ -216,7 +217,7 @@
   }
 
   async function deleteEmoji(id: string, label: string) {
-    if (confirm(t('„{name}“ löschen? In alten Nachrichten wird es nicht mehr angezeigt.', { name: label }))) await attempt(api('DELETE', `/guilds/${g.id}/emojis/${id}`));
+    if ((await ask({ title: t('Emoji löschen'), text: t('„{name}“ wird gelöscht und in alten Nachrichten nicht mehr angezeigt.', { name: label }), confirm: t('Löschen'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/emojis/${id}`));
   }
 
   $effect(() => {

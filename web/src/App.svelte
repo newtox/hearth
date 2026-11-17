@@ -18,6 +18,7 @@
   import ContextMenu from './components/ContextMenu.svelte';
   import ModView from './components/ModView.svelte';
   import SidePanel from './components/SidePanel.svelte';
+  import Dialog from './components/Dialog.svelte';
 </script>
 
 {#if !app.authed}
@@ -45,6 +46,8 @@
   {#if app.ring}<RingBanner />{/if}
   {#if app.profile}<ProfileCard userId={app.profile} />{/if}
 {/if}
+
+<Dialog />
 
 {#if app.toast}<div class="toast panel" role="alert">{app.toast}</div>{/if}
 

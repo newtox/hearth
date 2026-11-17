@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask, askText } from '../lib/dialog.svelte';
   import { fromEnglish, locale, t } from '../lib/i18n.svelte';
   import { api, asset } from '../lib/api';
   import { app, attempt, canModerate, guild, isBlocked, isFriend, openDm, P, type Badge, type User, presenceOf } from '../lib/store.svelte';
@@ -41,7 +42,7 @@
   }
 
   async function kick() {
-    if (g && confirm(t('{name} wirklich entfernen?', { name: user?.display_name ?? '' }))) {
+    if (g && (await ask({ title: t('{name} entfernen', { name: user?.display_name ?? '' }), text: t('{name} kann über eine neue Einladung wieder beitreten.', { name: user?.display_name ?? '' }), confirm: t('Entfernen'), danger: true }))) {
       await attempt(api('DELETE', `/guilds/${g.id}/members/${userId}`));
       close();
     }
@@ -49,7 +50,7 @@
 
   async function ban() {
     if (!g) return;
-    const reason = prompt(t('Grund für den Bann von {name}:', { name: user?.display_name ?? '' }), '');
+    const reason = await askText({ title: t('{name} bannen', { name: user?.display_name ?? '' }), text: t('{name} wird entfernt und kann nicht wieder beitreten, bis der Bann aufgehoben wird.', { name: user?.display_name ?? '' }), input: { label: t('Grund (optional)') }, confirm: t('Bannen'), danger: true });
     if (reason === null) return;
     await attempt(api('PUT', `/guilds/${g.id}/bans/${userId}`, { reason }));
     close();
@@ -123,7 +124,7 @@
             {:else}
               <button class="btn" onclick={() => attempt(api('POST', '/friends', { user_id: user!.id }))}><Icon name="userPlus" size={16} /> {t('Freund hinzufügen')}</button>
             {/if}
-            {#if !isBlocked(user.id)}<button class="btn danger" onclick={() => confirm(t('{name} blockieren? Ihr könnt euch dann nicht mehr schreiben, und eine Freundschaft endet.', { name: user!.display_name })) && attempt(api('PUT', `/blocks/${user!.id}`))}>{t('Blockieren')}</button>{/if}
+            {#if !isBlocked(user.id)}<button class="btn danger" onclick={async () => (await ask({ title: t('{name} blockieren', { name: user!.display_name }), text: t('Ihr könnt euch dann nicht mehr schreiben, und eine Freundschaft endet.'), confirm: t('Blockieren'), danger: true })) && attempt(api('PUT', `/blocks/${user!.id}`))}>{t('Blockieren')}</button>{/if}
             {#if g && canModerate(g, user.id, P.KICK_MEMBERS)}<button class="btn danger" onclick={kick}>{t('Entfernen')}</button>{/if}
             {#if g && canModerate(g, user.id, P.BAN_MEMBERS)}<button class="btn danger" onclick={ban}>{t('Bannen')}</button>{/if}
           {/if}

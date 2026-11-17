@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ask } from '../lib/dialog.svelte';
   import { memberMenu, openMenu } from '../lib/menus';
   import { copy } from '../lib/moderation';
   import { locale, t } from '../lib/i18n.svelte';
@@ -262,8 +263,9 @@
     ]);
   }
 
-  function remove(m: Message) {
-    if (confirm(t('Nachricht löschen?'))) attempt(api('DELETE', `/channels/${m.channel_id}/messages/${m.id}`));
+  async function remove(m: Message, e?: MouseEvent) {
+    const preview = { name: memberName(g, m.author), text: m.content.match(STICKER) ? t('Sticker') : m.content || (m.poll ? t('Umfrage') : m.attachments.map((a) => a.filename).join(', ')) };
+    if (e?.shiftKey || (await ask({ title: t('Nachricht löschen'), text: t('Willst du diese Nachricht wirklich löschen?'), preview, confirm: t('Löschen'), danger: true, tip: t('Halte Umschalt beim Klick auf den Papierkorb, um diese Abfrage zu überspringen.') }))) attempt(api('DELETE', `/channels/${m.channel_id}/messages/${m.id}`));
   }
 </script>
 
@@ -394,7 +396,7 @@
               {#if has(perms, P.SEND_MESSAGES)}<button class="icon" onclick={() => startReply(m)} aria-label={t('Antworten')} title={t('Antworten')}><Icon name="reply" size={15} /></button>{/if}
               {#if has(perms, P.ADD_REACTIONS)}<button class="icon" onclick={() => (picker = { message: m })} aria-label={t('Reagieren')}><Icon name="smile" size={15} /></button>{/if}
               {#if own && m.content && !m.poll && !m.content.match(STICKER)}<button class="icon" onclick={() => startEdit(m)} aria-label={t('Bearbeiten')}><Icon name="edit" size={15} /></button>{/if}
-              {#if own || (g && has(perms, P.MANAGE_MESSAGES)) || groupDelete}<button class="icon" onclick={() => remove(m)} aria-label={t('Löschen')}><Icon name="trash" size={15} /></button>{/if}
+              {#if own || (g && has(perms, P.MANAGE_MESSAGES)) || groupDelete}<button class="icon" onclick={(e) => remove(m, e)} aria-label={t('Löschen')}><Icon name="trash" size={15} /></button>{/if}
             </div>
           {/if}
         </article>
@@ -707,14 +709,16 @@
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    margin-top: 12px;
-    max-width: min(78%, 720px);
+    margin: 10px -16px 0;
+    padding: 2px 16px;
+  }
+  .msg:hover {
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
   }
   .msg.joined {
-    margin-top: 3px;
+    margin-top: 1px;
   }
   .msg.own {
-    align-self: flex-end;
     flex-direction: row-reverse;
   }
   .face {
@@ -723,6 +727,7 @@
   }
   .content {
     min-width: 0;
+    max-width: min(78%, 720px);
   }
   .meta {
     display: flex;
@@ -823,8 +828,8 @@
     .mobile {
       display: block;
     }
-    .msg {
-      max-width: 92%;
+    .content {
+      max-width: 88%;
     }
     .send-label {
       display: none;
