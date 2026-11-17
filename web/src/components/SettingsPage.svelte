@@ -40,6 +40,10 @@
 <svelte:window onkeydown={key} />
 
 <div class="settings" role="dialog" aria-modal="true" aria-label={title}>
+  <div class="mobilebar">
+    <strong class="ellipsis">{title}</strong>
+    <button class="icon" onclick={onclose} aria-label={t('Schließen')}><Icon name="close" /></button>
+  </div>
   <nav class="nav scroll" aria-label={title}>
     <div class="inner">
       <p class="title ellipsis">{title}</p>
@@ -136,6 +140,9 @@
   .content h2 {
     margin: 0 0 20px;
   }
+  .mobilebar {
+    display: none;
+  }
   .close {
     position: absolute;
     top: 44px;
@@ -176,7 +183,7 @@
       display: flex;
       align-items: center;
       gap: 4px;
-      padding: 10px 64px 10px 10px;
+      padding: 6px 10px 10px;
     }
     .title,
     h4,
@@ -192,11 +199,16 @@
       padding: 20px 16px 60px;
     }
     .close {
-      top: 8px;
-      right: 10px;
-    }
-    .close small {
       display: none;
+    }
+    .mobilebar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px 4px 16px;
+      background: var(--panel-2);
+      font-family: var(--font-display);
     }
   }
 </style>

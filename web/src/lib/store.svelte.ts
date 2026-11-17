@@ -59,6 +59,7 @@ export interface Badge {
   track?: string;
   tier?: number;
   hours?: number;
+  granted_at?: string;
 }
 export interface Emoji {
   id: string;

@@ -2,7 +2,7 @@
   import { api } from '../lib/api';
   import { locale, t } from '../lib/i18n.svelte';
   import { has } from '../lib/perms';
-  import { app, attempt, channel, guild, jumpTo, memberName, P, type Dm, type Message } from '../lib/store.svelte';
+  import { app, attempt, channel, guild, jumpTo, memberName, runSearch, P, type Dm, type Message } from '../lib/store.svelte';
   import { groupMay } from '../lib/groups';
   import { w } from '../lib/theme.svelte';
   import Avatar from './Avatar.svelte';
@@ -15,6 +15,14 @@
   const canPin = $derived(!!ch && (g ? has((ch as any).permissions, P.PIN_MESSAGES) : direct?.kind === 'group' ? groupMay(direct, 'pin') : !!direct));
 
   let pins = $state<Message[] | null>(null);
+  let query = $state(app.search.query);
+  $effect(() => {
+    query = app.search.query;
+  });
+
+  function searchKey(e: KeyboardEvent) {
+    if (e.key === 'Enter' && query.trim()) runSearch(query);
+  }
 
   $effect(() => {
     if (app.side !== 'pins' || !ch) return;
@@ -55,9 +63,8 @@
 
 <aside class="panel pane-members side">
   <header class="row">
-    <button class="icon mobile" onclick={() => (app.pane = 'chat')} aria-label={t('Zurück zum Chat')}><Icon name="close" /></button>
     <h3 class="grow">{app.side === 'pins' ? t('Angeheftet') : t('Suchergebnisse')}</h3>
-    <button class="icon" onclick={() => (app.side = null)} aria-label={t('Schließen')} title={t('Schließen')}><Icon name="close" size={16} /></button>
+    <button class="icon" onclick={() => ((app.side = null), (app.pane = 'chat'))} aria-label={t('Schließen')} title={t('Schließen')}><Icon name="close" size={16} /></button>
   </header>
   <div class="list scroll">
     {#if app.side === 'pins'}
@@ -67,7 +74,13 @@
         {#each pins as m (m.id)}{@render item(m, false)}{:else}<p class="muted pad">{t('Hier ist noch nichts angeheftet. Über das Menü einer Nachricht lässt sie sich anheften.')}</p>{/each}
       {/if}
     {:else}
-      {#if app.search.loading}
+      <label class="search">
+        <Icon name="search" size={15} />
+        <input type="search" bind:value={query} onkeydown={searchKey} placeholder={g ? t('{server} durchsuchen', { server: w('server') }) : t('Durchsuchen')} aria-label={t('Nachrichten durchsuchen')} />
+      </label>
+      {#if !app.search.query}
+        <p class="muted pad">{t('Tipp: „von:name“ sucht nach Verfasser.')}</p>
+      {:else if app.search.loading}
         <p class="muted pad">{t('Sucht …')}</p>
       {:else}
         <p class="muted pad">{app.search.total === 1 ? t('1 Treffer') : t('{n} Treffer', { n: app.search.total })}{#if app.search.total > app.search.results.length}, {t('die neuesten {n} werden gezeigt', { n: app.search.results.length })}{/if}</p>
@@ -92,15 +105,34 @@
   header h3 {
     margin: 0;
   }
-  .mobile {
-    display: none;
-  }
   .list {
     flex: 1;
     padding: 8px;
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+  .search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    height: 36px;
+    border-radius: var(--radius-s);
+    background: var(--panel-2);
+    color: var(--muted);
+  }
+  .search input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    outline: none;
+  }
+  .search:focus-within {
+    outline: 2px solid var(--accent);
   }
   .pad {
     padding: 4px 6px;
@@ -138,11 +170,6 @@
   @media (max-width: 1100px) {
     aside {
       width: 280px;
-    }
-  }
-  @media (max-width: 860px) {
-    .mobile {
-      display: inline-flex;
     }
   }
 </style>

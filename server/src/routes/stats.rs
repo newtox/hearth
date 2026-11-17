@@ -74,6 +74,7 @@ pub async fn tracked(st: &AppState, uid: Uuid) -> Result<(Vec<Badge>, Value)> {
             track: Some(track.to_string()),
             tier: Some(tier as i32),
             hours: Some(values[i]),
+            granted_at: None,
         });
     }
     Ok((badges, json!({ "colors": TIER_COLORS, "tracks": tracks })))

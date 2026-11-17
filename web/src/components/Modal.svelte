@@ -15,7 +15,7 @@
 <div class="backdrop" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
   <div class="panel dialog" class:wide role="dialog" aria-modal="true" aria-label={title}>
     <header class="row">
-      <h2 class="grow ellipsis">{title}</h2>
+      <h2 class="grow">{title}</h2>
       <button class="x" onclick={onclose} aria-label={t('Schließen')}><Icon name="close" /></button>
     </header>
     <div class="body scroll">
@@ -32,6 +32,8 @@
     display: grid;
     place-items: center;
     padding: 16px;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
     background: rgba(8, 5, 20, 0.6);
     backdrop-filter: blur(3px);
   }
@@ -47,6 +49,10 @@
   }
   header {
     padding: 18px 20px 12px;
+    align-items: flex-start;
+  }
+  header h2 {
+    overflow-wrap: anywhere;
   }
   .x {
     padding: 6px;

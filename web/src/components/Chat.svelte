@@ -283,6 +283,7 @@
 
 {#snippet headerTools()}
   <button class="icon headtool" class:on={app.side === 'pins'} onclick={() => ((app.side = app.side === 'pins' ? null : 'pins'), app.side && (app.pane = 'members'))} aria-label={t('Angeheftete Nachrichten')} title={t('Angeheftete Nachrichten')} aria-pressed={app.side === 'pins'}><Icon name="pin" /></button>
+  <button class="icon headtool searchtool" class:on={app.side === 'search'} onclick={() => ((app.side = 'search'), (app.pane = 'members'))} aria-label={t('Nachrichten durchsuchen')}><Icon name="search" /></button>
   <label class="searchbox">
     <Icon name="search" size={15} />
     <input type="search" bind:value={query} onkeydown={searchKey} placeholder={g ? t('{server} durchsuchen', { server: w('server') }) : t('Durchsuchen')} aria-label={t('Nachrichten durchsuchen')} />
@@ -552,9 +553,15 @@
     font-size: 0.88em;
     color: var(--muted);
   }
+  .searchtool {
+    display: none;
+  }
   @media (max-width: 700px) {
     .searchbox {
       display: none;
+    }
+    .searchtool {
+      display: inline-flex;
     }
   }
   section {
@@ -874,7 +881,13 @@
   }
   @media (hover: none) {
     .tools {
-      opacity: 0.6;
+      display: none;
     }
   }
+  .composer textarea::placeholder {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
 </style>

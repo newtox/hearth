@@ -6,6 +6,7 @@
   import Avatar from './Avatar.svelte';
   import BadgeIcon from './BadgeIcon.svelte';
   import ProgressModal from './ProgressModal.svelte';
+  import BadgeSheet from './BadgeSheet.svelte';
   import Icon from './Icon.svelte';
 
   let { userId }: { userId: string } = $props();
@@ -17,6 +18,7 @@
   const PROVIDERS: Record<string, string> = { twitch: 'Twitch', youtube: 'YouTube', steam: 'Steam', spotify: 'Spotify', mock: 'Mock' };
   let allBadges = $state<Badge[]>([]);
   let progressTrack = $state<string | null>(null);
+  let openBadge = $state<Badge | null>(null);
   const live = $derived(app.guilds.flatMap((x) => x.members).find((m) => m.id === userId)?.badges);
 
   async function toggleBadge(b: Badge) {
@@ -54,7 +56,7 @@
   }
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && !progressTrack && close()} />
+<svelte:window onkeydown={(e) => e.key === 'Escape' && !progressTrack && !openBadge && close()} />
 
 <div class="backdrop" onclick={(e) => e.target === e.currentTarget && close()} role="presentation">
   <div class="panel card" role="dialog" aria-modal="true" aria-label={t('Profil')}>
@@ -70,11 +72,7 @@
           <div class="badges">
             {#each live ?? user.badges ?? [] as b (b.id)}
               {@const label = badgeLabel(b)}
-              {#if b.track}
-                <button class="mark" title="{label.name}: {label.description}" aria-label="{label.name}: {label.description}" onclick={() => (progressTrack = b.track!)}><BadgeIcon badge={b} size={26} /></button>
-              {:else}
-                <span class="mark" role="img" title="{label.name}{label.description ? ': ' + label.description : ''}" aria-label={label.name}><BadgeIcon badge={b} size={26} /></span>
-              {/if}
+              <button class="mark" title={label.name} aria-label={label.name} onclick={() => (openBadge = user?.badges?.find((x) => x.id === b.id) ?? b)}><BadgeIcon badge={b} size={26} /></button>
             {/each}
           </div>
         {/if}
@@ -147,6 +145,9 @@
   </div>
 </div>
 
+{#if openBadge && user}
+  <BadgeSheet badge={openBadge} name={user.display_name} onclose={() => (openBadge = null)} onprogress={user.progress ? () => ((progressTrack = openBadge!.track!), (openBadge = null)) : undefined} />
+{/if}
 {#if progressTrack && user?.progress}
   <ProgressModal progress={user.progress} track={progressTrack} own={user.id === app.me?.id} name={user.display_name} onclose={() => (progressTrack = null)} />
 {/if}

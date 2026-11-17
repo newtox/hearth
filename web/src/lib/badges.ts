@@ -1,5 +1,6 @@
 export const BADGE_ICONS: Record<string, { d: string; stroke?: boolean }> = {
   crown: { d: 'M3 17h18l1.5-9.5-5.5 4L12 4l-5 7.5-5.5-4zM3 18.8h18V21H3z' },
+  wrench: { d: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z', stroke: true },
   shield: { d: 'M12 2l8 3v6c0 5.2-3.4 9.2-8 11-4.6-1.8-8-5.8-8-11V5z' },
   gem: { d: 'M6 3h12l4 6-10 12L2 9z' },
   star: { d: 'M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z' },

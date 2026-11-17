@@ -346,6 +346,7 @@
     height: 96px;
   }
   .who-row {
+    flex-wrap: wrap;
     gap: 14px;
     padding: 0 18px;
     margin-top: -26px;

@@ -280,6 +280,11 @@ button {
   gap: 0.6em;
 }
 
+.row > .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .grow {
   flex: 1;
   min-width: 0;
