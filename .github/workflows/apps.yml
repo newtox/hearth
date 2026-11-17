@@ -93,9 +93,14 @@ jobs:
         run: |
           SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
-          echo "NDK_HOME=$SDK/ndk/26.3.11579264" >> "$GITHUB_ENV"
-          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          "$SDK/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" "ndk;26.3.11579264"
+          MGR="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$MGR" --licenses > /dev/null || true
+          NDK=$(ls -d "$SDK"/ndk/2[6-9].* 2>/dev/null | sort -V | tail -1)
+          PKGS=("platforms;android-34" "build-tools;34.0.0")
+          [ -z "$NDK" ] && PKGS+=("ndk;26.3.11579264")
+          for i in 1 2 3; do timeout 15m "$MGR" "${PKGS[@]}" && break; [ "$i" = 3 ] && exit 1; sleep 20; done
+          [ -z "$NDK" ] && NDK="$SDK/ndk/26.3.11579264"
+          echo "NDK_HOME=$NDK" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi
