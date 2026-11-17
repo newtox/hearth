@@ -1,0 +1,73 @@
+<script lang="ts">
+  import { t } from '../lib/i18n.svelte';
+  import { asset } from '../lib/api';
+
+  let { id, name, image = null, size = 36, online = undefined, square = false }: { id: string; name: string; image?: string | null; size?: number; online?: boolean; square?: boolean } = $props();
+
+  const hue = $derived([...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7));
+  const initials = $derived(
+    name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((p) => [...p][0] ?? '')
+      .join('')
+      .toUpperCase(),
+  );
+</script>
+
+<span class="avatar" class:square style="--s:{size}px; --h:{hue}">
+  {#if image}
+    <img src={asset(image)} alt="" loading="lazy" />
+  {:else}
+    <span class="initials">{initials}</span>
+  {/if}
+  {#if online !== undefined}
+    <span class="dot" class:on={online} title={online ? t('Online') : t('Offline')}></span>
+  {/if}
+</span>
+
+<style>
+  .avatar {
+    position: relative;
+    flex: none;
+    width: var(--s);
+    height: var(--s);
+    display: inline-grid;
+    place-items: center;
+    border-radius: 50%;
+    background: hsl(var(--h) 45% 42%);
+    color: #fff;
+    font-weight: 700;
+    font-size: calc(var(--s) * 0.4);
+    font-family: var(--font-display);
+  }
+  .square {
+    border-radius: calc(var(--s) * 0.28);
+  }
+  :global([data-theme='pergament']) .avatar {
+    border-radius: 3px;
+    box-shadow: 0 0 0 2px #9a7636;
+    background: hsl(var(--h) 30% 32%);
+  }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+  }
+  .dot {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 30%;
+    height: 30%;
+    min-width: 9px;
+    min-height: 9px;
+    border-radius: 50%;
+    background: var(--muted);
+    border: 2px solid var(--panel);
+  }
+  .dot.on {
+    background: var(--ok);
+  }
+</style>
