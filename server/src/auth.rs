@@ -106,7 +106,7 @@ pub async fn register(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b
     .fetch_one(&st.db)
     .await?;
     if first {
-        sqlx::query("INSERT INTO user_badges (user_id, badge_id) SELECT $1, id FROM badges WHERE position = 1").bind(id).execute(&st.db).await?;
+        sqlx::query("INSERT INTO user_badges (user_id, badge_id) SELECT $1, id FROM badges WHERE id = '00000000-0000-7000-8000-000000000002'").bind(id).execute(&st.db).await?;
     }
     let token = create_session(&st.db, id).await?;
     Ok(Json(json!({ "token": token })))

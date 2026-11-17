@@ -8,8 +8,7 @@
   let { badge, name, onprogress, onclose }: { badge: Badge; name: string; onprogress?: () => void; onclose: () => void } = $props();
 
   const BUILT_IN: Record<string, string> = {
-    '00000000-0000-7000-8000-000000000001': 'Hat diese Instanz gegründet. Das erste Konto bekommt dieses Abzeichen automatisch.',
-    '00000000-0000-7000-8000-000000000002': 'Gehört zum Team, das diese Instanz entwickelt und betreibt.',
+    '00000000-0000-7000-8000-000000000002': 'Gehört zum Team, das diese Instanz entwickelt und betreibt. Das erste Konto bekommt dieses Abzeichen automatisch.',
     '00000000-0000-7000-8000-000000000003': 'Unterstützt den Betrieb dieser Instanz.',
   };
 

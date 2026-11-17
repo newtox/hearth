@@ -1,6 +1,5 @@
 export const DA: Record<string, string> = {
-  'Hat diese Instanz gegründet. Das erste Konto bekommt dieses Abzeichen automatisch.': 'Grundlagde denne instans. Den første konto får dette emblem automatisk.',
-  'Gehört zum Team, das diese Instanz entwickelt und betreibt.': 'Del af holdet, der udvikler og driver denne instans.',
+  'Gehört zum Team, das diese Instanz entwickelt und betreibt. Das erste Konto bekommt dieses Abzeichen automatisch.': 'Del af holdet, der udvikler og driver denne instans. Den første konto får dette emblem automatisk.',
   'Unterstützt den Betrieb dieser Instanz.': 'Støtter driften af denne instans.',
   'Wird von den Admins dieser Instanz vergeben.': 'Tildeles af denne instans’ administratorer.',
   'Verdientes Abzeichen': 'Optjent emblem',
@@ -563,8 +562,6 @@ export const DA: Record<string, string> = {
   'Nachricht': 'Besked',
   'Allgemeines': 'Generelt',
   'allgemein': 'generelt',
-  'Gründer': 'Grundlægger',
-  'Hat diese Instanz gegründet': 'Grundlagde denne instans',
   'Team': 'Staff',
   'Gehört zum Team der Instanz': 'Del af instansens staff',
   'Früh dabei': 'Tidligt medlem',

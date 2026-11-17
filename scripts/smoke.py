@@ -214,7 +214,7 @@ async def main():
         wb, _ = await gateway(b)
 
     if call("GET", "/users/@me", a)[1]["is_admin"]:
-        check("founder badge", call("GET", f"/users/{aid}", b)[1]["badges"][0]["name"] == "Founder")
+        check("first account gets the staff badge", [x["name"] for x in call("GET", f"/users/{aid}", b)[1]["badges"]][:1] == ["Staff"] and not any(x["name"] == "Founder" for x in call("GET", "/badges", a)[1]))
         s, bd = call("POST", "/badges", a, {"name": "Tester" + S, "icon": "🧪", "description": "Testet", "color": "#22aa66"})
         check("create badge", s == 200, bd)
         check("non-admin cannot create badge", call("POST", "/badges", b, {"name": "x", "icon": "🧪"})[0] == 403)
@@ -224,7 +224,7 @@ async def main():
         check("delete badge", call("DELETE", f"/badges/{bd['id']}", a)[0] == 200)
     else:
         print("skip badges (anna is not the first user of the instance)")
-    check("badge list", len(call("GET", "/badges", b)[1]) >= 3)
+    check("badge list", len(call("GET", "/badges", b)[1]) >= 2)
 
     check("set activity", call("POST", "/users/@me/activity", c, {"kind": "playing", "name": "Tetris"})[0] == 200)
     ev = await wait_for(wa, "PRESENCE_UPDATE", match=lambda d: d["user_id"] == cid_user and d["activity"])
