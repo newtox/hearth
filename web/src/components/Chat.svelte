@@ -6,7 +6,7 @@
   import { api, asset, upload } from '../lib/api';
   import { CUSTOM, STICKER } from '../lib/markdown';
   import { has } from '../lib/perms';
-  import { app, attempt, channel, dmTitle, select, findEmoji, guild, loadMessages, memberColor, memberName, partner, toast, P, type Attachment, type Dm, type Emoji, type Message, presenceOf } from '../lib/store.svelte';
+  import { app, attempt, channel, dmTitle, select, findEmoji, guild, loadMessages, memberColor, memberName, partner, toast, P, type Attachment, type Dm, type Emoji, type Message, presenceOf, jumpTo, mentionsMe, runSearch } from '../lib/store.svelte';
   import { GROUP_ROLES, groupMay, groupRole } from '../lib/groups';
   import { isBlocked } from '../lib/store.svelte';
   import CallBar from './CallBar.svelte';
@@ -66,10 +66,38 @@
   let list = $state<HTMLDivElement>();
   let input = $state<HTMLTextAreaElement>();
 
-  function mentionsMe(content: string) {
-    const name = app.me?.username;
-    return !!name && new RegExp(`(^|[^\\w@])@${name.replace(/\./g, '\\.')}(?![\\w.])`, 'i').test(content);
+  let replying = $state<Message | null>(null);
+  let query = $state('');
+  const canPin = $derived(!!ch && (g ? has(perms, P.MANAGE_MESSAGES) : direct?.kind === 'group' ? groupMay(direct, 'delete') : !!direct));
+
+  function startReply(m: Message) {
+    replying = m;
+    input?.focus();
   }
+
+  function togglePin(m: Message) {
+    attempt(api(m.pinned ? 'DELETE' : 'PUT', `/channels/${m.channel_id}/pins/${m.id}`));
+  }
+
+  function searchKey(e: KeyboardEvent) {
+    if (e.key === 'Enter' && query.trim()) runSearch(query);
+    if (e.key === 'Escape') {
+      query = '';
+      if (app.side === 'search') app.side = null;
+    }
+  }
+
+  $effect(() => {
+    const id = app.highlight;
+    if (!id || !list) return;
+    stick = false;
+    tick().then(() => {
+      list?.querySelector(`[data-id="${id}"]`)?.scrollIntoView({ block: 'center' });
+      setTimeout(() => {
+        if (app.highlight === id) app.highlight = null;
+      }, 2200);
+    });
+  });
 
   $effect(() => {
     const text = app.insert;
@@ -135,7 +163,7 @@
   }
 
   function grouped(m: Message, prev: Message | undefined) {
-    return !!prev && prev.author.id === m.author.id && Date.parse(m.created_at) - Date.parse(prev.created_at) < 5 * 60000 && !newDay(m, prev);
+    return !!prev && !m.reply_to && prev.author.id === m.author.id && Date.parse(m.created_at) - Date.parse(prev.created_at) < 5 * 60000 && !newDay(m, prev);
   }
 
   function newDay(m: Message, prev: Message | undefined) {
@@ -152,6 +180,7 @@
       editing = null;
       pending = [];
       picker = null;
+      replying = null;
     }
     if (stick && count >= 0) tick().then(() => list && (list.scrollTop = list.scrollHeight));
   });
@@ -173,13 +202,16 @@
     const raw = draft.trim();
     if ((!raw && !pending.length) || !ch || uploading) return;
     const files = pending;
+    const reply = replying;
     draft = '';
     pending = [];
+    replying = null;
     stick = true;
-    const ok = await attempt(api('POST', `/channels/${ch.id}/messages`, { content: encode(raw), attachment_ids: files.map((f) => f.id) }));
+    const ok = await attempt(api('POST', `/channels/${ch.id}/messages`, { content: encode(raw), attachment_ids: files.map((f) => f.id), reply_to: reply?.id ?? null }));
     if (!ok) {
       draft = raw;
       pending = files;
+      replying = reply;
     }
     await tick();
     resize();
@@ -190,6 +222,7 @@
       e.preventDefault();
       send();
     }
+    if (e.key === 'Escape' && replying) replying = null;
   }
 
   function resize() {
@@ -229,12 +262,14 @@
     if ((e.target as HTMLElement).closest('a, input, textarea')) return;
     const own = m.author.id === app.me?.id;
     openMenu(e, [
+      has(perms, P.SEND_MESSAGES) && { label: t('Antworten'), icon: 'reply', action: () => startReply(m) },
       has(perms, P.ADD_REACTIONS) && { label: t('Reagieren'), icon: 'smile', action: () => (picker = { message: m }) },
       canThread && !threadOf(m.id) && { label: t('Thread starten'), icon: 'thread', action: () => startThread(m) },
       own && !!m.content && !m.poll && !m.content.match(STICKER) && { label: t('Bearbeiten'), icon: 'edit', action: () => startEdit(m) },
       'sep',
       !!m.content && !m.content.match(STICKER) && { label: t('Text kopieren'), icon: 'copy', action: () => copy(m.content) },
       !own && { label: t('Erwähnen'), icon: 'at', action: () => (app.insert = `@${m.author.username} `) },
+      canPin && { label: m.pinned ? t('Nicht mehr anheften') : t('Anheften'), icon: 'pin', action: () => togglePin(m) },
       { label: t('Nachrichten-ID kopieren'), icon: 'id', action: () => copy(m.id) },
       'sep',
       (own || (g && has(perms, P.MANAGE_MESSAGES)) || groupDelete) && { label: t('Nachricht löschen'), icon: 'trash', danger: true, action: () => remove(m) },
@@ -246,6 +281,14 @@
   }
 </script>
 
+{#snippet headerTools()}
+  <button class="icon headtool" class:on={app.side === 'pins'} onclick={() => ((app.side = app.side === 'pins' ? null : 'pins'), app.side && (app.pane = 'members'))} aria-label={t('Angeheftete Nachrichten')} title={t('Angeheftete Nachrichten')} aria-pressed={app.side === 'pins'}><Icon name="pin" /></button>
+  <label class="searchbox">
+    <Icon name="search" size={15} />
+    <input type="search" bind:value={query} onkeydown={searchKey} placeholder={g ? t('{server} durchsuchen', { server: w('server') }) : t('Durchsuchen')} aria-label={t('Nachrichten durchsuchen')} />
+  </label>
+{/snippet}
+
 <section class="panel pane-chat">
   <header class="row">
     <button class="icon mobile" onclick={() => (app.pane = 'side')} aria-label={t('Kanalliste')}><Icon name="menu" /></button>
@@ -256,6 +299,7 @@
           <h3 class="ellipsis">{title}</h3>
         </button>
         <span class="grow"></span>
+        {@render headerTools()}
         <CallBar dm={direct!} compact />
       {:else if direct}
         <button class="row who" onclick={() => (app.modal = { kind: 'groupchat', dm: direct })}>
@@ -264,6 +308,7 @@
           <span class="muted">{direct.recipients.length}</span>
         </button>
         <span class="grow"></span>
+        {@render headerTools()}
         <CallBar dm={direct} compact />
       {:else}
         {#if parent}
@@ -274,6 +319,7 @@
         {/if}
         <h3 class="ellipsis">{title}</h3>
         <p class="topic muted grow ellipsis">{(ch as any).topic ?? ''}</p>
+        {@render headerTools()}
         <button class="icon mobile" onclick={() => (app.pane = 'members')} aria-label={w('members')}><Icon name="users" /></button>
       {/if}
     {:else}
@@ -295,7 +341,7 @@
         {#if newDay(m, messages[i - 1])}
           <div class="day"><span>{day.format(new Date(m.created_at))}</span></div>
         {/if}
-        <article class="msg" class:own class:joined class:mention={!own && mentionsMe(m.content)} oncontextmenu={(e) => editing !== m.id && messageMenu(e, m)}>
+        <article class="msg" class:own class:joined class:mention={!own && mentionsMe(m, !!g)} class:flash={app.highlight === m.id} data-id={m.id} oncontextmenu={(e) => editing !== m.id && messageMenu(e, m)}>
           {#if !own}
             <button class="face" onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))} aria-label={t('Profil von {name}', { name: m.author.display_name })} tabindex={joined ? -1 : 0}>
               {#if !joined}<Avatar id={m.author.id} name={m.author.display_name} image={m.author.avatar} size={34} />{/if}
@@ -306,7 +352,20 @@
               <div class="meta">
                 {#if !own}<button class="name" style:color={nameColor(m.author.id)} onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))}>{memberName(g, m.author)}</button>{/if}
                 <time datetime={m.created_at}>{time.format(new Date(m.created_at))}</time>
+                {#if m.pinned}<span class="pinmark" title={t('Angeheftet')}><Icon name="pin" size={12} /></span>{/if}
               </div>
+            {/if}
+            {#if m.reply}
+              {#if m.reply.deleted}
+                <p class="quote muted"><Icon name="reply" size={13} /><em>{t('Die ursprüngliche Nachricht wurde gelöscht')}</em></p>
+              {:else}
+                <button class="quote" onclick={() => jumpTo(g?.id ?? null, m.channel_id, m.reply!.id)}>
+                  <Icon name="reply" size={13} />
+                  <Avatar id={m.reply.author!.id} name={m.reply.author!.display_name} image={m.reply.author!.avatar} size={16} />
+                  <strong style:color={nameColor(m.reply.author!.id)}>{memberName(g, m.reply.author!)}</strong>
+                  <span class="ellipsis">{m.reply.content?.match(STICKER) ? t('Sticker') : m.reply.content || (m.reply.attachments ? t('Datei') : '')}</span>
+                </button>
+              {/if}
             {/if}
             {#if editing === m.id}
               <textarea class="input" bind:value={editText} onkeydown={(e) => editKey(e, m)} rows="2"></textarea>
@@ -354,6 +413,7 @@
           </div>
           {#if editing !== m.id}
             <div class="tools">
+              {#if has(perms, P.SEND_MESSAGES)}<button class="icon" onclick={() => startReply(m)} aria-label={t('Antworten')} title={t('Antworten')}><Icon name="reply" size={15} /></button>{/if}
               {#if has(perms, P.ADD_REACTIONS)}<button class="icon" onclick={() => (picker = { message: m })} aria-label={t('Reagieren')}><Icon name="smile" size={15} /></button>{/if}
               {#if canThread && !threadOf(m.id)}<button class="icon" onclick={() => startThread(m)} aria-label={t('Thread starten')} title={t('Thread starten')}><Icon name="thread" size={15} /></button>{/if}
               {#if own && m.content && !m.poll && !m.content.match(STICKER)}<button class="icon" onclick={() => startEdit(m)} aria-label={t('Bearbeiten')}><Icon name="edit" size={15} /></button>{/if}
@@ -377,6 +437,13 @@
             </span>
           {/each}
           {#if uploading}<span class="muted">{t('Lade hoch …')}</span>{/if}
+        </div>
+      {/if}
+      {#if replying}
+        <div class="replying row">
+          <Icon name="reply" size={14} />
+          <span class="grow ellipsis">{t('Antwort an {name}', { name: memberName(g, replying.author) })}</span>
+          <button class="icon" onclick={() => (replying = null)} aria-label={t('Antwort abbrechen')} title={t('Antwort abbrechen')}><Icon name="close" size={14} /></button>
         </div>
       {/if}
       <form class="composer row" onsubmit={(e) => (e.preventDefault(), send())}>
@@ -410,6 +477,86 @@
 </section>
 
 <style>
+  .headtool.on {
+    color: var(--accent);
+  }
+  .searchbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px;
+    height: 30px;
+    border-radius: var(--radius-s);
+    background: var(--panel-2);
+    color: var(--muted);
+    flex: 0 1 200px;
+    min-width: 110px;
+  }
+  .searchbox input {
+    min-width: 0;
+    width: 100%;
+    border: 0;
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.9em;
+    outline: none;
+  }
+  .searchbox:focus-within {
+    outline: 2px solid var(--accent);
+  }
+  .quote {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    margin: 0 0 4px;
+    font-size: 0.85em;
+    color: var(--muted);
+    text-align: left;
+  }
+  .quote strong {
+    flex: none;
+  }
+  button.quote:hover span {
+    color: var(--ink);
+  }
+  .pinmark {
+    color: var(--muted);
+    display: inline-flex;
+  }
+  .msg.flash {
+    animation: flash 2s ease-out;
+  }
+  @keyframes flash {
+    0%,
+    40% {
+      background: color-mix(in srgb, var(--accent) 22%, transparent);
+    }
+    100% {
+      background: transparent;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .msg.flash {
+      animation: none;
+      outline: 2px solid var(--accent);
+    }
+  }
+  .replying {
+    margin: 0 12px;
+    padding: 6px 10px;
+    gap: 8px;
+    border-radius: var(--radius-s) var(--radius-s) 0 0;
+    background: var(--panel-2);
+    font-size: 0.88em;
+    color: var(--muted);
+  }
+  @media (max-width: 700px) {
+    .searchbox {
+      display: none;
+    }
+  }
   section {
     position: relative;
     flex: 1;

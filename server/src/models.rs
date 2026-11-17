@@ -139,9 +139,11 @@ pub struct MessageRow {
     pub username: String,
     pub display_name: String,
     pub avatar: Option<String>,
+    pub reply_to: Option<Uuid>,
+    pub pinned_at: Option<DateTime<Utc>>,
 }
 
-pub const MESSAGE_SELECT: &str = "SELECT m.id, m.channel_id, m.content, m.created_at, m.edited_at, u.id AS author_id, u.username, u.display_name, u.avatar FROM messages m JOIN users u ON u.id = m.author_id";
+pub const MESSAGE_SELECT: &str = "SELECT m.id, m.channel_id, m.content, m.created_at, m.edited_at, u.id AS author_id, u.username, u.display_name, u.avatar, m.reply_to, m.pinned_at FROM messages m JOIN users u ON u.id = m.author_id";
 
 #[derive(Serialize, FromRow)]
 pub struct Attachment {
@@ -171,6 +173,8 @@ impl MessageRow {
             "created_at": self.created_at,
             "edited_at": self.edited_at,
             "author": { "id": self.author_id, "username": self.username, "display_name": self.display_name, "avatar": self.avatar },
+            "reply_to": self.reply_to,
+            "pinned": self.pinned_at.is_some(),
         })
     }
 }

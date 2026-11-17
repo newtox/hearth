@@ -57,10 +57,32 @@ async fn to_json(st: &AppState, rows: &[MessageRow]) -> Result<Vec<Value>> {
         .fetch_all(&st.db)
         .await?
     };
+    let reply_ids: Vec<Uuid> = rows.iter().filter_map(|r| r.reply_to).collect();
+    let replied: Vec<MessageRow> = if reply_ids.is_empty() {
+        Vec::new()
+    } else {
+        sqlx::query_as(&format!("{MESSAGE_SELECT} WHERE m.id = ANY($1)")).bind(&reply_ids).fetch_all(&st.db).await?
+    };
+    let with_files: Vec<Uuid> = if reply_ids.is_empty() {
+        Vec::new()
+    } else {
+        sqlx::query_scalar("SELECT DISTINCT message_id FROM attachments WHERE message_id = ANY($1)").bind(&reply_ids).fetch_all(&st.db).await?
+    };
     Ok(rows
         .iter()
         .map(|r| {
             let mut v = r.json();
+            if let Some(rid) = r.reply_to {
+                v["reply"] = match replied.iter().find(|x| x.id == rid) {
+                    Some(x) => json!({
+                        "id": x.id,
+                        "content": x.content.chars().take(200).collect::<String>(),
+                        "attachments": with_files.contains(&x.id),
+                        "author": { "id": x.author_id, "username": x.username, "display_name": x.display_name, "avatar": x.avatar },
+                    }),
+                    None => json!({ "id": rid, "deleted": true }),
+                };
+            }
             if let Some(p) = polls.iter().find(|p| p.0 == r.id) {
                 let opts: Vec<Value> = options.iter().filter(|o| o.1 == r.id).map(|o| json!({ "id": o.0, "text": o.2, "voters": o.3 })).collect();
                 v["poll"] = json!({ "question": p.1, "multi": p.2, "expires_at": p.3, "options": opts });
@@ -104,6 +126,7 @@ pub struct MessageBody {
     #[serde(default)]
     attachment_ids: Vec<Uuid>,
     poll: Option<PollBody>,
+    reply_to: Option<Uuid>,
 }
 
 #[derive(Deserialize)]
@@ -178,13 +201,20 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
     if b.attachment_ids.len() > 10 {
         return bad("At most 10 attachments per message");
     }
+    if let Some(rid) = b.reply_to {
+        let same: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM messages WHERE id = $1 AND channel_id = $2)").bind(rid).bind(cid).fetch_one(&st.db).await?;
+        if !same {
+            return bad("The message you are replying to no longer exists");
+        }
+    }
     let id = Uuid::now_v7();
     let mut tx = st.db.begin().await?;
-    sqlx::query("INSERT INTO messages (id, channel_id, author_id, content) VALUES ($1, $2, $3, $4)")
+    sqlx::query("INSERT INTO messages (id, channel_id, author_id, content, reply_to) VALUES ($1, $2, $3, $4, $5)")
         .bind(id)
         .bind(cid)
         .bind(uid)
         .bind(content)
+        .bind(b.reply_to)
         .execute(&mut *tx)
         .await?;
     if !b.attachment_ids.is_empty() {
@@ -351,4 +381,102 @@ pub async fn vote(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((cid
     let msg = fetch(&st, mid).await?;
     st.hub.send(&viewers(&st, &a.channel).await?, "MESSAGE_UPDATE", &msg);
     Ok(Json(json!({})))
+}
+
+async fn may_pin(st: &AppState, uid: Uuid, a: &super::channels::Access) -> Result<()> {
+    let allowed = match a.channel.guild_id {
+        Some(_) => a.perms & perms::MANAGE_MESSAGES != 0,
+        None => a.channel.kind != "group" || super::groups::group(st, uid, a.channel.id).await?.may("delete"),
+    };
+    if allowed { Ok(()) } else { Err(AppError::Forbidden) }
+}
+
+pub async fn pins(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid): Path<Uuid>) -> Result<Json<Vec<Value>>> {
+    access(&st, uid, cid, 0).await?;
+    let rows: Vec<MessageRow> = sqlx::query_as(&format!("{MESSAGE_SELECT} WHERE m.channel_id = $1 AND m.pinned_at IS NOT NULL ORDER BY m.pinned_at DESC"))
+        .bind(cid)
+        .fetch_all(&st.db)
+        .await?;
+    Ok(Json(to_json(&st, &rows).await?))
+}
+
+async fn set_pin(st: &AppState, uid: Uuid, cid: Uuid, mid: Uuid, pinned: bool) -> Result<Json<Value>> {
+    let a = access(st, uid, cid, 0).await?;
+    may_pin(st, uid, &a).await?;
+    if pinned {
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM messages WHERE channel_id = $1 AND pinned_at IS NOT NULL").bind(cid).fetch_one(&st.db).await?;
+        if count >= 50 {
+            return bad("At most 50 pinned messages per channel");
+        }
+    }
+    let done = sqlx::query(if pinned { "UPDATE messages SET pinned_at = COALESCE(pinned_at, now()) WHERE id = $1 AND channel_id = $2" } else { "UPDATE messages SET pinned_at = NULL WHERE id = $1 AND channel_id = $2" })
+        .bind(mid)
+        .bind(cid)
+        .execute(&st.db)
+        .await?;
+    if done.rows_affected() == 0 {
+        return Err(AppError::NotFound);
+    }
+    let msg = fetch(st, mid).await?;
+    st.hub.send(&viewers(st, &a.channel).await?, "MESSAGE_UPDATE", &msg);
+    if let Some(gid) = a.channel.guild_id {
+        audit(st, gid, uid, if pinned { "message_pin" } else { "message_unpin" }, &a.channel.name, "").await;
+    }
+    Ok(Json(msg))
+}
+
+pub async fn pin(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((cid, mid)): Path<(Uuid, Uuid)>) -> Result<Json<Value>> {
+    set_pin(&st, uid, cid, mid, true).await
+}
+
+pub async fn unpin(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((cid, mid)): Path<(Uuid, Uuid)>) -> Result<Json<Value>> {
+    set_pin(&st, uid, cid, mid, false).await
+}
+
+#[derive(Deserialize)]
+pub struct SearchQuery {
+    q: Option<String>,
+    guild_id: Option<Uuid>,
+    channel_id: Option<Uuid>,
+    author: Option<String>,
+}
+
+pub async fn search(State(st): State<AppState>, AuthUser(uid): AuthUser, Query(q): Query<SearchQuery>) -> Result<Json<Value>> {
+    st.limits.check(format!("search:{uid}"), 30, Duration::from_secs(60))?;
+    let text = q.q.as_deref().unwrap_or("").trim().to_string();
+    let author = q.author.as_deref().map(|a| a.trim().trim_start_matches('@').to_lowercase()).filter(|a| !a.is_empty());
+    if text.chars().count() > 200 || (text.chars().count() < 2 && author.is_none()) {
+        return bad("Search: at least 2 characters");
+    }
+    let channels: Vec<(Uuid, String)> = match (q.channel_id, q.guild_id) {
+        (Some(cid), _) => {
+            let a = access(&st, uid, cid, 0).await?;
+            vec![(cid, a.channel.name)]
+        }
+        (None, Some(gid)) => super::channels::visible(&st, uid, gid).await?,
+        (None, None) => return bad("Search: pick a server or channel"),
+    };
+    let ids: Vec<Uuid> = channels.iter().map(|c| c.0).collect();
+    let pattern = format!("%{}%", text.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_"));
+    let filter = "m.channel_id = ANY($1) AND ($2 = '%%' OR m.content ILIKE $2) AND ($3::text IS NULL OR u.username = $3)";
+    let total: i64 = sqlx::query_scalar(&format!("SELECT count(*) FROM messages m JOIN users u ON u.id = m.author_id WHERE {filter}"))
+        .bind(&ids)
+        .bind(&pattern)
+        .bind(&author)
+        .fetch_one(&st.db)
+        .await?;
+    let rows: Vec<MessageRow> = sqlx::query_as(&format!("{MESSAGE_SELECT} WHERE {filter} ORDER BY m.id DESC LIMIT 25"))
+        .bind(&ids)
+        .bind(&pattern)
+        .bind(&author)
+        .fetch_all(&st.db)
+        .await?;
+    let mut results = to_json(&st, &rows).await?;
+    for v in &mut results {
+        let cid = v["channel_id"].as_str().and_then(|s| s.parse::<Uuid>().ok());
+        if let Some(name) = cid.and_then(|cid| channels.iter().find(|c| c.0 == cid)).map(|c| c.1.clone()) {
+            v["channel_name"] = json!(name);
+        }
+    }
+    Ok(Json(json!({ "total": total, "results": results })))
 }

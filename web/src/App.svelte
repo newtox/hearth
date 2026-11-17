@@ -17,6 +17,7 @@
   import UserSettings from './components/UserSettings.svelte';
   import ContextMenu from './components/ContextMenu.svelte';
   import ModView from './components/ModView.svelte';
+  import SidePanel from './components/SidePanel.svelte';
 </script>
 
 {#if !app.authed}
@@ -30,7 +31,7 @@
       <div class="cols" data-pane={app.pane}>
         <Sidebar />
         {#if channel()?.kind === 'voice'}<VoiceStage />{:else if !app.guildId && !app.channelId}<FriendsPane />{:else}<Chat />{/if}
-        {#if guild()}<Members />{/if}
+        {#if app.side && channel() && channel()?.kind !== 'voice'}<SidePanel />{:else if guild()}<Members />{/if}
       </div>
     </div>
   </div>

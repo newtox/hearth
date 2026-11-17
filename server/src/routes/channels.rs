@@ -281,3 +281,22 @@ pub async fn create_thread(State(st): State<AppState>, AuthUser(uid): AuthUser, 
     refresh(&st, gid).await?;
     Ok(Json(channel))
 }
+
+pub async fn visible(st: &AppState, uid: Uuid, gid: Uuid) -> Result<Vec<(Uuid, String)>> {
+    let ctx = perms::ctx(&st.db, gid, uid).await?;
+    let channels: Vec<Channel> = sqlx::query_as(&format!("SELECT {CHANNEL_COLS} FROM channels WHERE guild_id = $1 AND kind IN ('text', 'thread')")).bind(gid).fetch_all(&st.db).await?;
+    let overwrites: Vec<Overwrite> = sqlx::query_as(
+        "SELECT o.channel_id, o.target_id, o.kind, o.allow, o.deny FROM overwrites o JOIN channels c ON c.id = o.channel_id WHERE c.guild_id = $1",
+    )
+    .bind(gid)
+    .fetch_all(&st.db)
+    .await?;
+    Ok(channels
+        .into_iter()
+        .filter(|c| {
+            let ows: Vec<&Overwrite> = overwrites.iter().filter(|o| o.channel_id == c.rules_id()).collect();
+            ctx.in_channel(&ows) & perms::VIEW_CHANNEL != 0
+        })
+        .map(|c| (c.id, c.name))
+        .collect())
+}
