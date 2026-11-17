@@ -49,3 +49,7 @@ Or add [`deploy/docker-compose.yml`](deploy/docker-compose.yml) as a stack in Po
 - On structural changes every client reloads the server state. Very large servers will need something finer.
 - The server keeps track of who is in a voice channel in memory only.
 - Activity and playtime are reported by the client, so they can be faked.
+
+## License
+
+[CC BY-NC-SA 4.0](LICENSE)

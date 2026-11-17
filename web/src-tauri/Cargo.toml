@@ -2,6 +2,7 @@
 name = "hearth-app"
 version = "0.1.0"
 edition = "2021"
+license = "CC-BY-NC-SA-4.0"
 
 [lib]
 name = "hearth_app_lib"
