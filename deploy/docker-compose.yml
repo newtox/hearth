@@ -1,0 +1,54 @@
+name: hearth
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hearth
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: hearth
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hearth"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: ..
+    image: hearth:local
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://hearth:${DB_PASSWORD}@db:5432/hearth
+      TRUST_PROXY: "1"
+      LIVEKIT_URL: wss://${LIVEKIT_DOMAIN}
+      LIVEKIT_API_KEY: hearth
+      LIVEKIT_API_SECRET: ${LIVEKIT_SECRET}
+      PUBLIC_URL: https://${CHAT_DOMAIN}
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
+    ports:
+      - "127.0.0.1:${APP_PORT}:8080"
+    volumes:
+      - uploads:/data/uploads
+
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./livekit.generated.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "127.0.0.1:${LIVEKIT_PORT}:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+
+volumes:
+  db:
+  uploads:

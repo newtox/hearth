@@ -1,0 +1,8 @@
+.git
+**/target
+**/node_modules
+**/dist
+web/src-tauri
+deploy/.env
+deploy/livekit.generated.yaml
+uploads
