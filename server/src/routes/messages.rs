@@ -439,13 +439,80 @@ pub struct SearchQuery {
     guild_id: Option<Uuid>,
     channel_id: Option<Uuid>,
     author: Option<String>,
+    mentions: Option<String>,
+    has: Option<String>,
+    before: Option<chrono::DateTime<chrono::Utc>>,
+    after: Option<chrono::DateTime<chrono::Utc>>,
+    pinned: Option<bool>,
+    offset: Option<i64>,
+}
+
+const HAS: [&str; 7] = ["link", "file", "image", "video", "sound", "sticker", "poll"];
+const VIDEO: &str = "\\.(mp4|webm|mov|mkv|avi)$";
+const SOUND: &str = "\\.(mp3|ogg|oga|opus|wav|flac|m4a|aac)$";
+
+struct Filters {
+    ids: Vec<Uuid>,
+    pattern: Option<String>,
+    author: Option<String>,
+    mention: Option<String>,
+    has: Vec<String>,
+    before: Option<chrono::DateTime<chrono::Utc>>,
+    after: Option<chrono::DateTime<chrono::Utc>>,
+    pinned: bool,
+}
+
+fn name(raw: Option<&str>) -> Option<String> {
+    raw.map(|a| a.trim().trim_start_matches('@').to_lowercase()).filter(|a| !a.is_empty())
+}
+
+fn push_filters(qb: &mut sqlx::QueryBuilder<'_, sqlx::Postgres>, f: &Filters) {
+    qb.push(" WHERE m.channel_id = ANY(").push_bind(f.ids.clone()).push(")");
+    if let Some(p) = &f.pattern {
+        qb.push(" AND (m.content ILIKE ").push_bind(p.clone()).push(" OR EXISTS (SELECT 1 FROM polls pl WHERE pl.message_id = m.id AND pl.question ILIKE ").push_bind(p.clone()).push("))");
+    }
+    if let Some(a) = &f.author {
+        qb.push(" AND u.username = ").push_bind(a.clone());
+    }
+    if let Some(n) = &f.mention {
+        let escaped = n.replace('.', "\\.");
+        qb.push(" AND m.content ~* ").push_bind(format!("(^|[^[:alnum:]_@])@{escaped}([^[:alnum:]_.]|$)"));
+    }
+    for kind in &f.has {
+        qb.push(match kind.as_str() {
+            "link" => " AND m.content ~* 'https?://'",
+            "file" => " AND EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id)",
+            "image" => " AND EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.is_image)",
+            "sticker" => " AND m.content LIKE '<sticker:%'",
+            "poll" => " AND EXISTS (SELECT 1 FROM polls pl WHERE pl.message_id = m.id)",
+            _ => "",
+        });
+        if kind == "video" || kind == "sound" {
+            qb.push(" AND EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.filename ~* ")
+                .push_bind(if kind == "video" { VIDEO } else { SOUND })
+                .push(")");
+        }
+    }
+    if let Some(b) = f.before {
+        qb.push(" AND m.created_at < ").push_bind(b);
+    }
+    if let Some(a) = f.after {
+        qb.push(" AND m.created_at >= ").push_bind(a);
+    }
+    if f.pinned {
+        qb.push(" AND m.pinned_at IS NOT NULL");
+    }
 }
 
 pub async fn search(State(st): State<AppState>, AuthUser(uid): AuthUser, Query(q): Query<SearchQuery>) -> Result<Json<Value>> {
     st.limits.check(format!("search:{uid}"), 30, Duration::from_secs(60))?;
     let text = q.q.as_deref().unwrap_or("").trim().to_string();
-    let author = q.author.as_deref().map(|a| a.trim().trim_start_matches('@').to_lowercase()).filter(|a| !a.is_empty());
-    if text.chars().count() > 200 || (text.chars().count() < 2 && author.is_none()) {
+    let author = name(q.author.as_deref());
+    let mention = name(q.mentions.as_deref());
+    let has: Vec<String> = q.has.as_deref().unwrap_or("").split(',').map(|h| h.trim().to_lowercase()).filter(|h| HAS.contains(&h.as_str())).collect();
+    let pinned = q.pinned.unwrap_or(false);
+    let filtered = author.is_some() || mention.is_some() || !has.is_empty() || q.before.is_some() || q.after.is_some() || pinned;
+    if text.chars().count() > 200 || (text.chars().count() < 2 && !filtered) {
         return bad("Search: at least 2 characters");
     }
     let channels: Vec<(Uuid, String)> = match (q.channel_id, q.guild_id) {
@@ -456,21 +523,24 @@ pub async fn search(State(st): State<AppState>, AuthUser(uid): AuthUser, Query(q
         (None, Some(gid)) => super::channels::visible(&st, uid, gid).await?,
         (None, None) => return bad("Search: pick a server or channel"),
     };
-    let ids: Vec<Uuid> = channels.iter().map(|c| c.0).collect();
-    let pattern = format!("%{}%", text.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_"));
-    let filter = "m.channel_id = ANY($1) AND ($2 = '%%' OR m.content ILIKE $2) AND ($3::text IS NULL OR u.username = $3)";
-    let total: i64 = sqlx::query_scalar(&format!("SELECT count(*) FROM messages m JOIN users u ON u.id = m.author_id WHERE {filter}"))
-        .bind(&ids)
-        .bind(&pattern)
-        .bind(&author)
-        .fetch_one(&st.db)
-        .await?;
-    let rows: Vec<MessageRow> = sqlx::query_as(&format!("{MESSAGE_SELECT} WHERE {filter} ORDER BY m.id DESC LIMIT 25"))
-        .bind(&ids)
-        .bind(&pattern)
-        .bind(&author)
-        .fetch_all(&st.db)
-        .await?;
+    let filters = Filters {
+        ids: channels.iter().map(|c| c.0).collect(),
+        pattern: (!text.is_empty()).then(|| format!("%{}%", text.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_"))),
+        author,
+        mention,
+        has,
+        before: q.before,
+        after: q.after,
+        pinned,
+    };
+    let offset = q.offset.unwrap_or(0).clamp(0, 10_000);
+    let mut count = sqlx::QueryBuilder::new("SELECT count(*) FROM messages m JOIN users u ON u.id = m.author_id");
+    push_filters(&mut count, &filters);
+    let total: i64 = count.build_query_scalar().fetch_one(&st.db).await?;
+    let mut select = sqlx::QueryBuilder::new(MESSAGE_SELECT);
+    push_filters(&mut select, &filters);
+    select.push(" ORDER BY m.id DESC LIMIT 25 OFFSET ").push_bind(offset);
+    let rows: Vec<MessageRow> = select.build_query_as().fetch_all(&st.db).await?;
     let mut results = to_json(&st, &rows).await?;
     for v in &mut results {
         let cid = v["channel_id"].as_str().and_then(|s| s.parse::<Uuid>().ok());

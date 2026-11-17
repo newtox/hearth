@@ -56,7 +56,7 @@
           </div>
           {#if c.kind === 'voice'}
             {#each voiceMembers(c.id) as m (m.id)}
-              <button class="row inside" onclick={() => (app.profile = m.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.id, g))}>
+              <button class="row inside" class:speaking={voice.channelId === c.id && voice.speaking.includes(m.id)} onclick={() => (app.profile = m.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.id, g))}>
                 <Avatar id={m.id} name={m.display_name} image={m.avatar} size={20} />
                 <span class="ellipsis">{m.nickname || m.display_name}</span>
               </button>
@@ -255,5 +255,14 @@
     .edit {
       opacity: 1;
     }
+  }
+  .inside :global(.avatar) {
+    transition: box-shadow 0.08s;
+  }
+  .inside.speaking :global(.avatar) {
+    box-shadow: 0 0 0 2px var(--ok);
+  }
+  .inside.speaking {
+    color: var(--ink);
   }
 </style>

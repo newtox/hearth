@@ -1,4 +1,5 @@
 import { t } from './i18n.svelte';
+import { toParams } from './search';
 import { api, ApiError, gatewayUrl, getToken, setToken } from './api';
 import { P, has } from './perms';
 import { startDetection } from './activity';
@@ -639,24 +640,26 @@ export async function jumpTo(guildId: string | null, channelId: string, messageI
   else toast(t('store_message_could_not_found'));
 }
 
-export async function runSearch(query: string) {
+export function searchPeople(): User[] {
+  const g = guild();
+  if (g) return g.members;
+  const ch = channel();
+  return ch && (ch.kind === 'dm' || ch.kind === 'group') ? (ch as Dm).recipients : [];
+}
+
+export async function runSearch(query: string, more = false) {
   const ch = channel();
   const g = guild();
   if (!ch && !g) return;
-  let text = query.trim();
-  let author = '';
-  const from = text.match(/(?:^|\s)(?:from|von|fra):@?([a-z0-9_.]+)/i);
-  if (from) {
-    author = from[1];
-    text = text.replace(from[0], ' ').trim();
-  }
+  const params = toParams(query, g, searchPeople());
+  if (!params.has('channel_id')) params.set(g ? 'guild_id' : 'channel_id', g ? g.id : ch!.id);
+  if (more) params.set('offset', String(app.search.results.length));
   app.side = 'search';
   app.pane = 'members';
-  app.search = { query, total: 0, results: [], loading: true, scope: g ? g.id : ch!.id };
-  const params = new URLSearchParams(g ? { guild_id: g.id } : { channel_id: ch!.id });
-  if (text) params.set('q', text);
-  if (author) params.set('author', author);
+  if (more) app.search.loading = true;
+  else app.search = { query, total: 0, results: [], loading: true, scope: g ? g.id : ch!.id };
   const res = await attempt(api<{ total: number; results: Message[] }>('GET', `/search?${params}`));
   if (app.search.query !== query) return;
-  app.search = { query, total: res?.total ?? 0, results: res?.results ?? [], loading: false, scope: app.search.scope };
+  const results = more ? [...app.search.results, ...(res?.results ?? []).filter((m) => !app.search.results.some((x) => x.id === m.id))] : (res?.results ?? []);
+  app.search = { query, total: res?.total ?? 0, results, loading: false, scope: app.search.scope };
 }

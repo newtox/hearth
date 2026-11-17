@@ -7,29 +7,67 @@ export function isAnimated(url: string | null | undefined) {
   return !!url && /\.(gif|webp)(\?|$)/i.test(url);
 }
 
-export function still(url: string) {
-  if (!isAnimated(url)) return url;
-  if (frames[url]) return frames[url];
-  if (!pending.has(url)) {
-    pending.add(url);
+function render(img: HTMLImageElement, size: number) {
+  let source: CanvasImageSource = img;
+  let w = img.naturalWidth;
+  let h = img.naturalHeight;
+  const scale = Math.min(1, size / Math.min(w, h));
+  const tw = Math.max(1, Math.round(w * scale));
+  const th = Math.max(1, Math.round(h * scale));
+  while (w / 2 >= tw && h / 2 >= th) {
+    const step = document.createElement('canvas');
+    step.width = Math.round(w / 2);
+    step.height = Math.round(h / 2);
+    const ctx = step.getContext('2d')!;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(source, 0, 0, step.width, step.height);
+    source = step;
+    w = step.width;
+    h = step.height;
+  }
+  const out = document.createElement('canvas');
+  out.width = tw;
+  out.height = th;
+  const ctx = out.getContext('2d')!;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(source, 0, 0, tw, th);
+  return out.toDataURL('image/png');
+}
+
+export function frame(url: string, size: number) {
+  const key = `${size}|${url}`;
+  if (frames[key]) return frames[key];
+  if (!pending.has(key)) {
+    pending.add(key);
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
-        const scale = Math.min(1, 960 / Math.max(img.naturalWidth, img.naturalHeight));
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
-        frames[url] = canvas.toDataURL('image/png');
+        frames[key] = Math.min(img.naturalWidth, img.naturalHeight) <= size && !isAnimated(url) ? url : render(img, size);
       } catch {
-        frames[url] = url;
+        frames[key] = url;
       }
     };
-    img.onerror = () => (frames[url] = url);
+    img.onerror = () => (frames[key] = url);
     img.src = url;
   }
   return null;
+}
+
+export function sizeFor(px: number) {
+  const want = px * Math.max(1, typeof devicePixelRatio === 'number' ? devicePixelRatio : 1);
+  return [32, 64, 128, 256, 512].find((s) => s >= want) ?? 1024;
+}
+
+export function still(url: string) {
+  return isAnimated(url) ? frame(url, 1024) : url;
+}
+
+export function backdrop(file: string | null | undefined, moving: boolean) {
+  const url = asset(file);
+  if (!url) return null;
+  const shown = moving || !isAnimated(url) ? url : still(url);
+  return shown ? `url(${shown})` : null;
 }
 
 export function hoverHost(node: HTMLElement, set: (on: boolean) => void) {
@@ -48,11 +86,4 @@ export function hoverHost(node: HTMLElement, set: (on: boolean) => void) {
       host.removeEventListener('focusout', leave);
     },
   };
-}
-
-export function backdrop(file: string | null | undefined, moving: boolean) {
-  const url = asset(file);
-  if (!url) return null;
-  const shown = moving || !isAnimated(url) ? url : still(url);
-  return shown ? `url(${shown})` : null;
 }

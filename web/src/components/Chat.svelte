@@ -15,6 +15,7 @@
   import Avatar from './Avatar.svelte';
   import EmojiPicker from './EmojiPicker.svelte';
   import Icon from './Icon.svelte';
+  import SearchBox from './SearchBox.svelte';
   import Markdown from './Markdown.svelte';
   import PollCard from './PollCard.svelte';
   import PollModal from './PollModal.svelte';
@@ -55,7 +56,6 @@
   let input = $state<HTMLTextAreaElement>();
 
   let replying = $state<Message | null>(null);
-  let query = $state('');
   const canPin = $derived(!!ch && (g ? has(perms, P.PIN_MESSAGES) : direct?.kind === 'group' ? groupMay(direct, 'pin') : !!direct));
 
   function startReply(m: Message) {
@@ -67,13 +67,7 @@
     attempt(api(m.pinned ? 'DELETE' : 'PUT', `/channels/${m.channel_id}/pins/${m.id}`));
   }
 
-  function searchKey(e: KeyboardEvent) {
-    if (e.key === 'Enter' && query.trim()) runSearch(query);
-    if (e.key === 'Escape') {
-      query = '';
-      if (app.side === 'search') app.side = null;
-    }
-  }
+
 
   $effect(() => {
     const id = app.highlight;
@@ -272,10 +266,7 @@
 {#snippet headerTools()}
   <button class="icon headtool" class:on={app.side === 'pins'} onclick={() => ((app.side = app.side === 'pins' ? null : 'pins'), app.side && (app.pane = 'members'))} aria-label={t('chat_pinned_messages')} title={t('chat_pinned_messages')} aria-pressed={app.side === 'pins'}><Icon name="pin" /></button>
   <button class="icon headtool searchtool" class:on={app.side === 'search'} onclick={() => ((app.side = 'search'), (app.pane = 'members'))} aria-label={t('common_search_messages')}><Icon name="search" /></button>
-  <label class="searchbox">
-    <Icon name="search" size={15} />
-    <input type="search" bind:value={query} onkeydown={searchKey} placeholder={g ? t('common_search_server', { server: w('server') }) : t('common_search')} aria-label={t('common_search_messages')} />
-  </label>
+  <span class="searchwrap"><SearchBox /></span>
 {/snippet}
 
 <section class="panel pane-chat">
@@ -459,31 +450,6 @@
   .headtool.on {
     color: var(--accent);
   }
-  .searchbox {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 8px;
-    height: 30px;
-    border-radius: var(--radius-s);
-    background: var(--panel-2);
-    color: var(--muted);
-    flex: 0 1 200px;
-    min-width: 110px;
-  }
-  .searchbox input {
-    min-width: 0;
-    width: 100%;
-    border: 0;
-    background: none;
-    color: var(--ink);
-    font: inherit;
-    font-size: 0.9em;
-    outline: none;
-  }
-  .searchbox:focus-within {
-    outline: 2px solid var(--accent);
-  }
   .quote {
     display: flex;
     align-items: center;
@@ -534,8 +500,11 @@
   .searchtool {
     display: none;
   }
+  .searchwrap {
+    display: contents;
+  }
   @media (max-width: 700px) {
-    .searchbox {
+    .searchwrap {
       display: none;
     }
     .searchtool {

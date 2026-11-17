@@ -37,7 +37,8 @@
 
 {#if d}
   <div class="backdrop" onclick={(e) => e.target === e.currentTarget && cancel()} role="presentation">
-    <form class="panel dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" onsubmit={submit}>
+    <div class="panel dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title">
+    <form class="inner" onsubmit={submit}>
       <header class="row">
         <h2 id="dialog-title" class="grow">{d.title}</h2>
         <button type="button" class="x" onclick={cancel} aria-label={t('common_close')}><Icon name="close" /></button>
@@ -63,6 +64,7 @@
         <button class="btn grow" class:primary={!d.danger} class:danger={d.danger} bind:this={confirmButton} disabled={blocked}>{d.confirm}</button>
       </footer>
     </form>
+    </div>
   </div>
 {/if}
 
@@ -83,6 +85,11 @@
     max-height: min(92dvh, 640px);
     display: flex;
     flex-direction: column;
+  }
+  .inner {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
   header {
     padding: 18px 20px 6px;

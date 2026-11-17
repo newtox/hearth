@@ -34,6 +34,58 @@ export const canShareScreen = typeof navigator !== 'undefined' && !!navigator.me
 let room: any = null;
 let lk: typeof import('livekit-client') | null = null;
 
+const meters = new Map<string, { track: MediaStreamTrack; source: MediaStreamAudioSourceNode; analyser: AnalyserNode }>();
+const loudAt = new Map<string, number>();
+let audio: AudioContext | null = null;
+let ticker: ReturnType<typeof setInterval> | null = null;
+const samples = new Float32Array(512);
+
+function meter(identity: string, track: MediaStreamTrack | undefined) {
+  if (!track) return;
+  if (meters.get(identity)?.track === track) return;
+  unmeter(identity);
+  audio ??= new AudioContext();
+  audio.resume().catch(() => {});
+  const source = audio.createMediaStreamSource(new MediaStream([track]));
+  const analyser = audio.createAnalyser();
+  analyser.fftSize = 512;
+  source.connect(analyser);
+  meters.set(identity, { track, source, analyser });
+  ticker ??= setInterval(listen, 50);
+}
+
+function unmeter(identity: string) {
+  const m = meters.get(identity);
+  if (!m) return;
+  m.source.disconnect();
+  meters.delete(identity);
+  loudAt.delete(identity);
+}
+
+function listen() {
+  const now = performance.now();
+  for (const [identity, m] of meters) {
+    m.analyser.getFloatTimeDomainData(samples);
+    let sum = 0;
+    for (const v of samples) sum += v * v;
+    if (Math.sqrt(sum / samples.length) > 0.012) loudAt.set(identity, now);
+  }
+  const next = [...loudAt].filter(([identity, at]) => now - at < 280 && !voice.silent.includes(identity)).map(([identity]) => identity).sort();
+  if (next.join() !== voice.speaking.join()) voice.speaking = next;
+}
+
+function stopMeters() {
+  for (const identity of [...meters.keys()]) unmeter(identity);
+  if (ticker) clearInterval(ticker);
+  ticker = null;
+  audio?.close().catch(() => {});
+  audio = null;
+}
+
+function meterMic(pub: any, identity: string) {
+  if (pub?.source === lk?.Track.Source.Microphone) meter(identity, pub.track?.mediaStreamTrack);
+}
+
 function sync() {
   if (!room || !lk) return;
   const tiles: Tile[] = [];
@@ -45,7 +97,10 @@ function sync() {
     let mic = false;
     names[p.identity] = p.name || p.identity;
     for (const pub of p.trackPublications.values()) {
-      if (pub.source === lk.Track.Source.Microphone) mic = !pub.isMuted;
+      if (pub.source === lk.Track.Source.Microphone) {
+        mic = !pub.isMuted;
+        if (pub.track) meter(p.identity, pub.track.mediaStreamTrack);
+      }
       if (pub.source === lk.Track.Source.ScreenShare && !pub.isMuted) streams.push({ userId: p.identity, name: p.name || p.identity, local, watching: local || pub.isSubscribed });
       if (pub.kind === lk.Track.Kind.Video && pub.track && !pub.isMuted) {
         tiles.push({ id: pub.trackSid, userId: p.identity, name: p.name || p.identity, kind: pub.source === lk.Track.Source.ScreenShare ? 'screen' : 'camera', track: pub.track, local });
@@ -100,6 +155,7 @@ function cleanup() {
   if (current.voiceChannel) play('leave');
   current.voiceChannel = null;
   room = null;
+  stopMeters();
   document.querySelectorAll('audio[data-hearth-voice]').forEach((el) => el.remove());
   Object.assign(voice, { channelId: null, guildId: null, connecting: false, muted: true, sharing: false, speaking: [], silent: [], tiles: [], streams: [], watchers: {}, names: {} });
 }
@@ -120,7 +176,11 @@ export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
       sync();
     });
     for (const ev of [E.ParticipantConnected, E.ParticipantDisconnected, E.TrackUnpublished, E.TrackSubscriptionStatusChanged, E.TrackMuted, E.TrackUnmuted, E.LocalTrackPublished, E.LocalTrackUnpublished]) r.on(ev, sync);
-    r.on(E.TrackSubscribed, (track: any) => {
+    r.on(E.LocalTrackPublished, (pub: any) => meterMic(pub, r.localParticipant.identity));
+    r.on(E.LocalTrackUnpublished, (pub: any) => pub.source === lk!.Track.Source.Microphone && unmeter(r.localParticipant.identity));
+    r.on(E.ParticipantDisconnected, (p: any) => unmeter(p.identity));
+    r.on(E.TrackSubscribed, (track: any, pub: any, p: any) => {
+      meterMic(pub, p.identity);
       if (track.kind === 'audio') {
         const el = track.attach() as HTMLMediaElement;
         el.dataset.hearthVoice = '1';
@@ -129,11 +189,11 @@ export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
       }
       sync();
     });
-    r.on(E.TrackUnsubscribed, (track: any) => {
+    r.on(E.TrackUnsubscribed, (track: any, pub: any, p: any) => {
+      if (pub.source === lk!.Track.Source.Microphone) unmeter(p.identity);
       if (track.kind === 'audio') track.detach().forEach((el: HTMLElement) => el.remove());
       sync();
     });
-    r.on(E.ActiveSpeakersChanged, (speakers: any[]) => (voice.speaking = speakers.map((s) => s.identity)));
     r.on(E.Disconnected, () => {
       if (room === r) {
         cleanup();

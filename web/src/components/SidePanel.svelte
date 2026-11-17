@@ -7,6 +7,7 @@
   import { w } from '../lib/theme.svelte';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
+  import SearchBox from './SearchBox.svelte';
   import Markdown from './Markdown.svelte';
 
   const g = $derived(guild());
@@ -15,15 +16,6 @@
   const canPin = $derived(!!ch && (g ? has((ch as any).permissions, P.PIN_MESSAGES) : direct?.kind === 'group' ? groupMay(direct, 'pin') : !!direct));
 
   let pins = $state<Message[] | null>(null);
-  let query = $state(app.search.query);
-  $effect(() => {
-    query = app.search.query;
-  });
-
-  function searchKey(e: KeyboardEvent) {
-    if (e.key === 'Enter' && query.trim()) runSearch(query);
-  }
-
   $effect(() => {
     if (app.side !== 'pins' || !ch) return;
     const id = ch.id;
@@ -74,17 +66,17 @@
         {#each pins as m (m.id)}{@render item(m, false)}{:else}<p class="muted pad">{t('side_panel_nothing_pinned_here_yet_pin')}</p>{/each}
       {/if}
     {:else}
-      <label class="search">
-        <Icon name="search" size={15} />
-        <input type="search" bind:value={query} onkeydown={searchKey} placeholder={g ? t('common_search_server', { server: w('server') }) : t('common_search')} aria-label={t('common_search_messages')} />
-      </label>
+      <SearchBox wide />
       {#if !app.search.query}
-        <p class="muted pad">{t('side_panel_tip_from_name_searches_author')}</p>
-      {:else if app.search.loading}
+        <p class="muted pad">{t('search_tip')}</p>
+      {:else if app.search.loading && !app.search.results.length}
         <p class="muted pad">{t('side_panel_searching')}</p>
       {:else}
-        <p class="muted pad">{app.search.total === 1 ? t('side_panel_1_result') : t('side_panel_n_results', { n: app.search.total })}{#if app.search.total > app.search.results.length}, {t('side_panel_showing_newest_n', { n: app.search.results.length })}{/if}</p>
-        {#each app.search.results as m (m.id)}{@render item(m, !!g)}{:else}<p class="muted pad">{t('side_panel_nothing_found_tip_from_name')}</p>{/each}
+        <p class="muted pad">{app.search.total === 1 ? t('side_panel_1_result') : t('side_panel_n_results', { n: app.search.total })}</p>
+        {#each app.search.results as m (m.id)}{@render item(m, !!g)}{:else}<p class="muted pad">{t('search_nothing_found')}</p>{/each}
+        {#if app.search.total > app.search.results.length}
+          <button class="btn small more" disabled={app.search.loading} onclick={() => runSearch(app.search.query, true)}>{app.search.loading ? t('side_panel_searching') : t('search_load_more')}</button>
+        {/if}
       {/if}
     {/if}
   </div>
@@ -111,28 +103,6 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-  }
-  .search {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 10px;
-    height: 36px;
-    border-radius: var(--radius-s);
-    background: var(--panel-2);
-    color: var(--muted);
-  }
-  .search input {
-    flex: 1;
-    min-width: 0;
-    border: 0;
-    background: none;
-    color: var(--ink);
-    font: inherit;
-    outline: none;
-  }
-  .search:focus-within {
-    outline: 2px solid var(--accent);
   }
   .pad {
     padding: 4px 6px;
@@ -171,5 +141,9 @@
     aside {
       width: 280px;
     }
+  }
+  .more {
+    align-self: center;
+    margin: 4px 0 8px;
   }
 </style>
