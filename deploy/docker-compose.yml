@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: hearth
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
       POSTGRES_DB: hearth
     volumes:
       - db:/var/lib/postgresql/data
@@ -17,20 +17,20 @@ services:
       retries: 20
 
   app:
-    build:
-      context: ..
-    image: hearth:local
+    image: ${HEARTH_IMAGE:-ghcr.io/newtox/hearth:latest}
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
     environment:
       DATABASE_URL: postgres://hearth:${DB_PASSWORD}@db:5432/hearth
       TRUST_PROXY: "1"
-      LIVEKIT_URL: wss://${LIVEKIT_DOMAIN}
+      LIVEKIT_URL: wss://${LIVEKIT_DOMAIN:?Set LIVEKIT_DOMAIN}
       LIVEKIT_API_KEY: hearth
-      LIVEKIT_API_SECRET: ${LIVEKIT_SECRET}
-      PUBLIC_URL: https://${CHAT_DOMAIN}
+      LIVEKIT_API_SECRET: ${LIVEKIT_SECRET:?Set LIVEKIT_SECRET}
+      PUBLIC_URL: https://${CHAT_DOMAIN:?Set CHAT_DOMAIN}
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
       CONNECT_TWITCH_ID: ${CONNECT_TWITCH_ID:-}
@@ -39,18 +39,23 @@ services:
       CONNECT_YOUTUBE_SECRET: ${CONNECT_YOUTUBE_SECRET:-}
       STEAM_API_KEY: ${STEAM_API_KEY:-}
     ports:
-      - "127.0.0.1:${APP_PORT}:8080"
+      - "127.0.0.1:${APP_PORT:-8090}:8080"
     volumes:
       - uploads:/data/uploads
 
   livekit:
     image: livekit/livekit-server:latest
     restart: unless-stopped
-    command: --config /etc/livekit.yaml
-    volumes:
-      - ./livekit.generated.yaml:/etc/livekit.yaml:ro
+    environment:
+      LIVEKIT_KEYS: "hearth: ${LIVEKIT_SECRET}"
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+          udp_port: 7882
+          use_external_ip: true
     ports:
-      - "127.0.0.1:${LIVEKIT_PORT}:7880"
+      - "127.0.0.1:${LIVEKIT_PORT:-7880}:7880"
       - "7881:7881"
       - "7882:7882/udp"
 

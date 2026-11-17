@@ -6,12 +6,13 @@ usage() {
 Usage: sudo ./deploy.sh <chat-domain> <livekit-domain>
 Example: sudo ./deploy.sh chat.example.com livekit.example.com
 
-Optional environment variables:
-  REPO          Git URL of the repository (default: https://github.com/newtox/hearth.git)
-  BRANCH        Branch                    (default: main)
-  DIR           Target directory          (default: /opt/hearth)
+Run it from the folder that contains docker-compose.yml. It pulls the
+published image, so nothing is built on the server.
+
+Optional environment variables (remembered in .env after the first run):
   APP_PORT      Local port of the app     (default: 8090)
   LIVEKIT_PORT  Local port of LiveKit     (default: 7880)
+  HEARTH_IMAGE  Image to run              (default: ghcr.io/newtox/hearth:latest)
   CADDYFILE     Path to the Caddyfile     (default: /etc/caddy/Caddyfile)
 TXT
   exit 1
@@ -20,41 +21,28 @@ TXT
 [ $# -eq 2 ] || usage
 CHAT_DOMAIN=$1
 LIVEKIT_DOMAIN=$2
-REPO=${REPO:-https://github.com/newtox/hearth.git}
-BRANCH=${BRANCH:-main}
-DIR=${DIR:-/opt/hearth}
-APP_PORT=${APP_PORT:-8090}
-LIVEKIT_PORT=${LIVEKIT_PORT:-7880}
 CADDYFILE=${CADDYFILE:-/etc/caddy/Caddyfile}
+cd "$(dirname "$0")"
 
 say() { printf '\n==> %s\n' "$*"; }
 die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 
 [ "$(id -u)" -eq 0 ] || die "Please run as root or with sudo."
-for tool in git docker openssl curl; do
+for tool in docker openssl curl; do
   command -v "$tool" >/dev/null || die "$tool is not installed."
 done
 docker compose version >/dev/null 2>&1 || die "The Docker Compose plugin is missing (docker compose)."
+[ -f docker-compose.yml ] || die "docker-compose.yml is missing in $(pwd)."
 
-say "Fetching code"
-if [ -d "$DIR/.git" ]; then
-  git -C "$DIR" fetch origin "$BRANCH"
-  git -C "$DIR" checkout "$BRANCH"
-  git -C "$DIR" pull --ff-only origin "$BRANCH"
-else
-  git clone --branch "$BRANCH" "$REPO" "$DIR"
+if [ -d ../.git ] && command -v git >/dev/null; then
+  say "Updating the stack files"
+  git -C .. pull --ff-only || echo "Could not pull, continuing with the files on disk."
 fi
-cd "$DIR/deploy"
 
 say "Configuration"
-if [ ! -f .env ]; then
-  umask 077
-  cat > .env <<ENV
-DB_PASSWORD=$(openssl rand -hex 24)
-LIVEKIT_SECRET=$(openssl rand -hex 32)
-ENV
-  echo "Generated new secrets in $DIR/deploy/.env."
-fi
+umask 077
+touch .env
+get_env() { grep "^$1=" .env | tail -n1 | cut -d= -f2- || true; }
 set_env() {
   if grep -q "^$1=" .env; then
     sed -i "s|^$1=.*|$1=$2|" .env
@@ -62,26 +50,38 @@ set_env() {
     echo "$1=$2" >> .env
   fi
 }
+[ -n "$(get_env DB_PASSWORD)" ] || set_env DB_PASSWORD "$(openssl rand -hex 24)"
+[ -n "$(get_env LIVEKIT_SECRET)" ] || set_env LIVEKIT_SECRET "$(openssl rand -hex 32)"
+APP_PORT=${APP_PORT:-$(get_env APP_PORT)}
+APP_PORT=${APP_PORT:-8090}
+LIVEKIT_PORT=${LIVEKIT_PORT:-$(get_env LIVEKIT_PORT)}
+LIVEKIT_PORT=${LIVEKIT_PORT:-7880}
 set_env CHAT_DOMAIN "$CHAT_DOMAIN"
 set_env LIVEKIT_DOMAIN "$LIVEKIT_DOMAIN"
 set_env APP_PORT "$APP_PORT"
 set_env LIVEKIT_PORT "$LIVEKIT_PORT"
+[ -z "${HEARTH_IMAGE:-}" ] || set_env HEARTH_IMAGE "$HEARTH_IMAGE"
 chmod 600 .env
-LIVEKIT_SECRET=$(grep '^LIVEKIT_SECRET=' .env | cut -d= -f2)
 
-cat > livekit.generated.yaml <<YAML
-port: 7880
-rtc:
-  tcp_port: 7881
-  udp_port: 7882
-  use_external_ip: true
-keys:
-  hearth: $LIVEKIT_SECRET
-YAML
-chmod 644 livekit.generated.yaml
+busy() {
+  local port=$1 owner
+  owner=$(docker ps --filter "publish=$port" --format '{{.Names}}' | grep -v '^hearth-' | head -n1 || true)
+  if [ -n "$owner" ]; then
+    echo "$owner"
+  elif ss -ltn "( sport = :$port )" 2>/dev/null | grep -q LISTEN && ! docker ps --filter "publish=$port" --format '{{.Names}}' | grep -q '^hearth-'; then
+    echo "another program"
+  fi
+}
+for pair in "APP_PORT:$APP_PORT" "LIVEKIT_PORT:$LIVEKIT_PORT"; do
+  name=${pair%%:*}
+  port=${pair#*:}
+  owner=$(busy "$port")
+  [ -z "$owner" ] || die "Port $port is used by $owner. Run again with a free port, e.g. $name=8097 ./deploy.sh $CHAT_DOMAIN $LIVEKIT_DOMAIN"
+done
 
-say "Building and starting containers (the first build takes a few minutes)"
-docker compose --env-file .env up -d --build --remove-orphans
+say "Pulling images and starting containers"
+docker compose --env-file .env pull
+docker compose --env-file .env up -d --remove-orphans
 
 say "Waiting for the app to respond"
 ok=0
@@ -149,6 +149,6 @@ DNS: Both domains must point to this server. On Cloudflare, add the
 LiveKit domain without the proxy (grey cloud) and open 7881/TCP and
 7882/UDP in your provider's firewall.
 
-To update, run this script again.
-In Portainer the whole thing shows up as the stack "hearth".
+New app versions arrive through Watchtower or by running this script again.
+In Portainer the stack shows up as "hearth".
 TXT
