@@ -13,6 +13,8 @@
   import EmojiPicker from './EmojiPicker.svelte';
   import Icon from './Icon.svelte';
   import Markdown from './Markdown.svelte';
+  import PollCard from './PollCard.svelte';
+  import PollModal from './PollModal.svelte';
 
   const g = $derived(guild());
   const ch = $derived(channel());
@@ -32,6 +34,7 @@
   const external = $derived(!!direct || has(perms, P.USE_EXTERNAL_EMOJIS));
   const groupDelete = $derived(direct?.kind === 'group' && groupMay(direct, 'delete'));
   let revealed = $state<string[]>([]);
+  let pollOpen = $state(false);
 
   function nameColor(userId: string) {
     if (direct?.kind === 'group') return GROUP_ROLES[groupRole(direct, userId)].color;
@@ -271,6 +274,7 @@
                 <div class="bubble"><Markdown text={m.content} />{#if m.edited_at}<small class="edited"> {t('(bearbeitet)')}</small>{/if}</div>
               {/if}
             {/if}
+            {#if m.poll}<PollCard message={m} />{/if}
             {#if m.attachments.length}
               <div class="files">
                 {#each m.attachments as a (a.id)}
@@ -297,7 +301,7 @@
           {#if editing !== m.id}
             <div class="tools">
               {#if has(perms, P.ADD_REACTIONS)}<button class="icon" onclick={() => (picker = { message: m })} aria-label={t('Reagieren')}><Icon name="smile" size={15} /></button>{/if}
-              {#if own && m.content && !m.content.match(STICKER)}<button class="icon" onclick={() => startEdit(m)} aria-label={t('Bearbeiten')}><Icon name="edit" size={15} /></button>{/if}
+              {#if own && m.content && !m.poll && !m.content.match(STICKER)}<button class="icon" onclick={() => startEdit(m)} aria-label={t('Bearbeiten')}><Icon name="edit" size={15} /></button>{/if}
               {#if own || (g && has(perms, P.MANAGE_MESSAGES)) || groupDelete}<button class="icon" onclick={() => remove(m)} aria-label={t('Löschen')}><Icon name="trash" size={15} /></button>{/if}
             </div>
           {/if}
@@ -328,12 +332,14 @@
           </label>
         {/if}
         <textarea class="input" rows="1" maxlength="4000" bind:this={input} bind:value={draft} onkeydown={keydown} {oninput} onpaste={paste} placeholder={t('{message} an {target}', { message: w('message'), target: direct ? title : '#' + title })}></textarea>
+        <button type="button" class="icon tool" onclick={() => (pollOpen = true)} aria-label={t('Umfrage erstellen')} title={t('Umfrage erstellen')}><Icon name="poll" /></button>
         <button type="button" class="icon tool" onclick={() => (picker = { message: null })} aria-label={t('Emojis und Sticker')}><Icon name="smile" /></button>
         <button class="btn primary" disabled={(!draft.trim() && !pending.length) || uploading > 0} aria-label={w('send')}><Icon name="send" /><span class="send-label">{w('send')}</span></button>
       </form>
     {:else}
       <p class="readonly muted">{t('Du darfst in diesem Kanal nicht schreiben.')}</p>
     {/if}
+    {#if pollOpen}<PollModal channelId={ch.id} onclose={() => (pollOpen = false)} />{/if}
     {#if picker}<EmojiPicker stickers={!picker.message} {external} onpick={pick} onclose={() => (picker = null)} />{/if}
   {:else}
     <div class="blank">

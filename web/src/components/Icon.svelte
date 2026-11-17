@@ -25,6 +25,7 @@
     lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
     phone: 'M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z',
     userPlus: 'M15 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M8.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19 8v6M16 11h6',
+    poll: 'M6 20V11M12 20V4M18 20v-6',
     copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
   };
   let { name, size = 18 }: { name: string; size?: number } = $props();

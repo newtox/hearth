@@ -241,6 +241,20 @@ async def main():
         call("DELETE", f"/badges/{bd['id']}", a)
     check("spotify off by default", call("GET", "/spotify", a)[0] == 503 and call("GET", "/users/@me", a)[1]["spotify"] == {"available": False, "linked": False})
 
+    s, pm = call("POST", f"/channels/{general}/messages", a, {"content": "", "poll": {"question": "Wann raiden?", "options": ["Freitag", "Samstag", "Sonntag"], "hours": 24}})
+    check("create poll", s == 200 and len(pm["poll"]["options"]) == 3 and pm["poll"]["expires_at"], pm)
+    o = [x["id"] for x in pm["poll"]["options"]]
+    check("poll needs two options", call("POST", f"/channels/{general}/messages", a, {"poll": {"question": "x", "options": ["nur eine"]}})[0] == 400)
+    check("vote", call("POST", f"/channels/{general}/messages/{pm['id']}/poll", c, {"option_ids": [o[1]]})[0] == 200)
+    check("single choice enforced", call("POST", f"/channels/{general}/messages/{pm['id']}/poll", c, {"option_ids": [o[0], o[1]]})[0] == 400)
+    check("change vote", call("POST", f"/channels/{general}/messages/{pm['id']}/poll", c, {"option_ids": [o[2]]})[0] == 200)
+    got = next(x for x in call("GET", f"/channels/{general}/messages", a)[1] if x["id"] == pm["id"])["poll"]["options"]
+    check("votes counted", [x["voters"] for x in got] == [[], [], [cid_user]], got)
+    check("foreign option rejected", call("POST", f"/channels/{general}/messages/{pm['id']}/poll", c, {"option_ids": [aid]})[0] == 400)
+    check("outsider cannot vote", call("POST", f"/channels/{general}/messages/{pm['id']}/poll", d, {"option_ids": [o[0]]})[0] == 404)
+    s, pm2 = call("POST", f"/channels/{general}/messages", a, {"poll": {"question": "Was mitbringen?", "options": ["Chips", "Cola"], "multi": True}})
+    check("multiple choice", call("POST", f"/channels/{general}/messages/{pm2['id']}/poll", c, {"option_ids": [x["id"] for x in pm2["poll"]["options"]]})[0] == 200)
+    check("withdraw vote", call("POST", f"/channels/{general}/messages/{pm2['id']}/poll", c, {"option_ids": []})[0] == 200)
     e, eid = user("emil")
     f, fid = user("finn")
     check("friend request by name", call("POST", "/friends", d, {"username": "emil" + S})[0] == 200)

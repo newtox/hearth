@@ -98,6 +98,7 @@ async fn main() {
         .route("/channels/{cid}/voice", post(voice::join))
         .route("/channels/{cid}/attachments", post(messages::upload).layer(DefaultBodyLimit::max(26 * 1024 * 1024)))
         .route("/channels/{cid}/messages/{mid}/reactions", post(messages::react))
+        .route("/channels/{cid}/messages/{mid}/poll", post(messages::vote))
         .route("/guilds/{gid}/audit", get(guilds::audit_log))
         .route("/guilds/{gid}/emojis", post(emojis::create))
         .route("/guilds/{gid}/emojis/{eid}", delete(emojis::delete))

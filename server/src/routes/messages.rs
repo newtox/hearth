@@ -44,10 +44,27 @@ async fn to_json(st: &AppState, rows: &[MessageRow]) -> Result<Vec<Value>> {
     .bind(&ids)
     .fetch_all(&st.db)
     .await?;
+    let polls: Vec<(Uuid, String, bool, Option<chrono::DateTime<chrono::Utc>>)> =
+        sqlx::query_as("SELECT message_id, question, multi, expires_at FROM polls WHERE message_id = ANY($1)").bind(&ids).fetch_all(&st.db).await?;
+    let options: Vec<(Uuid, Uuid, String, Vec<Uuid>)> = if polls.is_empty() {
+        Vec::new()
+    } else {
+        sqlx::query_as(
+            "SELECT o.id, o.message_id, o.text, COALESCE(array_agg(v.user_id) FILTER (WHERE v.user_id IS NOT NULL), '{}') \
+             FROM poll_options o LEFT JOIN poll_votes v ON v.option_id = o.id WHERE o.message_id = ANY($1) GROUP BY o.id ORDER BY o.position",
+        )
+        .bind(&ids)
+        .fetch_all(&st.db)
+        .await?
+    };
     Ok(rows
         .iter()
         .map(|r| {
             let mut v = r.json();
+            if let Some(p) = polls.iter().find(|p| p.0 == r.id) {
+                let opts: Vec<Value> = options.iter().filter(|o| o.1 == r.id).map(|o| json!({ "id": o.0, "text": o.2, "voters": o.3 })).collect();
+                v["poll"] = json!({ "question": p.1, "multi": p.2, "expires_at": p.3, "options": opts });
+            }
             v["attachments"] = json!(attachments.iter().filter(|a| a.message_id == Some(r.id)).collect::<Vec<_>>());
             v["reactions"] = json!(reactions.iter().filter(|x| x.0 == r.id).map(|x| json!({ "emoji": x.1, "users": x.2 })).collect::<Vec<_>>());
             v
@@ -86,6 +103,16 @@ pub struct MessageBody {
     content: String,
     #[serde(default)]
     attachment_ids: Vec<Uuid>,
+    poll: Option<PollBody>,
+}
+
+#[derive(Deserialize)]
+pub struct PollBody {
+    question: String,
+    options: Vec<String>,
+    #[serde(default)]
+    multi: bool,
+    hours: Option<i64>,
 }
 
 pub async fn upload(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid): Path<Uuid>, multipart: Multipart) -> Result<Json<Value>> {
@@ -133,9 +160,20 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
     }
     st.limits.check(format!("msg:{uid}"), 10, Duration::from_secs(10))?;
     let content = b.content.trim();
-    if content.chars().count() > 4000 || (content.is_empty() && b.attachment_ids.is_empty()) {
+    if content.chars().count() > 4000 || (content.is_empty() && b.attachment_ids.is_empty() && b.poll.is_none()) {
         return bad("Message: 1–4000 characters");
     }
+    let poll = match &b.poll {
+        Some(p) => {
+            let question = p.question.trim();
+            let options: Vec<&str> = p.options.iter().map(|o| o.trim()).filter(|o| !o.is_empty()).collect();
+            if question.is_empty() || question.chars().count() > 200 || !(2..=10).contains(&options.len()) || options.iter().any(|o| o.chars().count() > 80) {
+                return bad("A poll needs a question and 2 to 10 options");
+            }
+            Some((question, options, p.multi, p.hours.filter(|h| *h > 0).map(|h| h.min(24 * 30))))
+        }
+        None => None,
+    };
     check_emojis(&st, &a, content).await?;
     if b.attachment_ids.len() > 10 {
         return bad("At most 10 attachments per message");
@@ -159,6 +197,18 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
             .await?;
         if linked.rows_affected() as usize != b.attachment_ids.len() {
             return bad("An attachment is invalid");
+        }
+    }
+    if let Some((question, options, multi, hours)) = poll {
+        sqlx::query("INSERT INTO polls (message_id, question, multi, expires_at) VALUES ($1, $2, $3, CASE WHEN $4::int IS NULL THEN NULL ELSE now() + make_interval(hours => $4) END)")
+            .bind(id)
+            .bind(question)
+            .bind(multi)
+            .bind(hours.map(|h| h as i32))
+            .execute(&mut *tx)
+            .await?;
+        for (i, text) in options.iter().enumerate() {
+            sqlx::query("INSERT INTO poll_options (id, message_id, position, text) VALUES ($1, $2, $3, $4)").bind(Uuid::now_v7()).bind(id).bind(i as i32).bind(text).execute(&mut *tx).await?;
         }
     }
     tx.commit().await?;
@@ -260,5 +310,45 @@ pub async fn react(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((ci
 pub async fn typing(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid): Path<Uuid>) -> Result<Json<Value>> {
     let a = access(&st, uid, cid, perms::SEND_MESSAGES).await?;
     st.hub.send(&viewers(&st, &a.channel).await?, "TYPING_START", json!({ "channel_id": cid, "user_id": uid }));
+    Ok(Json(json!({})))
+}
+
+#[derive(Deserialize)]
+pub struct VoteBody {
+    option_ids: Vec<Uuid>,
+}
+
+pub async fn vote(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((cid, mid)): Path<(Uuid, Uuid)>, Json(b): Json<VoteBody>) -> Result<Json<Value>> {
+    let a = access(&st, uid, cid, 0).await?;
+    st.limits.check(format!("react:{uid}"), 30, Duration::from_secs(10))?;
+    let poll: Option<(bool, bool)> = sqlx::query_as(
+        "SELECT p.multi, (p.expires_at IS NOT NULL AND p.expires_at < now()) FROM polls p JOIN messages m ON m.id = p.message_id WHERE p.message_id = $1 AND m.channel_id = $2",
+    )
+    .bind(mid)
+    .bind(cid)
+    .fetch_optional(&st.db)
+    .await?;
+    let (multi, closed) = poll.ok_or(AppError::NotFound)?;
+    if closed {
+        return bad("This poll has ended");
+    }
+    let mut wanted = b.option_ids;
+    wanted.sort();
+    wanted.dedup();
+    if !multi && wanted.len() > 1 {
+        return bad("This poll allows only one answer");
+    }
+    let valid: i64 = sqlx::query_scalar("SELECT count(*) FROM poll_options WHERE message_id = $1 AND id = ANY($2)").bind(mid).bind(&wanted).fetch_one(&st.db).await?;
+    if valid as usize != wanted.len() {
+        return bad("Unknown option");
+    }
+    let mut tx = st.db.begin().await?;
+    sqlx::query("DELETE FROM poll_votes WHERE message_id = $1 AND user_id = $2").bind(mid).bind(uid).execute(&mut *tx).await?;
+    for o in &wanted {
+        sqlx::query("INSERT INTO poll_votes (option_id, user_id, message_id) VALUES ($1, $2, $3)").bind(o).bind(uid).bind(mid).execute(&mut *tx).await?;
+    }
+    tx.commit().await?;
+    let msg = fetch(&st, mid).await?;
+    st.hub.send(&viewers(&st, &a.channel).await?, "MESSAGE_UPDATE", &msg);
     Ok(Json(json!({})))
 }

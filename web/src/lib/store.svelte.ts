@@ -135,6 +135,13 @@ export interface Message {
   author: User;
   attachments: Attachment[];
   reactions: { emoji: string; users: string[] }[];
+  poll?: Poll;
+}
+export interface Poll {
+  question: string;
+  multi: boolean;
+  expires_at: string | null;
+  options: { id: string; text: string; voters: string[] }[];
 }
 export type Modal =
   | { kind: 'create' ; code?: string }
