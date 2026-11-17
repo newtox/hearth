@@ -2,7 +2,7 @@
   import { activityText } from '../lib/activity';
   import { api } from '../lib/api';
   import { t } from '../lib/i18n.svelte';
-  import { app, attempt, openDm, toast, type User } from '../lib/store.svelte';
+  import { app, attempt, openDm, toast, type User, presenceOf } from '../lib/store.svelte';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
 
@@ -78,7 +78,7 @@
     {#each sorted as u (u.id)}
       <div class="row line" class:off={!u.online}>
         <button class="row who grow" onclick={() => (app.profile = u.id)}>
-          <Avatar id={u.id} name={u.display_name} image={u.avatar} size={38} online={!!u.online} />
+          <Avatar id={u.id} name={u.display_name} image={u.avatar} size={38} status={presenceOf(u)} />
           <span class="names">
             <strong class="ellipsis">{u.display_name}</strong>
             <small class="muted ellipsis">{u.activity ? activityText(u.activity) : u.online ? t('Online') : t('Offline')}</small>

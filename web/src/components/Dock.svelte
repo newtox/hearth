@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { guildMenu, openMenu } from '../lib/menus';
+  import { guildMenu, openMenu, statusMenu } from '../lib/menus';
   import { t } from '../lib/i18n.svelte';
   import { app, dmUnread, guildUnread, select } from '../lib/store.svelte';
   import { w } from '../lib/theme.svelte';
@@ -30,8 +30,8 @@
       <Icon name="plus" />
     </button>
   </div>
-  <button class="tab me" onclick={() => (app.modal = { kind: 'user' })} title={t('Einstellungen')}>
-    <Avatar id={app.me!.id} name={app.me!.display_name} image={app.me!.avatar} size={28} online={app.connected} />
+  <button class="tab me" onclick={(e) => openMenu(e, statusMenu())} oncontextmenu={(e) => openMenu(e, statusMenu())} title={t('Status und Einstellungen')} aria-haspopup="menu">
+    <Avatar id={app.me!.id} name={app.me!.display_name} image={app.me!.avatar} size={28} status={app.connected ? (app.me!.status ?? 'online') : 'offline'} />
     <span class="label ellipsis">{app.me!.display_name}</span>
   </button>
 </nav>

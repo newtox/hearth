@@ -6,7 +6,7 @@
   import { api, asset, upload } from '../lib/api';
   import { CUSTOM, STICKER } from '../lib/markdown';
   import { has } from '../lib/perms';
-  import { app, attempt, channel, dmTitle, select, findEmoji, guild, loadMessages, memberColor, memberName, partner, toast, P, type Attachment, type Dm, type Emoji, type Message } from '../lib/store.svelte';
+  import { app, attempt, channel, dmTitle, select, findEmoji, guild, loadMessages, memberColor, memberName, partner, toast, P, type Attachment, type Dm, type Emoji, type Message, presenceOf } from '../lib/store.svelte';
   import { GROUP_ROLES, groupMay, groupRole } from '../lib/groups';
   import { isBlocked } from '../lib/store.svelte';
   import CallBar from './CallBar.svelte';
@@ -252,7 +252,7 @@
     {#if ch}
       {#if dmUser}
         <button class="row who" onclick={() => (app.profile = dmUser.id)} oncontextmenu={(e) => openMenu(e, memberMenu(dmUser.id, null))}>
-          <Avatar id={dmUser.id} name={dmUser.display_name} image={dmUser.avatar} size={28} online={!!dmUser.online} />
+          <Avatar id={dmUser.id} name={dmUser.display_name} image={dmUser.avatar} size={28} status={presenceOf(dmUser)} />
           <h3 class="ellipsis">{title}</h3>
         </button>
         <span class="grow"></span>

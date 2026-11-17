@@ -52,6 +52,8 @@ pub struct PublicUser {
     #[sqlx(default)]
     pub online: bool,
     #[sqlx(skip)]
+    pub presence: String,
+    #[sqlx(skip)]
     pub activity: Option<Activity>,
     #[sqlx(default)]
     pub streaming: bool,
@@ -118,6 +120,8 @@ pub struct Member {
     pub roles: Vec<Uuid>,
     #[sqlx(default)]
     pub online: bool,
+    #[sqlx(skip)]
+    pub presence: String,
     #[sqlx(skip)]
     pub activity: Option<Activity>,
     #[sqlx(default)]

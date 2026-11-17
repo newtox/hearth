@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fromEnglish, locale, t } from '../lib/i18n.svelte';
   import { api, asset } from '../lib/api';
-  import { app, attempt, canModerate, guild, isBlocked, isFriend, openDm, P, type Badge, type User } from '../lib/store.svelte';
+  import { app, attempt, canModerate, guild, isBlocked, isFriend, openDm, P, type Badge, type User, presenceOf } from '../lib/store.svelte';
   import { activityText, badgeLabel, elapsed } from '../lib/activity';
   import Avatar from './Avatar.svelte';
   import BadgeIcon from './BadgeIcon.svelte';
@@ -63,7 +63,7 @@
     </div>
     {#if user}
       <div class="body">
-        <div class="face"><Avatar id={user.id} name={user.display_name} image={user.avatar} size={84} online={!!user.online} /></div>
+        <div class="face"><Avatar id={user.id} name={user.display_name} image={user.avatar} size={84} status={presenceOf(user)} /></div>
         <h2>{member?.nickname || user.display_name}</h2>
         <p class="muted">@{user.username}{member?.nickname ? t(', auch bekannt als {name}', { name: user.display_name }) : ''}</p>
         {#if (live ?? user.badges)?.length}

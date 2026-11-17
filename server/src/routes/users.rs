@@ -6,9 +6,11 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 pub fn decorate(st: &AppState, u: &mut PublicUser) {
-    u.online = st.hub.is_online(&u.id);
-    u.activity = st.hub.activity.get(&u.id).map(|a| a.clone());
-    u.streaming = st.hub.streaming.contains_key(&u.id);
+    let shown = st.hub.visible(&u.id);
+    u.online = shown;
+    u.presence = st.hub.presence(&u.id).to_string();
+    u.activity = if shown { st.hub.activity.get(&u.id).map(|a| a.clone()) } else { None };
+    u.streaming = shown && st.hub.streaming.contains_key(&u.id);
 }
 
 pub async fn public_user(st: &AppState, id: Uuid) -> Result<PublicUser> {
@@ -26,6 +28,8 @@ pub async fn me_json(st: &AppState, id: Uuid) -> Result<Value> {
     let email: String = sqlx::query_scalar("SELECT email FROM users WHERE id = $1").bind(id).fetch_one(&st.db).await?;
     let mut v = serde_json::to_value(user).map_err(|e| AppError::Internal(e.to_string()))?;
     v["email"] = json!(email);
+    let status: String = sqlx::query_scalar("SELECT status FROM users WHERE id = $1").bind(id).fetch_one(&st.db).await?;
+    v["status"] = json!(status);
     v["voice"] = json!(st.livekit.is_some());
     let linked: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM spotify_links WHERE user_id = $1)").bind(id).fetch_one(&st.db).await?;
     v["spotify"] = json!({ "available": st.spotify.is_some(), "linked": linked });
@@ -47,6 +51,7 @@ pub struct UpdateMe {
     display_name: Option<String>,
     bio: Option<String>,
     accent_color: Option<String>,
+    status: Option<String>,
 }
 
 pub async fn update_me(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b): Json<UpdateMe>) -> Result<Json<Value>> {
@@ -63,6 +68,18 @@ pub async fn update_me(State(st): State<AppState>, AuthUser(uid): AuthUser, Json
     if b.accent_color.is_some() {
         let c = clean_color(&b.accent_color)?;
         sqlx::query("UPDATE users SET accent_color = $1 WHERE id = $2").bind(c).bind(uid).execute(&st.db).await?;
+    }
+    if let Some(status) = &b.status {
+        if !["online", "idle", "dnd", "invisible"].contains(&status.as_str()) {
+            return bad("Unknown status");
+        }
+        sqlx::query("UPDATE users SET status = $1 WHERE id = $2").bind(status).bind(uid).execute(&st.db).await?;
+        if status == "online" {
+            st.hub.status.remove(&uid);
+        } else {
+            st.hub.status.insert(uid, status.clone());
+        }
+        super::stats::broadcast(&st, uid).await;
     }
     announce(&st, uid).await?;
     Ok(Json(me_json(&st, uid).await?))

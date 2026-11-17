@@ -17,6 +17,8 @@ pub struct Hub {
     pub streaming: DashMap<Uuid, Instant>,
     pub watching: DashMap<Uuid, Vec<Uuid>>,
     pub activity: DashMap<Uuid, Activity>,
+    pub status: DashMap<Uuid, String>,
+    pub afk: DashMap<Uuid, ()>,
     next: AtomicU64,
 }
 
@@ -43,6 +45,23 @@ impl Hub {
 
     pub fn is_online(&self, user: &Uuid) -> bool {
         self.conns.contains_key(user)
+    }
+
+    pub fn presence(&self, user: &Uuid) -> &'static str {
+        if !self.is_online(user) {
+            return "offline";
+        }
+        match self.status.get(user).as_deref().map(String::as_str) {
+            Some("invisible") => "offline",
+            Some("dnd") => "dnd",
+            Some("idle") => "idle",
+            _ if self.afk.contains_key(user) => "idle",
+            _ => "online",
+        }
+    }
+
+    pub fn visible(&self, user: &Uuid) -> bool {
+        self.presence(user) != "offline"
     }
 
     pub fn online_ids(&self) -> Vec<Uuid> {

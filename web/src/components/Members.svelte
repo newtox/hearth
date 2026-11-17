@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from '../lib/i18n.svelte';
-  import { app, guild, memberColor, type Member } from '../lib/store.svelte';
+  import { app, guild, memberColor, type Member, presenceOf } from '../lib/store.svelte';
   import { activityText } from '../lib/activity';
   import { w } from '../lib/theme.svelte';
   import { memberMenu, openMenu } from '../lib/menus';
@@ -34,7 +34,7 @@
       <div class="group">{group.name}, {group.members.length}</div>
       {#each group.members as m (m.id)}
         <button class="member row" class:off={!m.online} onclick={() => (app.profile = m.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.id, g))}>
-          <Avatar id={m.id} name={m.display_name} image={m.avatar} size={30} online={!!m.online} />
+          <Avatar id={m.id} name={m.display_name} image={m.avatar} size={30} status={presenceOf(m)} />
           <span class="who">
             <span class="ellipsis" style:color={memberColor(g, m.id)}>{m.nickname || m.display_name}</span>
             {#if m.activity}<small class="ellipsis muted">{activityText(m.activity)}</small>{/if}

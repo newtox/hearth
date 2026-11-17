@@ -1,4 +1,4 @@
-use crate::{auth, error::Result, routes::{guilds::snapshot, related_users, users::{dm_json, me_json}}, AppState};
+use crate::{auth, error::Result, routes::{guilds::snapshot, stats, users::{dm_json, me_json}}, AppState};
 use axum::{extract::{ws::{Message, WebSocket}, State, WebSocketUpgrade}, response::Response};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
@@ -24,11 +24,6 @@ async fn ready(st: &AppState, uid: Uuid) -> Result<Value> {
     Ok(json!({ "t": "READY", "d": { "user": me_json(st, uid).await?, "guilds": guilds, "dms": dms, "friends": friends } }))
 }
 
-async fn presence(st: &AppState, uid: Uuid, online: bool) {
-    if let Ok(users) = related_users(st, uid).await {
-        st.hub.send(&users, "PRESENCE_UPDATE", json!({ "user_id": uid, "online": online, "activity": null, "streaming": false }));
-    }
-}
 
 async fn identify(socket: &mut WebSocket, st: &AppState) -> Option<Uuid> {
     let msg = tokio::time::timeout(Duration::from_secs(10), socket.next()).await.ok()??.ok()?;
@@ -45,6 +40,12 @@ async fn run(mut socket: WebSocket, st: AppState) {
         let _ = socket.send(Message::Text(json!({ "t": "INVALID_SESSION" }).to_string().into())).await;
         return;
     };
+    let status: String = sqlx::query_scalar("SELECT status FROM users WHERE id = $1").bind(uid).fetch_one(&st.db).await.unwrap_or_else(|_| "online".into());
+    if status == "online" {
+        st.hub.status.remove(&uid);
+    } else {
+        st.hub.status.insert(uid, status);
+    }
     let (conn, mut rx, first) = st.hub.add(uid);
     let (mut sink, mut stream) = socket.split();
     let hello = match ready(&st, uid).await {
@@ -56,7 +57,8 @@ async fn run(mut socket: WebSocket, st: AppState) {
     };
     if sink.send(Message::Text(hello.into())).await.is_ok() {
         if first {
-            presence(&st, uid, true).await;
+            st.hub.afk.remove(&uid);
+            stats::broadcast(&st, uid).await;
         }
         loop {
             tokio::select! {
@@ -66,7 +68,14 @@ async fn run(mut socket: WebSocket, st: AppState) {
                 },
                 incoming = tokio::time::timeout(Duration::from_secs(90), stream.next()) => match incoming {
                     Ok(Some(Ok(Message::Text(t)))) => {
-                        if t.contains("ping") && sink.send(Message::Text(r#"{"t":"PONG"}"#.into())).await.is_err() { break }
+                        let v: Value = serde_json::from_str(&t).unwrap_or_default();
+                        if v["op"] == "idle" {
+                            let idle = v["idle"].as_bool().unwrap_or(false);
+                            let changed = if idle { st.hub.afk.insert(uid, ()).is_none() } else { st.hub.afk.remove(&uid).is_some() };
+                            if changed {
+                                stats::broadcast(&st, uid).await;
+                            }
+                        } else if t.contains("ping") && sink.send(Message::Text(r#"{"t":"PONG"}"#.into())).await.is_err() { break }
                     }
                     Ok(Some(Ok(Message::Close(_)))) | Ok(Some(Err(_))) | Ok(None) | Err(_) => break,
                     Ok(Some(Ok(_))) => {}
@@ -77,6 +86,7 @@ async fn run(mut socket: WebSocket, st: AppState) {
     if st.hub.remove(uid, conn) {
         crate::routes::voice::leave_all(&st, uid).await;
         st.hub.activity.remove(&uid);
-        presence(&st, uid, false).await;
+        st.hub.afk.remove(&uid);
+        stats::broadcast(&st, uid).await;
     }
 }

@@ -1,7 +1,7 @@
 import { api } from './api';
 import { t } from './i18n.svelte';
 import { w } from './theme.svelte';
-import { app, attempt, can, canModerate, openDm, toast, P, type Channel, type Guild, type MenuItem } from './store.svelte';
+import { app, attempt, can, canModerate, openDm, setStatus, toast, P, type Channel, type Guild, type MenuItem, type Status } from './store.svelte';
 import * as mod from './moderation';
 
 type Entry = MenuItem | false | null | undefined | 0;
@@ -108,5 +108,27 @@ export function channelMenu(g: Guild, c: Channel): Entry[] {
     manage && category && { label: t('Kanal in dieser Kategorie erstellen'), icon: 'plus', action: () => (app.modal = { kind: 'channel', channel: null, parent: c.id }) },
     'sep',
     { label: t('Kanal-ID kopieren'), icon: 'id', action: () => mod.copy(c.id) },
+  ];
+}
+
+const STATUSES: { id: Status; name: string; hint: string; color: string }[] = [
+  { id: 'online', name: 'Online', hint: '', color: 'var(--ok)' },
+  { id: 'idle', name: 'Abwesend', hint: 'Kommt auch automatisch nach 10 Minuten ohne Eingabe', color: '#f0b232' },
+  { id: 'dnd', name: 'Bitte nicht stören', hint: 'Keine Töne für Nachrichten und Anrufe', color: 'var(--danger)' },
+  { id: 'invisible', name: 'Unsichtbar', hint: 'Du wirst als offline angezeigt, kannst aber alles nutzen', color: 'var(--muted)' },
+];
+
+export function statusMenu(): Entry[] {
+  return [
+    ...STATUSES.map((s) => ({
+      label: t(s.name),
+      hint: s.hint ? t(s.hint) : undefined,
+      color: s.color,
+      checked: () => (app.me?.status ?? 'online') === s.id,
+      action: () => setStatus(s.id),
+    })),
+    'sep',
+    { label: t('Profil'), icon: 'user', action: () => (app.profile = app.me!.id) },
+    { label: t('Einstellungen'), icon: 'gear', action: () => (app.modal = { kind: 'user' }) },
   ];
 }

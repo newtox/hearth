@@ -122,7 +122,7 @@
       onpointerenter={(e) => !inSub && (item.items ? showSub(i, e.currentTarget) : (open = null))}
     >
       {#if item.color !== undefined}<span class="dot" style:background={item.color ?? 'var(--muted)'}></span>{/if}
-      <span class="text">{item.label}</span>
+      <span class="text">{item.label}{#if item.hint}<small>{item.hint}</small>{/if}</span>
       {#if checkable}
         <span class="box" class:on={flag(item.checked)}>{#if flag(item.checked)}<Icon name="check" size={13} />{/if}</span>
       {:else if item.items}
@@ -146,6 +146,13 @@
 {/if}
 
 <style>
+  .text small {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.82em;
+    color: var(--muted);
+    white-space: normal;
+  }
   .menu {
     position: fixed;
     z-index: 80;

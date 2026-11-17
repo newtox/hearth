@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from '../lib/i18n.svelte';
-  import { app, can, dmTitle, guild, partner, select, P, type Channel } from '../lib/store.svelte';
+  import { app, can, dmTitle, guild, partner, select, P, type Channel, presenceOf } from '../lib/store.svelte';
   import { asset } from '../lib/api';
   import { w } from '../lib/theme.svelte';
   import { leaveVoice, toggleMute, voice, voiceMembers } from '../lib/voice.svelte';
@@ -94,7 +94,7 @@
             {#if d.kind === 'group'}
               <span class="groupicon">{#if d.icon}<img src={asset(d.icon)} alt="" />{:else}<Icon name="users" size={16} />{/if}</span>
             {:else}
-              <Avatar id={p.id} name={p.display_name} image={p.avatar} size={30} online={!!p.online} />
+              <Avatar id={p.id} name={p.display_name} image={p.avatar} size={30} status={presenceOf(p)} />
             {/if}
             <span class="ellipsis grow">{dmTitle(d)}</span>
             {#if d.voice.length}<span class="incall" title={t('Anruf läuft')}><Icon name="phone" size={14} /></span>{/if}

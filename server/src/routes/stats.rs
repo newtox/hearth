@@ -81,11 +81,12 @@ pub async fn tracked(st: &AppState, uid: Uuid) -> Result<(Vec<Badge>, Value)> {
 
 pub async fn broadcast(st: &AppState, uid: Uuid) {
     if let Ok(users) = related_users(st, uid).await {
-        let activity = st.hub.activity.get(&uid).map(|a| a.clone());
+        let shown = st.hub.visible(&uid);
+        let activity = if shown { st.hub.activity.get(&uid).map(|a| a.clone()) } else { None };
         st.hub.send(
             &users,
             "PRESENCE_UPDATE",
-            json!({ "user_id": uid, "online": st.hub.is_online(&uid), "activity": activity, "streaming": st.hub.streaming.contains_key(&uid) }),
+            json!({ "user_id": uid, "online": shown, "presence": st.hub.presence(&uid), "activity": activity, "streaming": shown && st.hub.streaming.contains_key(&uid) }),
         );
     }
 }

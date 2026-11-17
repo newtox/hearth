@@ -2,7 +2,7 @@
   import { api, asset, upload } from '../lib/api';
   import { GROUP_ROLES, GROUP_RULES, groupMay, groupRole } from '../lib/groups';
   import { t } from '../lib/i18n.svelte';
-  import { app, attempt, dmTitle, select, type Dm } from '../lib/store.svelte';
+  import { app, attempt, dmTitle, select, type Dm, presenceOf } from '../lib/store.svelte';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
@@ -66,7 +66,7 @@
         {@const role = GROUP_ROLES[groupRole(dm, r.id)]}
         <div class="row line">
           <button class="row grow who" onclick={() => (app.profile = r.id)}>
-            <Avatar id={r.id} name={r.display_name} image={r.avatar} size={32} online={!!r.online} />
+            <Avatar id={r.id} name={r.display_name} image={r.avatar} size={32} status={presenceOf(r)} />
             <span class="ellipsis" style:color={role.color}>{r.display_name}</span>
             {#if r.id === dm.owner_id}<span class="crown" title={t('Besitzer')}><Icon name="crown" size={14} /></span>{/if}
           </button>

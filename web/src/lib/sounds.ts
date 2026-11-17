@@ -3,6 +3,12 @@ type Sound = 'message' | 'join' | 'leave' | 'mute' | 'unmute' | 'ring' | 'stream
 let ctx: AudioContext | null = null;
 let ringTimer: ReturnType<typeof setInterval> | undefined;
 
+let quiet = false;
+
+export function setQuiet(on: boolean) {
+  quiet = on;
+}
+
 export const sounds = {
   enabled: () => localStorage.getItem('hearth_sounds') !== 'off',
   set: (on: boolean) => localStorage.setItem('hearth_sounds', on ? 'on' : 'off'),
@@ -50,6 +56,7 @@ const NOTES: Record<Sound, [number, number, number][]> = {
 
 export function play(name: Sound) {
   if (!sounds.enabled() || !ctx || ctx.state !== 'running') return;
+  if (quiet && (name === 'message' || name === 'ring')) return;
   for (const [freq, at, length] of NOTES[name]) tone(freq, at, length);
 }
 

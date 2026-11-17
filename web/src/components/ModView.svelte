@@ -4,7 +4,7 @@
   import { openMenu } from '../lib/menus';
   import * as mod from '../lib/moderation';
   import { PERMISSIONS, P } from '../lib/perms';
-  import { app, attempt, can, canModerate, guild, openDm } from '../lib/store.svelte';
+  import { app, attempt, can, canModerate, guild, openDm, presenceOf } from '../lib/store.svelte';
   import { w } from '../lib/theme.svelte';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
@@ -52,7 +52,7 @@
     {@const label = mod.label(m)}
     <div class="stack view">
       <div class="row head">
-        <Avatar id={m.id} name={m.display_name} image={m.avatar} size={52} online={!!m.online} />
+        <Avatar id={m.id} name={m.display_name} image={m.avatar} size={52} status={presenceOf(m)} />
         <div class="grow who">
           <strong class="ellipsis">{label}</strong>
           <span class="muted ellipsis">@{m.username}</span>

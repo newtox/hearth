@@ -47,9 +47,11 @@ pub async fn snapshot(st: &AppState, guild_id: Uuid, user_id: Uuid) -> Result<Va
     .fetch_all(&st.db)
     .await?;
     for m in &mut members {
-        m.online = st.hub.is_online(&m.id);
-        m.activity = st.hub.activity.get(&m.id).map(|a| a.clone());
-        m.streaming = st.hub.streaming.contains_key(&m.id);
+        let shown = st.hub.visible(&m.id);
+        m.online = shown;
+        m.presence = st.hub.presence(&m.id).to_string();
+        m.activity = if shown { st.hub.activity.get(&m.id).map(|a| a.clone()) } else { None };
+        m.streaming = shown && st.hub.streaming.contains_key(&m.id);
     }
     let mut v = serde_json::to_value(guild).map_err(|e| AppError::Internal(e.to_string()))?;
     v["roles"] = json!(roles);

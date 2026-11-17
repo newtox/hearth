@@ -3,7 +3,14 @@ import { api, ApiError, gatewayUrl, getToken, setToken } from './api';
 import { P, has } from './perms';
 import { startDetection } from './activity';
 import { current } from './current';
-import { play } from './sounds';
+import { play, setQuiet } from './sounds';
+
+export type Status = 'online' | 'idle' | 'dnd' | 'invisible';
+export type Presence = 'online' | 'idle' | 'dnd' | 'offline';
+
+export function presenceOf(u: User | null | undefined): Presence {
+  return u?.presence ?? (u?.online ? 'online' : 'offline');
+}
 
 export interface User {
   id: string;
@@ -15,6 +22,8 @@ export interface User {
   accent_color?: string | null;
   created_at?: string;
   online?: boolean;
+  presence?: Presence;
+  status?: Status;
   email?: string;
   is_admin?: boolean;
   voice?: boolean;
@@ -156,7 +165,7 @@ export type Modal =
 
 type Flag = boolean | (() => boolean);
 export type MenuItem =
-  | { label: string; icon?: string; danger?: boolean; disabled?: Flag; checked?: Flag; color?: string | null; keep?: boolean; action?: () => void; items?: MenuItem[] }
+  | { label: string; hint?: string; icon?: string; danger?: boolean; disabled?: Flag; checked?: Flag; color?: string | null; keep?: boolean; action?: () => void; items?: MenuItem[] }
   | 'sep';
 export interface Menu {
   x: number;
@@ -189,6 +198,44 @@ export const app = $state({
 
 const lastChannel: Record<string, string> = {};
 let ws: WebSocket | null = null;
+let lastInput = Date.now();
+let idleSent = false;
+const IDLE_AFTER = 10 * 60 * 1000;
+
+function sendIdle(idle: boolean) {
+  if (!ws || ws.readyState !== WebSocket.OPEN || idleSent === idle) return;
+  idleSent = idle;
+  ws.send(JSON.stringify({ op: 'idle', idle }));
+}
+
+function touched() {
+  lastInput = Date.now();
+  if (idleSent) sendIdle(false);
+}
+
+for (const ev of ['pointerdown', 'keydown', 'wheel', 'focus']) addEventListener(ev, touched, { passive: true });
+let lastMove = 0;
+addEventListener(
+  'pointermove',
+  () => {
+    if (Date.now() - lastMove > 5000) {
+      lastMove = Date.now();
+      touched();
+    }
+  },
+  { passive: true },
+);
+setInterval(() => {
+  if (Date.now() - lastInput > IDLE_AFTER) sendIdle(true);
+}, 30000);
+
+export async function setStatus(status: Status) {
+  const me = await attempt(api<User>('PATCH', '/users/@me', { status }));
+  if (me && app.me) {
+    app.me.status = status;
+    setQuiet(status === 'dnd');
+  }
+}
 let retry = 0;
 let pingTimer: ReturnType<typeof setInterval> | undefined;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -354,6 +401,8 @@ function handle(t: string, d: any) {
     case 'READY': {
       retry = 0;
       app.me = d.user;
+      setQuiet(d.user.status === 'dnd');
+      idleSent = false;
       app.guilds = d.guilds;
       app.dms = d.dms;
       app.friends = d.friends;
@@ -402,7 +451,7 @@ function handle(t: string, d: any) {
       if (d.user_id !== app.me?.id) (app.typing[d.channel_id] ??= {})[d.user_id] = Date.now() + 6000;
       break;
     case 'PRESENCE_UPDATE':
-      patchUser(d.user_id, { online: d.online, activity: d.activity, streaming: d.streaming });
+      patchUser(d.user_id, { online: d.online, presence: d.presence, activity: d.activity, streaming: d.streaming });
       break;
     case 'USER_UPDATE':
       patchUser(d.id, d);

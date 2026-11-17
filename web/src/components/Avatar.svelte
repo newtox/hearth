@@ -2,7 +2,10 @@
   import { t } from '../lib/i18n.svelte';
   import { asset } from '../lib/api';
 
-  let { id, name, image = null, size = 36, online = undefined, square = false }: { id: string; name: string; image?: string | null; size?: number; online?: boolean; square?: boolean } = $props();
+  let { id, name, image = null, size = 36, online = undefined, status = undefined, square = false }: { id: string; name: string; image?: string | null; size?: number; online?: boolean; status?: string; square?: boolean } = $props();
+
+  const LABELS: Record<string, string> = { online: 'Online', idle: 'Abwesend', dnd: 'Bitte nicht stören', invisible: 'Unsichtbar', offline: 'Offline' };
+  const state = $derived(status ?? (online === undefined ? undefined : online ? 'online' : 'offline'));
 
   const hue = $derived([...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7));
   const initials = $derived(
@@ -21,8 +24,8 @@
   {:else}
     <span class="initials">{initials}</span>
   {/if}
-  {#if online !== undefined}
-    <span class="dot" class:on={online} title={online ? t('Online') : t('Offline')}></span>
+  {#if state}
+    <span class="dot {state}" title={t(LABELS[state] ?? state)} role="img" aria-label={t(LABELS[state] ?? state)}></span>
   {/if}
 </span>
 
@@ -67,7 +70,27 @@
     background: var(--muted);
     border: 2px solid var(--panel);
   }
-  .dot.on {
+  .dot.online {
     background: var(--ok);
+  }
+  .dot.idle {
+    background: #f0b232;
+  }
+  .dot.dnd {
+    background: var(--danger);
+  }
+  .dot.dnd::after {
+    content: '';
+    position: absolute;
+    left: 22%;
+    right: 22%;
+    top: calc(50% - 1px);
+    height: 2px;
+    border-radius: 1px;
+    background: var(--panel);
+  }
+  .dot.invisible {
+    background: var(--panel);
+    box-shadow: inset 0 0 0 2px var(--muted);
   }
 </style>
