@@ -2,15 +2,46 @@
   import { t } from '../lib/i18n.svelte';
   import { asset } from '../lib/api';
   import { app, guild, type Emoji } from '../lib/store.svelte';
+  import { UNICODE } from '../lib/emojis';
 
   let { stickers = false, external = true, onpick, onclose }: { stickers?: boolean; external?: boolean; onpick: (value: string, kind: 'unicode' | 'custom' | 'sticker', emoji?: Emoji) => void; onclose: () => void } = $props();
-
-  const UNICODE = '😀 😂 🤣 😊 😍 😘 😎 🤔 😅 😇 🙃 😉 😢 😭 😡 🤯 😱 🥳 😴 🤝 👍 👎 👏 🙏 💪 👀 🔥 ✨ 🎉 ❤️ 💔 💯 ✅ ❌ ⚠️ ❓ ⭐ 🌙 ☀️ 🍕 🍺 ☕ 🎮 🎲 🏆 ⚔️ 🛡️ 🐉 👑 💎 🗝️ 📜 🧪 🚀 💤 🎵'.split(' ');
 
   let tab = $state<'emoji' | 'sticker'>('emoji');
   const sorted = $derived([...app.guilds].filter((x) => external || x.id === guild()?.id).sort((a, b) => Number(b.id === guild()?.id) - Number(a.id === guild()?.id)));
   const custom = $derived(sorted.flatMap((g) => g.emojis.filter((e) => e.kind === 'emoji')));
   const stickerList = $derived(sorted.flatMap((g) => g.emojis.filter((e) => e.kind === 'sticker')));
+  const query = $state({ text: '' });
+  const q = $derived(query.text.trim().toLowerCase().replace(/^:|:$/g, ''));
+  function rank(words: string[]) {
+    if (words.includes(q)) return 0;
+    if (words.some((x) => x.startsWith(q))) return 1;
+    return words.some((x) => x.includes(q)) ? 2 : 3;
+  }
+  const shownUnicode = $derived(
+    q
+      ? UNICODE.map((e) => ({ e, r: rank(e.words) }))
+          .filter((x) => x.r < 3)
+          .sort((a, b) => a.r - b.r)
+          .map((x) => x.e)
+      : UNICODE,
+  );
+  const shownCustom = $derived(q ? custom.filter((e) => e.name.toLowerCase().includes(q)) : custom);
+  const shownStickers = $derived(q ? stickerList.filter((e) => e.name.toLowerCase().includes(q)) : stickerList);
+  let search = $state<HTMLInputElement>();
+  $effect(() => {
+    search?.focus();
+  });
+
+  function enter(e: KeyboardEvent) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (tab === 'sticker') {
+      const s = shownStickers[0];
+      if (s) onpick(`<sticker:${s.name}:${s.file}>`, 'sticker', s);
+    } else if (shownCustom[0]) onpick(`<:${shownCustom[0].name}:${shownCustom[0].file}>`, 'custom', shownCustom[0]);
+    else if (shownUnicode[0]) onpick(shownUnicode[0].glyph, 'unicode');
+  }
+
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
@@ -23,27 +54,29 @@
       <button class:on={tab === 'sticker'} onclick={() => (tab = 'sticker')}>{t('Sticker')}</button>
     </div>
   {/if}
+  <input class="input search" bind:this={search} bind:value={query.text} onkeydown={enter} placeholder={tab === 'sticker' ? t('Sticker suchen') : t('Emoji suchen')} aria-label={tab === 'sticker' ? t('Sticker suchen') : t('Emoji suchen')} />
   <div class="scroll body">
     {#if tab === 'emoji'}
-      {#if custom.length}
+      {#if shownCustom.length}
         <div class="grid">
-          {#each custom as e (e.id)}
+          {#each shownCustom as e (e.id)}
             <button onclick={() => onpick(`<:${e.name}:${e.file}>`, 'custom', e)} title=":{e.name}:"><img src={asset(e.file)} alt=":{e.name}:" /></button>
           {/each}
         </div>
-        <hr />
+        {#if shownUnicode.length}<hr />{/if}
       {/if}
       <div class="grid">
-        {#each UNICODE as e}
-          <button onclick={() => onpick(e, 'unicode')}>{e}</button>
+        {#each shownUnicode as e (e.glyph)}
+          <button onclick={() => onpick(e.glyph, 'unicode')} title=":{e.words[0]}:">{e.glyph}</button>
         {/each}
       </div>
+      {#if !shownCustom.length && !shownUnicode.length}<p class="muted">{t('Nichts gefunden für „{q}“', { q: query.text })}</p>{/if}
     {:else}
       <div class="grid big">
-        {#each stickerList as e (e.id)}
+        {#each shownStickers as e (e.id)}
           <button onclick={() => onpick(`<sticker:${e.name}:${e.file}>`, 'sticker', e)} title={e.name}><img src={asset(e.file)} alt={e.name} /></button>
         {:else}
-          <p class="muted">{t('Noch keine Sticker. In den Servereinstellungen unter „Emojis“ lassen sich welche hochladen.')}</p>
+          <p class="muted">{q ? t('Nichts gefunden für „{q}“', { q: query.text }) : t('Noch keine Sticker. In den Servereinstellungen unter „Emojis“ lassen sich welche hochladen.')}</p>
         {/each}
       </div>
     {/if}
@@ -79,6 +112,10 @@
   .tabs button.on {
     background: var(--panel);
     color: var(--ink);
+  }
+  .search {
+    margin: 10px 10px 0;
+    width: calc(100% - 20px);
   }
   .body {
     max-height: 260px;
