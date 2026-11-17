@@ -385,8 +385,8 @@ pub async fn vote(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((cid
 
 async fn may_pin(st: &AppState, uid: Uuid, a: &super::channels::Access) -> Result<()> {
     let allowed = match a.channel.guild_id {
-        Some(_) => a.perms & perms::MANAGE_MESSAGES != 0,
-        None => a.channel.kind != "group" || super::groups::group(st, uid, a.channel.id).await?.may("delete"),
+        Some(_) => a.perms & perms::PIN_MESSAGES != 0,
+        None => a.channel.kind != "group" || super::groups::group(st, uid, a.channel.id).await?.may("pin"),
     };
     if allowed { Ok(()) } else { Err(AppError::Forbidden) }
 }

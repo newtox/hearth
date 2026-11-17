@@ -68,7 +68,7 @@
 
   let replying = $state<Message | null>(null);
   let query = $state('');
-  const canPin = $derived(!!ch && (g ? has(perms, P.MANAGE_MESSAGES) : direct?.kind === 'group' ? groupMay(direct, 'delete') : !!direct));
+  const canPin = $derived(!!ch && (g ? has(perms, P.PIN_MESSAGES) : direct?.kind === 'group' ? groupMay(direct, 'pin') : !!direct));
 
   function startReply(m: Message) {
     replying = m;

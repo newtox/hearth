@@ -13,6 +13,7 @@ Jeder Server hat die Rolle `@everyone`, die alle Mitglieder haben. Weitere Rolle
 | Dateien anhängen | Bilder und Dateien hochladen |
 | Reaktionen hinzufügen | Auf Nachrichten reagieren |
 | Externe Emojis verwenden | Emojis und Sticker aus anderen Servern posten |
+| Nachrichten anheften | Nachrichten anheften und wieder lösen |
 | Nachrichten verwalten | Nachrichten anderer löschen |
 | Kanäle verwalten | Kanäle anlegen, ändern und löschen |
 | Rollen verwalten | Rollen unterhalb der eigenen anlegen, ändern und vergeben |
@@ -35,4 +36,4 @@ In den Kanaleinstellungen erlauben oder verbieten Regeln pro Rolle oder pro Mitg
 
 ## Gruppenchats
 
-Gruppen haben drei feste Rollen: Administrator (orange), Moderator (grün) und Mitglied (grau). In den Gruppeneinstellungen legst du fest, welche davon einladen, die Gruppe bearbeiten, Mitglieder entfernen und Nachrichten anderer löschen dürfen.
+Gruppen haben drei feste Rollen: Administrator (orange), Moderator (grün) und Mitglied (grau). In den Gruppeneinstellungen legst du fest, welche davon einladen, die Gruppe bearbeiten, Mitglieder entfernen, Nachrichten anderer löschen und Nachrichten anheften dürfen.

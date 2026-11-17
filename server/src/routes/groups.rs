@@ -9,7 +9,7 @@ const MAX_MEMBERS: usize = 10;
 pub const MEMBER: i16 = 0;
 pub const MODERATOR: i16 = 1;
 pub const ADMIN: i16 = 2;
-const RULES: [(&str, i16); 4] = [("invite", MEMBER), ("edit", MODERATOR), ("kick", MODERATOR), ("delete", MODERATOR)];
+const RULES: [(&str, i16); 5] = [("invite", MEMBER), ("edit", MODERATOR), ("kick", MODERATOR), ("delete", MODERATOR), ("pin", MODERATOR)];
 
 pub fn settings(raw: &Value) -> Value {
     let mut out = json!({});

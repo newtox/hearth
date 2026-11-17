@@ -280,7 +280,7 @@ async def main():
     check("outsider cannot read group", call("GET", f"/channels/{grp['id']}/messages", a)[0] == 404)
     check("rename group", call("PATCH", f"/channels/{grp['id']}/group", d, {"name": "Stammtisch"})[1]["name"] == "Stammtisch")
     gj = call("POST", "/users/@me/channels", d, {"user_id": eid})[1]
-    check("roles in group", grp["roles"][did] == 2 and grp["roles"][eid] == 0 and grp["settings"] == {"invite": 0, "edit": 1, "kick": 1, "delete": 1}, grp)
+    check("roles in group", grp["roles"][did] == 2 and grp["roles"][eid] == 0 and grp["settings"] == {"invite": 0, "edit": 1, "kick": 1, "delete": 1, "pin": 1}, grp)
     check("member cannot rename by default", call("PATCH", f"/channels/{grp['id']}/group", f, {"name": "x"})[0] == 403)
     check("member cannot remove others", call("DELETE", f"/channels/{grp['id']}/recipients/{fid}", e)[0] == 403)
     check("member cannot change roles", call("PUT", f"/channels/{grp['id']}/recipients/{eid}/role", e, {"role": 2})[0] == 403)
@@ -390,6 +390,11 @@ async def main():
     stranger, _ = user("xaver")
     check("non-member cannot search", call("GET", f"/search?guild_id={gid}&q=raid", stranger)[0] == 404)
     check("member cannot pin", call("PUT", f"/channels/{general}/pins/{m2['id']}", c)[0] == 403)
+    base_perms = next(r for r in call("GET", f"/guilds/{gid}", a)[1]["roles"] if r["is_default"])["permissions"]
+    call("PATCH", f"/guilds/{gid}/roles/{everyone}", a, {"permissions": base_perms | (1 << 21)})
+    check("pin permission allows pinning", call("PUT", f"/channels/{general}/pins/{m2['id']}", c)[0] == 200 and call("DELETE", f"/channels/{general}/pins/{m2['id']}", c)[0] == 200)
+    check("pinning does not allow deleting", call("DELETE", f"/channels/{general}/messages/{m1['id']}", c)[0] == 403)
+    call("PATCH", f"/guilds/{gid}/roles/{everyone}", a, {"permissions": base_perms})
     s, pinned = call("PUT", f"/channels/{general}/pins/{m2['id']}", a)
     check("pin", s == 200 and pinned["pinned"] and [p["id"] for p in call("GET", f"/channels/{general}/pins", c)[1]] == [m2["id"]])
     check("unpin", call("DELETE", f"/channels/{general}/pins/{m2['id']}", a)[1]["pinned"] is False and call("GET", f"/channels/{general}/pins", c)[1] == [])

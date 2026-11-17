@@ -1,4 +1,6 @@
 export const DA: Record<string, string> = {
+  'Nachrichten anheften': 'Fastgør beskeder',
+  'Nachrichten anheften und wieder lösen': 'Fastgøre og frigøre beskeder',
   'Antworten': 'Svar',
   '1 Treffer': '1 resultat',
   '{n} Treffer': '{n} resultater',

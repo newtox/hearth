@@ -13,6 +13,7 @@ Every server has the role `@everyone`, which every member has. Further roles are
 | Attach files | Upload images and files |
 | Add reactions | React to messages |
 | Use external emojis | Post emojis and stickers from other servers |
+| Pin messages | Pin and unpin messages |
 | Manage messages | Delete messages of others |
 | Manage channels | Create, edit and delete channels |
 | Manage roles | Create, edit and give roles below your own |
@@ -35,4 +36,4 @@ In the channel settings, rules per role or per member allow or deny single permi
 
 ## Group chats
 
-Groups have three fixed roles: administrator (orange), moderator (green) and member (grey). The group settings decide which of them may invite, edit the group, remove members and delete messages of others.
+Groups have three fixed roles: administrator (orange), moderator (green) and member (grey). The group settings decide which of them may invite, edit the group, remove members, delete messages of others and pin messages.

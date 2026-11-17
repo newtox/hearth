@@ -12,7 +12,7 @@
 ## Replies, pins and search
 
 - **Reply**: the arrow next to a message or "Reply" in its menu. The reply shows a quote of the original; click it to jump there. Replies to you are highlighted like mentions.
-- **Pin**: "Pin" in a message's menu, for anyone who may manage messages (in direct messages: both people, in groups: per group settings). The pin button in the channel header lists all pinned messages, up to 50 per channel.
+- **Pin**: "Pin" in a message's menu, for anyone with the permission "Pin messages" (in direct messages: both people, in groups: per group settings). The pin button in the channel header lists all pinned messages, up to 50 per channel.
 - **Search**: the field in the channel header searches the whole server, or the conversation in direct messages. `from:name` (also `von:` or `fra:`) limits to one author. Channels you cannot see are never searched.
 
 ## Notifications

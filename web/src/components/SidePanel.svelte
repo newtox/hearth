@@ -12,7 +12,7 @@
   const g = $derived(guild());
   const ch = $derived(channel());
   const direct = $derived(ch && (ch.kind === 'dm' || ch.kind === 'group') ? (ch as Dm) : null);
-  const canPin = $derived(!!ch && (g ? has((ch as any).permissions, P.MANAGE_MESSAGES) : direct?.kind === 'group' ? groupMay(direct, 'delete') : !!direct));
+  const canPin = $derived(!!ch && (g ? has((ch as any).permissions, P.PIN_MESSAGES) : direct?.kind === 'group' ? groupMay(direct, 'pin') : !!direct));
 
   let pins = $state<Message[] | null>(null);
 

@@ -305,6 +305,8 @@ const EN: Record<string, string> = {
   Verbindungen: 'Connections',
   Verbinden: 'Connect',
   'Konto verbunden': 'Account connected',
+  'Nachrichten anheften': 'Pin messages',
+  'Nachrichten anheften und wieder lösen': 'Pin and unpin messages',
   'Antworten': 'Reply',
   '1 Treffer': '1 result',
   '{n} Treffer': '{n} results',

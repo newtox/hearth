@@ -12,7 +12,7 @@
 ## Antworten, Anheften, Suche
 
 - **Antworten**: der Pfeil neben einer Nachricht oder „Antworten“ im Menü. Die Antwort zeigt ein Zitat der ursprünglichen Nachricht, ein Klick springt dorthin. Antworten auf dich werden wie Erwähnungen hervorgehoben.
-- **Anheften**: „Anheften“ im Menü einer Nachricht, für alle, die Nachrichten verwalten dürfen (in Direktnachrichten beide, in Gruppen je nach Gruppeneinstellungen). Der Stecknadel-Knopf oben im Kanal zeigt alle angehefteten Nachrichten, höchstens 50 pro Kanal.
+- **Anheften**: „Anheften“ im Menü einer Nachricht, für alle mit dem Recht „Nachrichten anheften“ (in Direktnachrichten beide, in Gruppen je nach Gruppeneinstellungen). Der Stecknadel-Knopf oben im Kanal zeigt alle angehefteten Nachrichten, höchstens 50 pro Kanal.
 - **Suche**: das Feld oben im Kanal durchsucht den ganzen Server, in Direktnachrichten die Unterhaltung. `von:name` (auch `from:` oder `fra:`) beschränkt auf einen Verfasser. Kanäle, die du nicht sehen darfst, werden nie durchsucht.
 
 ## Benachrichtigungen

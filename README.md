@@ -29,7 +29,7 @@ Or add [`deploy/docker-compose.yml`](deploy/docker-compose.yml) as a stack in Po
 ## Features
 
 - Servers with categories, text and voice channels, threads, polls, invites with expiry and usage limit
-- Roles with hierarchy, colour, 20 permissions, channel rules per role and per member
+- Roles with hierarchy, colour, 21 permissions, channel rules per role and per member
 - Right-click menus for members, messages, channels and servers, a server menu on the server name, and a moderator view per member
 - Roles for Twitch subscribers and YouTube channel members, kept in sync automatically
 - Replies, pinned messages, search across a server with an author filter, desktop notifications
