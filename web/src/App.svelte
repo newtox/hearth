@@ -59,7 +59,7 @@
   }
   .shell {
     height: 100dvh;
-    padding: var(--gap);
+    padding: max(var(--gap), env(safe-area-inset-top)) max(var(--gap), env(safe-area-inset-right)) max(var(--gap), env(safe-area-inset-bottom)) max(var(--gap), env(safe-area-inset-left));
   }
   .window {
     height: 100%;
