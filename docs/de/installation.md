@@ -26,7 +26,7 @@ Du brauchst:
    | `APP_PORT` | freier lokaler Port für die App, Standard `8090` |
    | `LIVEKIT_PORT` | freier lokaler Port für LiveKit, Standard `7880` |
 
-   Optionale Variablen für Spotify, Twitch, YouTube und Steam stehen unter [Einstellungen](einstellungen.md).
+   Optionale Variablen für Spotify und E-Mail stehen unter [Einstellungen](einstellungen.md).
 4. **Deploy the stack** klicken.
 5. Die Domains im Reverse Proxy eintragen, siehe [Caddy](#caddy).
 6. `https://chat.example.com` öffnen. Das erste Konto, das sich registriert, wird Admin der Instanz.

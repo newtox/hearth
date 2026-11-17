@@ -82,7 +82,6 @@ export interface Role {
   position: number;
   hoist: boolean;
   is_default: boolean;
-  managed: string | null;
 }
 export interface Overwrite {
   channel_id: string;
@@ -403,12 +402,8 @@ function patchUser(id: string, patch: Partial<User>) {
 function spotifyNotice() {
   const params = new URLSearchParams(location.search);
   const result = params.get('spotify');
-  const connected = params.get('connected');
-  const integration = params.get('integration');
-  if (!result && !connected && !integration) return;
-  if (result) toast(result === 'linked' ? t('Spotify ist verbunden') : t('Spotify konnte nicht verbunden werden'));
-  else if (connected) toast(connected === 'ok' ? t('Konto verbunden') : t('Das Konto konnte nicht verbunden werden'));
-  else toast(integration === 'ok' ? t('Kanal verbunden, die Rollen werden gleich vergeben') : t('Der Kanal konnte nicht verbunden werden'));
+  if (!result) return;
+  toast(result === 'linked' ? t('Spotify ist verbunden') : t('Spotify konnte nicht verbunden werden'));
   history.replaceState(null, '', location.pathname);
 }
 

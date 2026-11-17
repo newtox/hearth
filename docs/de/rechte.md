@@ -17,7 +17,7 @@ Jeder Server hat die Rolle `@everyone`, die alle Mitglieder haben. Weitere Rolle
 | Nachrichten verwalten | Nachrichten anderer löschen |
 | Kanäle verwalten | Kanäle anlegen, ändern und löschen |
 | Rollen verwalten | Rollen unterhalb der eigenen anlegen, ändern und vergeben |
-| Server verwalten | Name, Beschreibung, Icon, Einladungen, Integrationen, Protokoll |
+| Server verwalten | Name, Beschreibung, Icon, Einladungen, Protokoll |
 | Emojis und Sticker verwalten | Emojis und Sticker hochladen und löschen |
 | Sprachkanälen beitreten | Sprachkanäle betreten |
 | Sprechen | Mikrofon nutzen |

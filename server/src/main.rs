@@ -11,7 +11,7 @@ mod routes;
 
 use axum::{extract::DefaultBodyLimit, http::{header, HeaderValue}, routing::{delete, get, patch, post, put}, Router};
 use hub::Hub;
-use routes::{account, badges, channels, connections, emojis, friends, groups, guilds, integrations, invites, members, messages, roles, spotify, stats, users, voice};
+use routes::{account, badges, channels, connections, emojis, friends, groups, guilds, invites, members, messages, roles, spotify, stats, users, voice};
 use sqlx::postgres::PgPoolOptions;
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tower_http::{cors::CorsLayer, services::{ServeDir, ServeFile}, set_header::SetResponseHeaderLayer, trace::TraceLayer};
@@ -25,7 +25,6 @@ pub struct AppState {
     pub trust_proxy: bool,
     pub livekit: Option<Arc<voice::LiveKit>>,
     pub spotify: Option<Arc<spotify::Spotify>>,
-    pub connections: Option<Arc<connections::Connections>>,
     pub mailer: Option<Arc<mail::Mailer>>,
 }
 
@@ -54,14 +53,10 @@ async fn main() {
         trust_proxy: env::var("TRUST_PROXY").is_ok_and(|v| v == "1"),
         livekit,
         spotify: spotify::Spotify::from_env().map(Arc::new),
-        connections: connections::Connections::from_env().map(Arc::new),
         mailer: mail::Mailer::from_env().map(Arc::new),
     };
     if state.spotify.is_some() {
         tokio::spawn(spotify::poll(state.clone()));
-    }
-    if state.connections.as_deref().is_some_and(|c| c.syncable().next().is_some()) {
-        tokio::spawn(integrations::poll(state.clone()));
     }
     let ticker = state.clone();
     tokio::spawn(async move {
@@ -103,8 +98,6 @@ async fn main() {
         .route("/channels/{cid}/recipients/{uid}/role", put(groups::set_role))
         .route("/channels/{cid}/recipients/{uid}", put(groups::add).delete(groups::remove))
         .route("/connections", get(connections::list))
-        .route("/connections/{provider}", get(connections::start).delete(connections::remove))
-        .route("/connections/{provider}/callback", get(connections::callback))
         .route("/spotify", get(spotify::login).delete(spotify::unlink))
         .route("/spotify/callback", get(spotify::callback))
         .route("/voice", delete(voice::leave))
@@ -123,9 +116,6 @@ async fn main() {
         .route("/guilds/{gid}/roles/{rid}", patch(roles::update).delete(roles::delete))
         .route("/guilds/{gid}/members/{uid}", patch(members::update).delete(members::kick))
         .route("/guilds/{gid}/members/{uid}/summary", get(members::summary))
-        .route("/guilds/{gid}/integrations", get(integrations::list))
-        .route("/guilds/{gid}/integrations/{key}", post(integrations::start).delete(integrations::remove))
-        .route("/guilds/{gid}/integrations/{key}/sync", post(integrations::sync_now))
         .route("/guilds/{gid}/bans", get(members::bans))
         .route("/guilds/{gid}/bans/{uid}", put(members::ban).delete(members::unban))
         .route("/guilds/{gid}/invites", get(invites::list).post(invites::create))

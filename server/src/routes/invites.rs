@@ -92,6 +92,5 @@ pub async fn join(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(code
     }
     tx.commit().await?;
     refresh(&st, gid).await?;
-    super::integrations::sync_member(&st, uid, gid);
     Ok(Json(snapshot(&st, gid, uid).await?))
 }

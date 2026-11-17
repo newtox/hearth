@@ -56,7 +56,7 @@ export function memberMenu(userId: string, g: Guild | null): Entry[] {
           color: r.color,
           keep: true,
           checked: () => mod.hasRole(g, userId, r.id),
-          disabled: () => !mod.roleEditable(g, r) || !!r.managed,
+          disabled: () => !mod.roleEditable(g, r),
           action: () => mod.toggleRole(g, userId, r.id),
         })),
       },

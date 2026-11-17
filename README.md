@@ -9,7 +9,7 @@ Self-hosted chat for communities: servers, channels, roles, direct messages, gro
 | Install on a server with Portainer or a script | [installation](docs/en/installation.md) | [Installation](docs/de/installation.md) |
 | Download and install the apps | [apps](docs/en/apps.md) | [Apps](docs/de/apps.md) |
 | All settings | [configuration](docs/en/configuration.md) | [Einstellungen](docs/de/einstellungen.md) |
-| Spotify, Steam, Twitch, YouTube, role sync | [connections](docs/en/connections.md) | [Verbindungen](docs/de/verbindungen.md) |
+| Spotify | [connections](docs/en/connections.md) | [Verbindungen](docs/de/verbindungen.md) |
 | Roles and permissions | [permissions](docs/en/permissions.md) | [Rechte](docs/de/rechte.md) |
 | Using Hearth | [guide](docs/en/guide.md) | [Anleitung](docs/de/anleitung.md) |
 | Working on the code | [development](docs/en/development.md) | [Entwicklung](docs/de/entwicklung.md) |
@@ -31,7 +31,6 @@ Or add [`deploy/docker-compose.yml`](deploy/docker-compose.yml) as a stack in Po
 - Servers with categories, text and voice channels, polls, invites with expiry and usage limit
 - Roles with hierarchy, colour, 21 permissions, channel rules per role and per member
 - Right-click menus for members, messages, channels and servers, a server menu on the server name, and a moderator view per member
-- Roles for Twitch subscribers and YouTube channel members, kept in sync automatically
 - Replies, pinned messages, search across a server with an author filter, desktop notifications
 - Real-time chat: Markdown, mentions, attachments up to 25 MB, reactions, custom emojis and stickers, emoji search in German and English, typing indicator, unread markers
 - Friends, direct messages, group chats with up to 10 people, three group roles and per-group permissions, blocking

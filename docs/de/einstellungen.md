@@ -16,9 +16,6 @@ In Portainer oder in `deploy/.env` setzen, wenn du [`deploy/docker-compose.yml`]
 | `LIVEKIT_PORT` | nein | Lokaler Port von LiveKit, Standard `7880` |
 | `HEARTH_IMAGE` | nein | Welches Image läuft, Standard `ghcr.io/newtox/hearth:latest`. Mit einer Version wie `ghcr.io/newtox/hearth:0.2.0` bleibst du auf dieser. |
 | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | nein | Spotify-Aktivität, siehe [Verbindungen](verbindungen.md) |
-| `CONNECT_TWITCH_ID`, `CONNECT_TWITCH_SECRET` | nein | Twitch-Konten und Abonnenten-Rollen |
-| `CONNECT_YOUTUBE_ID`, `CONNECT_YOUTUBE_SECRET` | nein | YouTube-Konten und Mitglieder-Rollen |
-| `STEAM_API_KEY` | nein | Steam-Konten |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` | nein | E-Mail für „Passwort vergessen?“, siehe unten |
 
 ## Variablen des Servers
@@ -35,7 +32,6 @@ Die App liest diese direkt. Die erste Gruppe setzt der Stack für dich.
 | `WEB_DIR` | `../web/dist` | Ordner der gebauten Weboberfläche |
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | | Sprachserver. Ohne sie sind Sprachkanäle sichtbar, aber nicht betretbar. |
 | `SPOTIFY_POLL_SECS` | `15` | Wie oft der aktuelle Spotify-Titel abgefragt wird |
-| `INTEGRATION_SYNC_SECS` | `600` | Wie oft Twitch- und YouTube-Rollen abgeglichen werden |
 
 ## E-Mail für Passwort-Resets
 

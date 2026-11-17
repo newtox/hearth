@@ -37,7 +37,7 @@
   const close = () => (app.modal = null);
 
   function addRole(e: MouseEvent) {
-    const list = g.roles.filter((r) => !r.is_default && !r.managed && !m!.roles.includes(r.id) && mod.roleEditable(g, r));
+    const list = g.roles.filter((r) => !r.is_default && !m!.roles.includes(r.id) && mod.roleEditable(g, r));
     openMenu(
       e,
       list.length
@@ -102,7 +102,7 @@
           {#each roles as r (r.id)}
             <span class="role" style:--c={r.color ?? 'var(--muted)'}>
               <i></i>{r.name}
-              {#if can(P.MANAGE_ROLES, g) && mod.roleEditable(g, r) && !r.managed}
+              {#if can(P.MANAGE_ROLES, g) && mod.roleEditable(g, r)}
                 <button onclick={() => mod.toggleRole(g, m.id, r.id)} aria-label={t('{name} entfernen', { name: r.name })}><Icon name="close" size={12} /></button>
               {/if}
             </span>

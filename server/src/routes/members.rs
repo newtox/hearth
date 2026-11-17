@@ -47,16 +47,16 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((g
     }
     if let Some(wanted) = &b.roles {
         ctx.require(perms::MANAGE_ROLES)?;
-        let all: Vec<(Uuid, i32, bool)> = sqlx::query_as("SELECT id, position, managed IS NOT NULL FROM roles WHERE guild_id = $1 AND NOT is_default").bind(gid).fetch_all(&st.db).await?;
+        let all: Vec<(Uuid, i32)> = sqlx::query_as("SELECT id, position FROM roles WHERE guild_id = $1 AND NOT is_default").bind(gid).fetch_all(&st.db).await?;
         let current: Vec<Uuid> = sqlx::query_scalar("SELECT role_id FROM member_roles WHERE guild_id = $1 AND user_id = $2")
             .bind(gid)
             .bind(target)
             .fetch_all(&st.db)
             .await?;
         let mut tx = st.db.begin().await?;
-        for (id, position, managed) in &all {
+        for (id, position) in &all {
             let (has, wants) = (current.contains(id), wanted.contains(id));
-            if has == wants || *managed {
+            if has == wants {
                 continue;
             }
             if *position >= ctx.top && !ctx.owner {

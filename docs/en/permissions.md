@@ -17,7 +17,7 @@ Every server has the role `@everyone`, which every member has. Further roles are
 | Manage messages | Delete messages of others |
 | Manage channels | Create, edit and delete channels |
 | Manage roles | Create, edit and give roles below your own |
-| Manage server | Name, description, icon, invites, integrations, audit log |
+| Manage server | Name, description, icon, invites, audit log |
 | Manage emojis and stickers | Upload and delete emojis and stickers |
 | Join voice channels | Connect to voice |
 | Speak | Use the microphone |

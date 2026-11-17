@@ -38,12 +38,12 @@
   }
 
   async function connectAccount(provider: string) {
-    const res = await attempt(api<{ url: string }>('GET', provider === 'spotify' ? '/spotify' : `/connections/${provider}`));
+    const res = await attempt(api<{ url: string }>('GET', '/spotify'));
     if (res) location.href = res.url;
   }
 
   async function disconnect(provider: string) {
-    if (await attempt(api('DELETE', provider === 'spotify' ? '/spotify' : `/connections/${provider}`))) loadConnections();
+    if (await attempt(api('DELETE', '/spotify'))) loadConnections();
   }
 
   loadConnections();
@@ -226,7 +226,7 @@
       </div>
     </div>
   {:else if section === 'connections'}
-    <p class="muted">{t('Verbundene Konten erscheinen in deinem Profil. Twitch und YouTube schalten außerdem Rollen auf Servern frei, die ihren Kanal verbunden haben.')}</p>
+    <p class="muted">{t('Mit Spotify erscheint der laufende Titel als deine Aktivität und das Konto in deinem Profil.')}</p>
     {#each available as p (p.id)}
       {@const link = linked.find((x) => x.provider === p.id)}
       <div class="row conn">
@@ -239,7 +239,7 @@
         {/if}
       </div>
     {:else}
-      <p class="muted">{t('Auf diesem Server sind keine Kontoverbindungen eingerichtet.')}</p>
+      <p class="muted">{t('Spotify ist auf diesem Server nicht eingerichtet.')}</p>
     {/each}
   {:else if section === 'appearance'}
     <div class="swatches" role="radiogroup" aria-label={t('Darstellung')}>

@@ -15,7 +15,7 @@
   const member = $derived(g?.members.find((m) => m.id === userId) ?? null);
   const roles = $derived(g && member ? g.roles.filter((r) => member.roles.includes(r.id)) : []);
   let user = $state<User | null>(null);
-  const PROVIDERS: Record<string, string> = { twitch: 'Twitch', youtube: 'YouTube', steam: 'Steam', spotify: 'Spotify', mock: 'Mock' };
+  const PROVIDERS: Record<string, string> = { spotify: 'Spotify' };
   let allBadges = $state<Badge[]>([]);
   let progressTrack = $state<string | null>(null);
   let openBadge = $state<Badge | null>(null);
