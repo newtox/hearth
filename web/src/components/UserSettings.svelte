@@ -9,7 +9,9 @@
   import { THEMES, applyTheme, theme } from '../lib/theme.svelte';
   import { docs, releases } from '../lib/docs';
   import Avatar from './Avatar.svelte';
-  import Modal from './Modal.svelte';
+  import SettingsPage, { type Section } from './SettingsPage.svelte';
+  import { notifications } from '../lib/notify';
+  import { setStatus } from '../lib/store.svelte';
 
   const me = $derived(app.me!);
   let displayName = $state(app.me!.display_name);
@@ -96,136 +98,230 @@
     const u = await attempt(upload<User>(`/users/@me/${kind}`, file));
     if (u) app.me = u;
   }
+
+  let section = $state('account');
+  const sections = $derived<Section[]>([
+    { id: 'account', name: t('Mein Konto'), group: t('Benutzereinstellungen') },
+    { id: 'profile', name: t('Profil'), group: t('Benutzereinstellungen') },
+    { id: 'connections', name: t('Verbindungen'), group: t('Benutzereinstellungen') },
+    { id: 'appearance', name: t('Darstellung'), group: t('App-Einstellungen') },
+    { id: 'language', name: t('Sprache'), group: t('App-Einstellungen') },
+    { id: 'notifications', name: t('Benachrichtigungen'), group: t('App-Einstellungen') },
+    { id: 'activity', name: t('Aktivität'), group: t('App-Einstellungen') },
+    ...(app.me!.is_admin ? [{ id: 'badges', name: t('Globale Abzeichen'), group: t('Instanz') }] : []),
+    { id: 'help', name: t('Hilfe') },
+    { id: 'logout', name: t('Abmelden'), danger: true, action: () => confirm(t('Wirklich abmelden?')) && logout() },
+  ]);
+
+  let account = $state({ username: app.me!.username, email: app.me!.email ?? '', password: '', next: '', repeat: '' });
+  let showEmail = $state(false);
+
+  async function saveAccount(e: SubmitEvent) {
+    e.preventDefault();
+    if (account.next && account.next !== account.repeat) return toast(t('Die neuen Passwörter stimmen nicht überein'));
+    const body: Record<string, string> = { password: account.password };
+    if (account.username.trim() !== me.username) body.username = account.username;
+    if (account.email.trim() !== (me.email ?? '')) body.email = account.email;
+    if (account.next) body.new_password = account.next;
+    if (Object.keys(body).length === 1) return toast(t('Es gibt nichts zu speichern'));
+    const u = await attempt(api<User>('PATCH', '/users/@me/account', body));
+    if (u) {
+      app.me = { ...app.me!, ...u };
+      account = { username: u.username, email: u.email ?? '', password: '', next: '', repeat: '' };
+      toast(t('Konto gespeichert'));
+    }
+  }
+
+  function masked(email: string) {
+    const [name, domain] = email.split('@');
+    return `${'*'.repeat(Math.max(3, name.length))}@${domain ?? ''}`;
+  }
+
+  let notifyOn = $state(notifications.enabled());
+
+  async function toggleNotify() {
+    if (notifyOn) {
+      notifications.disable();
+      notifyOn = false;
+    } else {
+      notifyOn = await notifications.enable();
+      if (!notifyOn) toast(t('Der Browser hat Benachrichtigungen blockiert. Erlaube sie in den Seiteneinstellungen.'));
+    }
+  }
 </script>
 
-<Modal title={t('Einstellungen')} onclose={() => (app.modal = null)} wide>
-  <div class="grid">
-    <form class="stack" onsubmit={save}>
-      <h3>{t('Profil')}</h3>
-      <label class="field">
-        <span>{t('Anzeigename')}</span>
-        <input class="input" bind:value={displayName} maxlength="32" required />
-      </label>
-      <label class="field">
-        <span>{t('Über mich')} ({bio.length}/500)</span>
-        <textarea class="input" rows="4" maxlength="500" bind:value={bio}></textarea>
-      </label>
-      <label class="field">
-        <span>{t('Akzentfarbe (Bannerfarbe ohne Bild)')}</span>
-        <input type="color" bind:value={accent} />
-      </label>
-      <div class="row wrap">
-        <label class="btn">{t('Avatar ändern')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={(e) => pick(e, 'avatar')} hidden /></label>
-        <label class="btn">{t('Banner ändern')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={(e) => pick(e, 'banner')} hidden /></label>
+<SettingsPage title={t('Einstellungen')} {sections} bind:current={section} onclose={() => (app.modal = null)}>
+  {#if section === 'account'}
+    <div class="card account">
+      <div class="banner" style:background-color={me.accent_color ?? 'var(--panel-2)'} style:background-image={me.banner ? `url(${asset(me.banner)})` : null}></div>
+      <div class="row who-row">
+        <Avatar id={me.id} name={me.display_name} image={me.avatar} size={72} status={me.status ?? 'online'} />
+        <div class="grow">
+          <strong class="big">{me.display_name}</strong>
+          <p class="muted">@{me.username}</p>
+        </div>
+        <button class="btn small" onclick={() => (section = 'profile')}>{t('Profil bearbeiten')}</button>
       </div>
-      <button class="btn primary">{t('Profil speichern')}</button>
-    </form>
+      <dl class="facts">
+        <div><dt>{t('Benutzername')}</dt><dd>{me.username}</dd></div>
+        <div>
+          <dt>{t('E-Mail')}</dt>
+          <dd>{showEmail ? me.email : masked(me.email ?? '')} <button class="link" onclick={() => (showEmail = !showEmail)}>{showEmail ? t('Verbergen') : t('Anzeigen')}</button></dd>
+        </div>
+        <div><dt>{t('Status')}</dt><dd>
+          <select class="input" value={me.status ?? 'online'} onchange={(e) => setStatus(e.currentTarget.value as any)}>
+            <option value="online">{t('Online')}</option>
+            <option value="idle">{t('Abwesend')}</option>
+            <option value="dnd">{t('Bitte nicht stören')}</option>
+            <option value="invisible">{t('Unsichtbar')}</option>
+          </select>
+        </dd></div>
+      </dl>
+    </div>
 
-    <div class="stack side">
-      <div class="preview">
-        <div class="banner" style:background-color={accent} style:background-image={me.banner ? `url(${asset(me.banner)})` : null}></div>
-        <div class="who">
-          <Avatar id={me.id} name={displayName || me.username} image={me.avatar} size={64} />
-          <strong>{displayName}</strong>
-          <span class="muted">@{me.username}</span>
-          {#if bio}<p class="bio">{bio}</p>{/if}
+    <h3>{t('Anmeldedaten ändern')}</h3>
+    <form class="stack" onsubmit={saveAccount}>
+      <label class="field"><span>{t('Benutzername')}</span><input class="input" bind:value={account.username} maxlength="32" autocomplete="username" /></label>
+      <label class="field"><span>{t('E-Mail')}</span><input class="input" type="email" bind:value={account.email} maxlength="254" autocomplete="email" /></label>
+      <div class="two">
+        <label class="field"><span>{t('Neues Passwort')}</span><input class="input" type="password" bind:value={account.next} minlength="8" maxlength="128" autocomplete="new-password" placeholder={t('leer lassen, um es zu behalten')} /></label>
+        <label class="field"><span>{t('Neues Passwort wiederholen')}</span><input class="input" type="password" bind:value={account.repeat} maxlength="128" autocomplete="new-password" /></label>
+      </div>
+      <label class="field"><span>{t('Aktuelles Passwort zur Bestätigung')}</span><input class="input" type="password" bind:value={account.password} required autocomplete="current-password" /></label>
+      <p class="muted small">{t('Nach einem neuen Passwort werden alle anderen Geräte abgemeldet.')}</p>
+      <div><button class="btn primary">{t('Änderungen speichern')}</button></div>
+    </form>
+  {:else if section === 'profile'}
+    <div class="grid">
+      <form class="stack" onsubmit={save}>
+        <label class="field">
+          <span>{t('Anzeigename')}</span>
+          <input class="input" bind:value={displayName} maxlength="32" required />
+        </label>
+        <label class="field">
+          <span>{t('Über mich')} ({bio.length}/500)</span>
+          <textarea class="input" rows="5" maxlength="500" bind:value={bio}></textarea>
+        </label>
+        <label class="field">
+          <span>{t('Akzentfarbe (Bannerfarbe ohne Bild)')}</span>
+          <input type="color" bind:value={accent} />
+        </label>
+        <div class="row wrap">
+          <label class="btn">{t('Avatar ändern')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={(e) => pick(e, 'avatar')} hidden /></label>
+          <label class="btn">{t('Banner ändern')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={(e) => pick(e, 'banner')} hidden /></label>
+        </div>
+        <div><button class="btn primary">{t('Profil speichern')}</button></div>
+      </form>
+      <div class="stack">
+        <span class="muted small">{t('Vorschau')}</span>
+        <div class="preview">
+          <div class="banner" style:background-color={accent} style:background-image={me.banner ? `url(${asset(me.banner)})` : null}></div>
+          <div class="who">
+            <Avatar id={me.id} name={displayName || me.username} image={me.avatar} size={64} />
+            <strong>{displayName}</strong>
+            <span class="muted">@{me.username}</span>
+            {#if bio}<p class="bio">{bio}</p>{/if}
+          </div>
         </div>
       </div>
-
-      <h3>{t('Darstellung')}</h3>
-      <div class="swatches" role="radiogroup" aria-label={t('Darstellung')}>
-        {#each THEMES as th (th.id)}
-          <button class="swatch" class:on={theme.id === th.id} role="radio" aria-checked={theme.id === th.id} onclick={() => applyTheme(th.id)}>
-            <span class="chip" style:background={th.swatch}></span>
-            <span class="label">{t(th.name)}</span>
+    </div>
+  {:else if section === 'connections'}
+    <p class="muted">{t('Verbundene Konten erscheinen in deinem Profil. Twitch und YouTube schalten außerdem Rollen auf Servern frei, die ihren Kanal verbunden haben.')}</p>
+    {#each available as p (p.id)}
+      {@const link = linked.find((x) => x.provider === p.id)}
+      <div class="row conn">
+        <strong>{p.name}</strong>
+        <span class="grow muted ellipsis">{link ? link.name : t('Nicht verbunden')}</span>
+        {#if link}
+          <button class="btn small" onclick={() => disconnect(p.id)}>{t('Trennen')}</button>
+        {:else}
+          <button class="btn small" onclick={() => connectAccount(p.id)}>{t('Verbinden')}</button>
+        {/if}
+      </div>
+    {:else}
+      <p class="muted">{t('Auf diesem Server sind keine Kontoverbindungen eingerichtet.')}</p>
+    {/each}
+  {:else if section === 'appearance'}
+    <div class="swatches" role="radiogroup" aria-label={t('Darstellung')}>
+      {#each THEMES as th (th.id)}
+        <button class="swatch" class:on={theme.id === th.id} role="radio" aria-checked={theme.id === th.id} onclick={() => applyTheme(th.id)}>
+          <span class="chip" style:background={th.swatch}></span>
+          <span class="label">{t(th.name)}</span>
+        </button>
+      {/each}
+    </div>
+  {:else if section === 'language'}
+    <div class="stack langs" role="radiogroup" aria-label={t('Sprache')}>
+      {#each LANGS as l (l.id)}
+        <label class="option"><input type="radio" name="lang" checked={lang === l.id} onchange={() => setLang(l.id)} /> {l.name}</label>
+      {/each}
+    </div>
+  {:else if section === 'notifications'}
+    <h3>{t('Desktop-Benachrichtigungen')}</h3>
+    <p class="muted">{t('Für Direktnachrichten, Gruppen, Erwähnungen und Antworten auf dich, solange das Fenster nicht im Vordergrund ist. Bei „Bitte nicht stören“ bleiben sie aus.')}</p>
+    {#if notifications.supported}
+      <label class="row"><input type="checkbox" checked={notifyOn} onchange={toggleNotify} /> {t('Desktop-Benachrichtigungen anzeigen')}</label>
+    {:else}
+      <p class="muted">{t('Dieser Browser unterstützt keine Benachrichtigungen.')}</p>
+    {/if}
+    <h3>{t('Töne')}</h3>
+    <label class="row"><input type="checkbox" bind:checked={soundOn} onchange={() => (sounds.set(soundOn), play('message'))} /> {t('Töne für Nachrichten, Anrufe und Sprachkanäle')}</label>
+  {:else if section === 'activity'}
+    <h3>{t('Aktivität von Hand setzen')}</h3>
+    <form class="row wrap" onsubmit={setActivity}>
+      <select class="input kind" bind:value={kind} aria-label={t('Art')}>
+        <option value="playing">{t('Spielt')}</option>
+        <option value="listening">{t('Hört')}</option>
+        <option value="watching">{t('Schaut')}</option>
+        <option value="custom">{t('Eigener Text')}</option>
+      </select>
+      <input class="input grow" bind:value={activityName} maxlength="64" placeholder={t('z. B. Tetris')} required />
+      <button class="btn small">{t('Setzen')}</button>
+      <button type="button" class="btn small" onclick={clearActivity}>{t('Entfernen')}</button>
+    </form>
+    <h3>{t('Spiele automatisch erkennen')}</h3>
+    {#if detection.available}
+      <label class="row"><input type="checkbox" bind:checked={detect} /> {t('Laufende Spiele automatisch erkennen')}</label>
+      <label class="field">
+        <span>{t('Eigene Spiele, eine Zeile pro Spiel: prozessname=Spielname')}</span>
+        <textarea class="input" rows="4" bind:value={games} placeholder="factorio=Factorio"></textarea>
+      </label>
+      <div><button class="btn small" onclick={saveDetection}>{t('Erkennung speichern')}</button></div>
+    {:else}
+      <p class="muted">{t('Nur in der Desktop-App für Windows und Linux. Sie schaut alle 20 Sekunden nach laufenden Spielen und setzt sie als Aktivität.')}</p>
+      <a class="btn small" href={releases} target="_blank" rel="noopener noreferrer">{t('Apps herunterladen')}</a>
+    {/if}
+  {:else if section === 'badges'}
+    <p class="muted">{t('Nur für Instanz-Admins sichtbar. Vergeben werden Abzeichen im Profil eines Nutzers unter „Abzeichen vergeben“.')}</p>
+    <div class="row wrap">
+      {#each badges as b (b.id)}
+        <span class="badge" style:--c={b.color} title={fromEnglish(b.description)}><BadgeIcon badge={b} size={16} /> {fromEnglish(b.name)}<button onclick={() => removeBadge(b)} aria-label={t('{name} löschen', { name: b.name })}>✕</button></span>
+      {/each}
+    </div>
+    <h3>{t('Abzeichen anlegen')}</h3>
+    <form class="stack" onsubmit={addBadge}>
+      <div class="icons" role="radiogroup" aria-label={t('Symbol')}>
+        {#each Object.keys(BADGE_ICONS) as name}
+          <button type="button" class="pick" class:on={badge.icon === 'svg:' + name} role="radio" aria-checked={badge.icon === 'svg:' + name} aria-label={name} onclick={() => (badge.icon = 'svg:' + name)}>
+            <BadgeIcon badge={{ icon: 'svg:' + name, color: badge.color }} size={22} />
           </button>
         {/each}
       </div>
-
-      <h3>{t('Aktivität')}</h3>
-      <form class="row wrap" onsubmit={setActivity}>
-        <select class="input kind" bind:value={kind} aria-label={t('Art')}>
-          <option value="playing">{t('Spielt')}</option>
-          <option value="listening">{t('Hört')}</option>
-          <option value="watching">{t('Schaut')}</option>
-          <option value="custom">{t('Eigener Text')}</option>
-        </select>
-        <input class="input grow" bind:value={activityName} maxlength="64" placeholder={t('z. B. Tetris')} required />
-        <button class="btn small">{t('Setzen')}</button>
-        <button type="button" class="btn small" onclick={clearActivity}>{t('Entfernen')}</button>
-      </form>
-      {#if detection.available}
-        <label class="row"><input type="checkbox" bind:checked={detect} /> {t('Laufende Spiele automatisch erkennen')}</label>
-        <label class="field">
-          <span>{t('Eigene Spiele, eine Zeile pro Spiel: prozessname=Spielname')}</span>
-          <textarea class="input" rows="3" bind:value={games} placeholder="factorio=Factorio"></textarea>
-        </label>
-        <button class="btn small" onclick={saveDetection}>{t('Erkennung speichern')}</button>
-      {/if}
-
-      {#if available.length}
-        <h3>{t('Verbindungen')}</h3>
-        {#each available as p (p.id)}
-          {@const link = linked.find((x) => x.provider === p.id)}
-          <div class="row conn">
-            <strong>{p.name}</strong>
-            <span class="grow muted ellipsis">{link ? link.name : t('Nicht verbunden')}</span>
-            {#if link}
-              <button class="btn small" onclick={() => disconnect(p.id)}>{t('Trennen')}</button>
-            {:else}
-              <button class="btn small" onclick={() => connectAccount(p.id)}>{t('Verbinden')}</button>
-            {/if}
-          </div>
-        {/each}
-      {/if}
-
-      <h3>{t('Töne')}</h3>
-      <label class="row"><input type="checkbox" bind:checked={soundOn} onchange={() => (sounds.set(soundOn), play('message'))} /> {t('Töne für Nachrichten, Anrufe und Sprachkanäle')}</label>
-
-      <h3>{t('Sprache')}</h3>
-      <div class="row">
-        {#each LANGS as l (l.id)}
-          <button class="btn small" class:primary={lang === l.id} onclick={() => setLang(l.id)}>{l.name}</button>
-        {/each}
-      </div>
-
-      <h3>{t('Hilfe')}</h3>
-      <div class="row wrap help">
-        <a class="btn small" href={docs('guide')} target="_blank" rel="noopener noreferrer">{t('Anleitung')}</a>
-        <a class="btn small" href={releases} target="_blank" rel="noopener noreferrer">{t('Apps herunterladen')}</a>
-        {#if me.is_admin}<a class="btn small" href={docs('installation')} target="_blank" rel="noopener noreferrer">{t('Server einrichten')}</a>{/if}
-      </div>
-
-      <h3>{t('Konto')}</h3>
-      <p class="muted">{me.email}</p>
-      <button class="btn danger" onclick={logout}>{t('Abmelden')}</button>
-    </div>
-  </div>
-  {#if me.is_admin}
-    <div class="stack admin">
-      <h3>{t('Globale Abzeichen')}</h3>
-      <p class="muted">{t('Nur für Instanz-Admins sichtbar. Vergeben werden Abzeichen im Profil eines Nutzers unter „Abzeichen vergeben“.')}</p>
       <div class="row wrap">
-        {#each badges as b (b.id)}
-          <span class="badge" style:--c={b.color} title={fromEnglish(b.description)}><BadgeIcon badge={b} size={16} /> {fromEnglish(b.name)}<button onclick={() => removeBadge(b)} aria-label={t('{name} löschen', { name: b.name })}>✕</button></span>
-        {/each}
-      </div>
-      <form class="row wrap" onsubmit={addBadge}>
-        <div class="icons" role="radiogroup" aria-label={t('Symbol')}>
-          {#each Object.keys(BADGE_ICONS) as name}
-            <button type="button" class="pick" class:on={badge.icon === 'svg:' + name} role="radio" aria-checked={badge.icon === 'svg:' + name} aria-label={name} onclick={() => (badge.icon = 'svg:' + name)}>
-              <BadgeIcon badge={{ icon: 'svg:' + name, color: badge.color }} size={22} />
-            </button>
-          {/each}
-        </div>
         <input class="input name" bind:value={badge.name} maxlength="32" placeholder={t('Name')} required />
         <input class="input grow" bind:value={badge.description} maxlength="120" placeholder={t('Beschreibung (optional)')} />
         <input type="color" bind:value={badge.color} aria-label={t('Farbe')} />
-        <button class="btn">{t('Abzeichen anlegen')}</button>
-      </form>
+      </div>
+      <div><button class="btn">{t('Abzeichen anlegen')}</button></div>
+    </form>
+  {:else if section === 'help'}
+    <div class="stack">
+      <a class="btn" href={docs('guide')} target="_blank" rel="noopener noreferrer">{t('Anleitung')}</a>
+      <a class="btn" href={releases} target="_blank" rel="noopener noreferrer">{t('Apps herunterladen')}</a>
+      {#if me.is_admin}<a class="btn" href={docs('installation')} target="_blank" rel="noopener noreferrer">{t('Server einrichten')}</a>{/if}
     </div>
   {/if}
-</Modal>
+</SettingsPage>
 
 <style>
   .grid {
@@ -233,6 +329,73 @@
     grid-template-columns: 1fr 1fr;
     gap: 28px;
     align-items: start;
+  }
+  h3 {
+    margin: 24px 0 10px;
+  }
+  .small {
+    font-size: 0.86em;
+    margin: 0;
+  }
+  .card {
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--panel-2);
+  }
+  .card .banner {
+    height: 96px;
+  }
+  .who-row {
+    gap: 14px;
+    padding: 0 18px;
+    margin-top: -26px;
+    align-items: flex-end;
+  }
+  .who-row p {
+    margin: 0;
+  }
+  .big {
+    font-size: 1.2em;
+  }
+  .facts {
+    margin: 16px;
+    padding: 6px 16px;
+    border-radius: var(--radius-s);
+    background: var(--panel);
+  }
+  .facts div {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .facts div:last-child {
+    border-bottom: 0;
+  }
+  dt {
+    font-size: 0.78em;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  dd {
+    margin: 2px 0 0;
+  }
+  .link {
+    color: var(--accent);
+    font-size: 0.9em;
+    margin-left: 6px;
+  }
+  .two {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-s);
+    background: var(--panel-2);
+    max-width: 360px;
   }
   .wrap {
     flex-wrap: wrap;
@@ -256,11 +419,6 @@
   }
   .row .grow {
     min-width: 120px;
-  }
-  .admin {
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid var(--line);
   }
   .badge {
     display: inline-flex;
@@ -345,7 +503,8 @@
     outline-color: var(--accent);
   }
   @media (max-width: 700px) {
-    .grid {
+    .grid,
+    .two {
       grid-template-columns: 1fr;
     }
   }

@@ -8,7 +8,7 @@
   import { docs } from '../lib/docs';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
-  import Modal from './Modal.svelte';
+  import SettingsPage from './SettingsPage.svelte';
 
   let { tab: initial = 'overview' }: { tab?: string } = $props();
 
@@ -17,14 +17,15 @@
   const myTop = $derived(topPosition(g, app.me!.id));
   const tabs = $derived(
     [
-      { id: 'overview', name: t('Übersicht'), show: true },
-      { id: 'roles', name: w('roles'), show: can(P.MANAGE_ROLES, g) },
-      { id: 'members', name: w('members'), show: true },
-      { id: 'emojis', name: 'Emojis', show: can(P.MANAGE_EMOJIS, g) },
-      { id: 'invites', name: w('invites'), show: can(P.CREATE_INVITE, g) },
-      { id: 'bans', name: t('Banns'), show: can(P.BAN_MEMBERS, g) },
-      { id: 'integrations', name: t('Integrationen'), show: can(P.MANAGE_GUILD, g) },
-      { id: 'audit', name: t('Protokoll'), show: can(P.MANAGE_GUILD, g) },
+      { id: 'overview', name: t('Übersicht'), group: g.name, show: true },
+      { id: 'roles', name: w('roles'), group: g.name, show: can(P.MANAGE_ROLES, g) },
+      { id: 'emojis', name: t('Emojis'), group: g.name, show: can(P.MANAGE_EMOJIS, g) },
+      { id: 'integrations', name: t('Integrationen'), group: g.name, show: can(P.MANAGE_GUILD, g) },
+      { id: 'members', name: w('members'), group: t('Mitgliederverwaltung'), show: true },
+      { id: 'invites', name: w('invites'), group: t('Mitgliederverwaltung'), show: can(P.CREATE_INVITE, g) },
+      { id: 'bans', name: t('Banns'), group: t('Mitgliederverwaltung'), show: can(P.BAN_MEMBERS, g) },
+      { id: 'audit', name: t('Protokoll'), group: t('Moderation'), show: can(P.MANAGE_GUILD, g) },
+      { id: 'leave', name: owner ? t('{server} löschen', { server: w('server') }) : t('{server} verlassen', { server: w('server') }), danger: true, show: true, action: () => (owner ? destroy() : leave()) },
     ].filter((x) => x.show),
   );
   let tab = $state(untrack(() => initial));
@@ -273,14 +274,8 @@
   const date = new Intl.DateTimeFormat(locale(), { dateStyle: 'medium', timeStyle: 'short' });
 </script>
 
-<Modal title={g.name} onclose={() => (app.modal = null)} wide>
+<SettingsPage title={t('{server}-Einstellungen', { server: w('server') }).replace(/^./, (c) => c.toUpperCase())} sections={tabs} bind:current={tab} onclose={() => (app.modal = null)}>
   <div class="layout">
-    <div class="tabs" role="tablist">
-      {#each tabs as tb (tb.id)}
-        <button role="tab" aria-selected={tab === tb.id} class:on={tab === tb.id} onclick={() => (tab = tb.id)}>{tb.name}</button>
-      {/each}
-    </div>
-
     <div class="pane">
       {#if tab === 'overview'}
         <div class="stack">
@@ -529,13 +524,10 @@
       {/if}
     </div>
   </div>
-</Modal>
+</SettingsPage>
 
 <style>
   .layout {
-    display: grid;
-    grid-template-columns: 150px 1fr;
-    gap: 24px;
     min-height: 100%;
   }
   .integration {
@@ -551,26 +543,6 @@
   }
   .warn {
     color: var(--danger);
-  }
-  .tabs {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .tabs button {
-    text-align: left;
-    padding: 7px 10px;
-    border-radius: var(--radius-s);
-    color: var(--muted);
-    font-weight: 600;
-  }
-  .tabs button:hover,
-  .tabs button.on {
-    background: var(--panel-2);
-    color: var(--ink);
-  }
-  .tabs button.on {
-    box-shadow: inset 3px 0 0 var(--accent);
   }
   .pane {
     min-width: 0;
@@ -742,17 +714,6 @@
     font-size: 0.9em;
   }
   @media (max-width: 700px) {
-    .layout {
-      grid-template-columns: 1fr;
-      gap: 14px;
-    }
-    .tabs {
-      flex-direction: row;
-      overflow-x: auto;
-    }
-    .tabs button {
-      white-space: nowrap;
-    }
     .roles {
       grid-template-columns: 1fr;
     }

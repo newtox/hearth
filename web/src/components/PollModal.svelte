@@ -23,7 +23,7 @@
   <form class="stack" onsubmit={create}>
     <label class="field"><span>{t('Frage')}</span><input class="input" bind:value={question} maxlength="200" required /></label>
     <div class="field">
-      <span>{t('Antworten')}</span>
+      <span>{t('Antwortmöglichkeiten')}</span>
       {#each options as _, i}
         <div class="row">
           <input class="input" bind:value={options[i]} maxlength="80" placeholder={t('Antwort {n}', { n: i + 1 })} required={i < 2} />
