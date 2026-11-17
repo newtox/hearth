@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ask } from '../lib/dialog.svelte';
   import { LANGS, fromEnglish, lang, setLang, t } from '../lib/i18n.svelte';
-  import { api, asset, upload } from '../lib/api';
+  import { api, upload } from '../lib/api';
   import { customGames, detection } from '../lib/activity';
   import { play, sounds } from '../lib/sounds';
   import { BADGE_ICONS } from '../lib/badges';
@@ -10,6 +10,7 @@
   import { THEMES, applyTheme, theme } from '../lib/theme.svelte';
   import { docs, releases } from '../lib/docs';
   import Avatar from './Avatar.svelte';
+  import { backdrop, hoverHost } from '../lib/still.svelte';
   import SettingsPage, { type Section } from './SettingsPage.svelte';
   import Modal from './Modal.svelte';
   import { notifications } from '../lib/notify';
@@ -155,12 +156,14 @@
       if (!notifyOn) toast(t('user_settings_browser_blocked_notifications_allow_them'));
     }
   }
+  let bannerMoving = $state(false);
+  let previewMoving = $state(false);
 </script>
 
 <SettingsPage title={t('common_settings')} {sections} bind:current={section} onclose={() => (app.modal = null)}>
   {#if section === 'account'}
-    <div class="card account">
-      <div class="banner" style:background-color={me.accent_color ?? 'var(--panel-2)'} style:background-image={me.banner ? `url(${asset(me.banner)})` : null}></div>
+    <div class="card account" data-hover>
+      <div class="banner" use:hoverHost={(on) => (bannerMoving = on)} style:background-color={me.accent_color ?? 'var(--panel-2)'} style:background-image={backdrop(me.banner, bannerMoving)}></div>
       <div class="row who-row">
         <Avatar id={me.id} name={me.display_name} image={me.avatar} size={72} status={me.status ?? 'online'} />
         <div class="grow">
@@ -237,8 +240,8 @@
       </form>
       <div class="stack">
         <span class="muted small">{t('user_settings_preview')}</span>
-        <div class="preview">
-          <div class="banner" style:background-color={accent} style:background-image={me.banner ? `url(${asset(me.banner)})` : null}></div>
+        <div class="preview" data-hover>
+          <div class="banner" use:hoverHost={(on) => (previewMoving = on)} style:background-color={accent} style:background-image={backdrop(me.banner, previewMoving)}></div>
           <div class="who">
             <Avatar id={me.id} name={displayName || me.username} image={me.avatar} size={64} />
             <strong>{displayName}</strong>

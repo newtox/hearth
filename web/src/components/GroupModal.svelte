@@ -6,6 +6,7 @@
   import { app, attempt, dmTitle, select, type Dm, presenceOf } from '../lib/store.svelte';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
+  import StillImg from './StillImg.svelte';
   import Modal from './Modal.svelte';
 
   let { dm: given }: { dm: Dm | null } = $props();
@@ -55,7 +56,7 @@
   {#if dm}
     <div class="stack">
       <div class="row wrap">
-        <span class="picture">{#if dm.icon}<img src={asset(dm.icon)} alt="" />{:else}<Icon name="users" size={22} />{/if}</span>
+        <span class="picture">{#if dm.icon}<StillImg src={asset(dm.icon)!} alt="" />{:else}<Icon name="users" size={22} />{/if}</span>
         {#if groupMay(dm, 'edit')}
           <button class="btn small" onclick={rename}><Icon name="edit" size={14} />{t('group_modal_rename')}</button>
           <label class="btn small">{t('group_modal_change_picture')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={pickIcon} hidden /></label>
@@ -153,7 +154,7 @@
     border: 1px solid var(--line);
     overflow: hidden;
   }
-  .picture img {
+  .picture :global(img) {
     width: 100%;
     height: 100%;
     object-fit: cover;

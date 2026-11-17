@@ -1,11 +1,16 @@
 <script lang="ts">
   import { t } from '../lib/i18n.svelte';
   import { asset } from '../lib/api';
+  import { hoverHost, isAnimated, still } from '../lib/still.svelte';
 
   let { id, name, image = null, size = 36, online = undefined, status = undefined, square = false }: { id: string; name: string; image?: string | null; size?: number; online?: boolean; status?: string; square?: boolean } = $props();
 
   const LABELS: Record<string, string> = { online: 'common_online', idle: 'common_idle', dnd: 'common_do_not_disturb', invisible: 'common_invisible', offline: 'common_offline' };
-  const state = $derived(status ?? (online === undefined ? undefined : online ? 'online' : 'offline'));
+  let hovered = $state(false);
+  const url = $derived(asset(image));
+  const moving = $derived(isAnimated(url));
+  const shown = $derived(url && moving && !hovered ? still(url) : url);
+  const dotState = $derived(status ?? (online === undefined ? undefined : online ? 'online' : 'offline'));
 
   const hue = $derived([...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7));
   const initials = $derived(
@@ -18,14 +23,16 @@
   );
 </script>
 
-<span class="avatar" class:square style="--s:{size}px; --h:{hue}">
-  {#if image}
-    <img src={asset(image)} alt="" loading="lazy" />
+<span class="avatar" class:square style="--s:{size}px; --h:{hue}" use:hoverHost={(on) => (hovered = on)}>
+  {#if image && shown}
+    <img src={shown} alt="" loading="lazy" />
+  {:else if image}
+    <span class="blank"></span>
   {:else}
     <span class="initials">{initials}</span>
   {/if}
-  {#if state}
-    <span class="dot {state}" title={t(LABELS[state] ?? state)} role="img" aria-label={t(LABELS[state] ?? state)}></span>
+  {#if dotState}
+    <span class="dot {dotState}" title={t(LABELS[dotState] ?? dotState)} role="img" aria-label={t(LABELS[dotState] ?? dotState)}></span>
   {/if}
 </span>
 
@@ -51,6 +58,12 @@
     border-radius: 3px;
     box-shadow: 0 0 0 2px #9a7636;
     background: hsl(var(--h) 30% 32%);
+  }
+  .blank {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--panel-2);
   }
   img {
     width: 100%;

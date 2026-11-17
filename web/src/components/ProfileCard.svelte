@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ask, askText } from '../lib/dialog.svelte';
   import { fromEnglish, locale, t } from '../lib/i18n.svelte';
-  import { api, asset } from '../lib/api';
+  import { api } from '../lib/api';
   import { app, attempt, canModerate, guild, isBlocked, isFriend, openDm, P, type Badge, type User, presenceOf } from '../lib/store.svelte';
   import { activityText, badgeLabel, elapsed } from '../lib/activity';
   import Avatar from './Avatar.svelte';
@@ -9,6 +9,7 @@
   import ProgressModal from './ProgressModal.svelte';
   import BadgeSheet from './BadgeSheet.svelte';
   import Icon from './Icon.svelte';
+  import { backdrop, hoverHost } from '../lib/still.svelte';
 
   let { userId }: { userId: string } = $props();
 
@@ -55,13 +56,14 @@
     await attempt(api('PUT', `/guilds/${g.id}/bans/${userId}`, { reason }));
     close();
   }
+  let moving = $state(false);
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && !progressTrack && !openBadge && close()} />
 
 <div class="backdrop" onclick={(e) => e.target === e.currentTarget && close()} role="presentation">
-  <div class="panel card" role="dialog" aria-modal="true" aria-label={t('common_profile')}>
-    <div class="banner" style:background-color={user?.accent_color ?? 'var(--panel-2)'} style:background-image={user?.banner ? `url(${asset(user.banner)})` : null}>
+  <div class="panel card" data-hover role="dialog" aria-modal="true" aria-label={t('common_profile')}>
+    <div class="banner" use:hoverHost={(on) => (moving = on)} style:background-color={user?.accent_color ?? 'var(--panel-2)'} style:background-image={backdrop(user?.banner, moving)}>
       <button class="x" onclick={close} aria-label={t('common_close')}><Icon name="close" /></button>
     </div>
     {#if user}

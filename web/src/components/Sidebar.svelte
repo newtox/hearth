@@ -7,6 +7,7 @@
   import { channelMenu, guildMenu, memberMenu, openBelow, openMenu } from '../lib/menus';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
+  import StillImg from './StillImg.svelte';
 
   const g = $derived(guild());
   const manage = $derived(can(P.MANAGE_CHANNELS, g));
@@ -83,7 +84,7 @@
         <div class="item" class:active={d.id === app.channelId} class:unread={app.unread[d.id]}>
           <button class="main row" onclick={() => select(null, d.id)}>
             {#if d.kind === 'group'}
-              <span class="groupicon">{#if d.icon}<img src={asset(d.icon)} alt="" />{:else}<Icon name="users" size={16} />{/if}</span>
+              <span class="groupicon">{#if d.icon}<StillImg src={asset(d.icon)!} alt="" />{:else}<Icon name="users" size={16} />{/if}</span>
             {:else}
               <Avatar id={p.id} name={p.display_name} image={p.avatar} size={30} status={presenceOf(p)} />
             {/if}
@@ -219,7 +220,7 @@
     border: 1px solid var(--line);
     overflow: hidden;
   }
-  .groupicon img {
+  .groupicon :global(img) {
     width: 100%;
     height: 100%;
     object-fit: cover;
