@@ -620,7 +620,6 @@ export const DE: Record<string, string> = {
   user_settings_sign_out: 'Abmelden',
   user_settings_sounds: 'Töne',
   user_settings_sounds_messages_calls_voice_channels: 'Töne für Nachrichten, Anrufe und Sprachkanäle',
-  user_settings_status: 'Status',
   user_settings_symbol: 'Symbol',
   user_settings_translations: 'Übersetzungen',
   user_settings_translations_auto: 'Leere Felder werden beim Speichern automatisch aus dem Englischen übersetzt. Du kannst sie danach anpassen.',

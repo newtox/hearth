@@ -620,7 +620,6 @@ export const DA: Record<string, string> = {
   user_settings_sign_out: 'Log ud',
   user_settings_sounds: 'Lyde',
   user_settings_sounds_messages_calls_voice_channels: 'Lyde for beskeder, opkald og talekanaler',
-  user_settings_status: 'Status',
   user_settings_symbol: 'Symbol',
   user_settings_translations: 'Oversættelser',
   user_settings_translations_auto: 'Tomme felter oversættes automatisk fra engelsk, når du gemmer. Du kan rette dem bagefter.',

@@ -620,7 +620,6 @@ export const EN: Record<string, string> = {
   user_settings_sign_out: 'Sign out',
   user_settings_sounds: 'Sounds',
   user_settings_sounds_messages_calls_voice_channels: 'Sounds for messages, calls and voice channels',
-  user_settings_status: 'Status',
   user_settings_symbol: 'Symbol',
   user_settings_translations: 'Translations',
   user_settings_translations_auto: 'Empty fields are translated from English automatically when you save. You can adjust them afterwards.',

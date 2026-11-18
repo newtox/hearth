@@ -15,7 +15,6 @@
   import SettingsPage, { type Section } from './SettingsPage.svelte';
   import Modal from './Modal.svelte';
   import { notifications } from '../lib/notify';
-  import { setStatus } from '../lib/store.svelte';
 
   const me = $derived(app.me!);
   let displayName = $state(app.me!.display_name);
@@ -184,14 +183,6 @@
           </div>
           <button class="btn small" onclick={() => edit('email')}>{t('common_edit')}</button>
         </div>
-        <div><dt>{t('user_settings_status')}</dt><dd>
-          <select class="input" value={me.status ?? 'online'} onchange={(e) => setStatus(e.currentTarget.value as any)}>
-            <option value="online">{t('common_online')}</option>
-            <option value="idle">{t('common_idle')}</option>
-            <option value="dnd">{t('common_do_not_disturb')}</option>
-            <option value="invisible">{t('common_invisible')}</option>
-          </select>
-        </dd></div>
       </dl>
     </div>
 
