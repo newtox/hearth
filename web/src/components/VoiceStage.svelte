@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../lib/i18n.svelte';
-  import { app, channel, type Channel } from '../lib/store.svelte';
+  import { app, channel, guild, type Channel } from '../lib/store.svelte';
+  import { memberMenu, openMenu } from '../lib/menus';
   import { canShareScreen, joinVoice, leaveVoice, toggleMute, toggleShare, voice, voiceMembers } from '../lib/voice.svelte';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
@@ -23,11 +24,11 @@
     {#if here}<StreamArea />{/if}
     <div class="people">
       {#each people as m (m.id)}
-        <div class="person" class:speaking={here && voice.speaking.includes(m.id)}>
+        <button class="person" class:speaking={here && voice.speaking.includes(m.id)} onclick={() => (app.profile = m.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.id, guild()))}>
           <Avatar id={m.id} name={m.display_name} image={m.avatar} size={72} />
           <span class="ellipsis">{m.nickname || m.display_name}</span>
           {#if here && voice.silent.includes(m.id)}<span class="muted" title={t('voice_stage_muted')}><Icon name="micOff" size={15} /></span>{/if}
-        </div>
+        </button>
       {:else}
         <p class="muted">{t('voice_stage_nobody_here_right_now')}</p>
       {/each}

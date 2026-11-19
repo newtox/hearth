@@ -27,31 +27,114 @@ export const voice = $state({
   silent: [] as string[],
   tiles: [] as Tile[],
   streams: [] as { userId: string; name: string; local: boolean; watching: boolean; audio: boolean }[],
-  streamVolume: loadVolumes(),
+  streamVolume: load<Record<string, number>>('hearth_stream_volume', {}),
+  userVolume: load<Record<string, number>>('hearth_user_volume', {}),
+  inputVolume: load<number>('hearth_input_volume', 1),
+  outputVolume: load<number>('hearth_output_volume', 1),
   watchers: {} as Record<string, string[]>,
   names: {} as Record<string, string>,
 });
 
-function loadVolumes(): Record<string, number> {
+function load<T>(key: string, fallback: T): T {
   try {
-    return JSON.parse(localStorage.getItem('hearth_stream_volume') ?? '{}');
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : JSON.parse(v);
   } catch {
-    return {};
+    return fallback;
   }
 }
 
-function applyVolume(el: HTMLMediaElement) {
-  const v = voice.streamVolume[el.dataset.user ?? ''] ?? 1;
-  el.volume = Math.min(1, Math.max(0, v));
-  el.muted = v === 0;
+function save(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+
+const clamp = (v: number, max: number) => Math.min(max, Math.max(0, Number.isFinite(v) ? v : 1));
+
+function applyVolumes() {
+  if (!room || !lk) return;
+  const out = voice.outputVolume;
+  for (const p of room.remoteParticipants.values()) {
+    p.setVolume((voice.userVolume[p.identity] ?? 1) * out, lk.Track.Source.Microphone);
+    p.setVolume((voice.streamVolume[p.identity] ?? 1) * out, lk.Track.Source.ScreenShareAudio);
+  }
 }
 
 export function setStreamVolume(userId: string, value: number) {
-  voice.streamVolume = { ...voice.streamVolume, [userId]: value };
-  try {
-    localStorage.setItem('hearth_stream_volume', JSON.stringify(voice.streamVolume));
-  } catch {}
-  document.querySelectorAll<HTMLMediaElement>(`audio[data-hearth-voice][data-stream][data-user="${CSS.escape(userId)}"]`).forEach(applyVolume);
+  voice.streamVolume = { ...voice.streamVolume, [userId]: clamp(value, 1) };
+  save('hearth_stream_volume', voice.streamVolume);
+  applyVolumes();
+}
+
+export function setUserVolume(userId: string, value: number) {
+  const next = { ...voice.userVolume };
+  if (clamp(value, 2) === 1) delete next[userId];
+  else next[userId] = clamp(value, 2);
+  voice.userVolume = next;
+  save('hearth_user_volume', next);
+  applyVolumes();
+}
+
+export function setOutputVolume(value: number) {
+  voice.outputVolume = clamp(value, 2);
+  save('hearth_output_volume', voice.outputVolume);
+  applyVolumes();
+}
+
+let micGain: GainNode | null = null;
+
+function gainProcessor() {
+  let parts: { source: MediaStreamAudioSourceNode; gain: GainNode } | null = null;
+  const drop = () => {
+    if (!parts) return;
+    parts.source.disconnect();
+    parts.gain.disconnect();
+    if (micGain === parts.gain) micGain = null;
+    parts = null;
+  };
+  const build = (o: { track: MediaStreamTrack; audioContext: AudioContext }) => {
+    const ctx = o.audioContext;
+    const source = ctx.createMediaStreamSource(new MediaStream([o.track]));
+    const gain = ctx.createGain();
+    gain.gain.value = voice.inputVolume;
+    const dest = ctx.createMediaStreamDestination();
+    source.connect(gain).connect(dest);
+    parts = { source, gain };
+    micGain = gain;
+    proc.processedTrack = dest.stream.getAudioTracks()[0];
+  };
+  const proc = {
+    name: 'hearth-gain',
+    processedTrack: undefined as MediaStreamTrack | undefined,
+    init: async (o: any) => build(o),
+    restart: async (o: any) => {
+      drop();
+      build(o);
+    },
+    destroy: async () => {
+      drop();
+      proc.processedTrack = undefined;
+    },
+  };
+  return proc;
+}
+
+function micTrack() {
+  if (!room || !lk) return null;
+  return room.localParticipant.getTrackPublication(lk.Track.Source.Microphone)?.track ?? null;
+}
+
+async function boostMic(track: any) {
+  if (!track || micGain || voice.inputVolume === 1) return;
+  await track.setProcessor(gainProcessor()).catch(() => {});
+}
+
+export function setInputVolume(value: number) {
+  voice.inputVolume = clamp(value, 2);
+  save('hearth_input_volume', voice.inputVolume);
+  if (micGain) micGain.gain.setTargetAtTime(voice.inputVolume, micGain.context.currentTime, 0.05);
+  else boostMic(micTrack());
 }
 
 export const canCall = typeof window !== 'undefined' && typeof (window as any).RTCPeerConnection === 'function';
@@ -185,6 +268,7 @@ function cleanup() {
   stopDesktopAudio();
   room = null;
   stopMeters();
+  micGain = null;
   document.querySelectorAll('audio[data-hearth-voice]').forEach((el) => el.remove());
   Object.assign(voice, { channelId: null, guildId: null, connecting: false, muted: true, sharing: false, speaking: [], silent: [], tiles: [], streams: [], watchers: {}, names: {} });
 }
@@ -200,7 +284,7 @@ export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
   try {
     const res = await api('POST', `/channels/${ch.id}/voice`);
     lk = await import('livekit-client');
-    const r = new lk.Room({ adaptiveStream: true, dynacast: true });
+    const r = new lk.Room({ adaptiveStream: true, dynacast: true, webAudioMix: true });
     room = r;
     const E = lk.RoomEvent;
     r.on(E.LocalTrackUnpublished, () => setTimeout(() => room === r && api('POST', '/voice/stream', { on: r.localParticipant.isScreenShareEnabled }).catch(() => {}), 300));
@@ -209,7 +293,11 @@ export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
       sync();
     });
     for (const ev of [E.ParticipantConnected, E.ParticipantDisconnected, E.TrackUnpublished, E.TrackSubscriptionStatusChanged, E.TrackMuted, E.TrackUnmuted, E.LocalTrackPublished, E.LocalTrackUnpublished]) r.on(ev, sync);
-    r.on(E.LocalTrackPublished, (pub: any) => meterMic(pub, r.localParticipant.identity));
+    r.on(E.LocalTrackPublished, (pub: any) => {
+      meterMic(pub, r.localParticipant.identity);
+      if (pub.source === lk!.Track.Source.Microphone) boostMic(pub.track);
+    });
+    r.on(E.ParticipantConnected, applyVolumes);
     r.on(E.LocalTrackUnpublished, (pub: any) => {
       if (pub.source === lk!.Track.Source.Microphone) unmeter(r.localParticipant.identity);
       if (pub.source === lk!.Track.Source.ScreenShare) stopDesktopAudio();
@@ -218,13 +306,10 @@ export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
     r.on(E.TrackSubscribed, (track: any, pub: any, p: any) => {
       meterMic(pub, p.identity);
       if (track.kind === 'audio') {
+        applyVolumes();
         const el = track.attach() as HTMLMediaElement;
         el.dataset.hearthVoice = '1';
         el.dataset.user = p.identity;
-        if (pub.source === lk!.Track.Source.ScreenShareAudio) {
-          el.dataset.stream = '1';
-          applyVolume(el);
-        }
         el.hidden = true;
         document.body.append(el);
       }
@@ -243,6 +328,7 @@ export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
     });
     await r.connect(res.url, res.token, { autoSubscribe: false });
     for (const p of r.remoteParticipants.values()) for (const pub of p.trackPublications.values()) follow(pub);
+    applyVolumes();
     setWatchers(res.watchers ?? [], true);
     current.voiceChannel = ch.id;
     play('join');

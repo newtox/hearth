@@ -2,6 +2,7 @@
   import { t } from '../lib/i18n.svelte';
   import { app, type Dm } from '../lib/store.svelte';
   import { canShareScreen, joinVoice, leaveVoice, toggleMute, toggleShare, voice } from '../lib/voice.svelte';
+  import { memberMenu, openMenu } from '../lib/menus';
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
   import StreamArea from './StreamArea.svelte';
@@ -24,10 +25,10 @@
     <div class="row bar">
       <div class="row people grow">
         {#each people as p (p.id)}
-          <span class="person" class:speaking={here && voice.speaking.includes(p.id)} title={p.display_name}>
+          <button class="person" class:speaking={here && voice.speaking.includes(p.id)} title={p.display_name} onclick={() => (app.profile = p.id)} oncontextmenu={(e) => openMenu(e, memberMenu(p.id, null))}>
             <Avatar id={p.id} name={p.display_name} image={p.avatar} size={34} />
             {#if here && voice.silent.includes(p.id)}<i><Icon name="micOff" size={11} /></i>{/if}
-          </span>
+          </button>
         {/each}
         <span class="muted">{here ? t('call_bar_in_call') : t('common_call_progress')}</span>
       </div>

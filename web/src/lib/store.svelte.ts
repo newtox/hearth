@@ -166,7 +166,7 @@ export type Modal =
 
 type Flag = boolean | (() => boolean);
 export type MenuItem =
-  | { label: string; hint?: string; icon?: string; danger?: boolean; disabled?: Flag; checked?: Flag; color?: string | null; keep?: boolean; action?: () => void; items?: MenuItem[] }
+  | { label: string; hint?: string; icon?: string; danger?: boolean; disabled?: Flag; checked?: Flag; color?: string | null; keep?: boolean; action?: () => void; items?: MenuItem[]; range?: { max: number; value: () => number; set: (v: number) => void } }
   | 'sep';
 export interface Menu {
   x: number;

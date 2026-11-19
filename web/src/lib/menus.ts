@@ -4,6 +4,7 @@ import { t } from './i18n.svelte';
 import { w } from './theme.svelte';
 import { app, attempt, can, canModerate, openDm, setStatus, toast, P, type Channel, type Guild, type MenuItem, type Status } from './store.svelte';
 import * as mod from './moderation';
+import { canCall, setInputVolume, setUserVolume, voice } from './voice.svelte';
 
 type Entry = MenuItem | false | null | undefined | 0;
 
@@ -44,6 +45,8 @@ export function memberMenu(userId: string, g: Guild | null): Entry[] {
     { label: t('common_profile'), icon: 'user', action: () => (app.profile = userId) },
     g && m && { label: t('common_mention'), icon: 'at', action: () => (app.insert = `@${m.username} `) },
     userId !== me && { label: t('common_send_message'), icon: 'message', action: () => openDm(userId) },
+    'sep',
+    canCall && (userId === me ? { label: t('voice_input_volume'), range: { max: 2, value: () => voice.inputVolume, set: setInputVolume } } : { label: t('voice_user_volume'), range: { max: 2, value: () => voice.userVolume[userId] ?? 1, set: (v: number) => setUserVolume(userId, v) } }),
     'sep',
     g && m && ((userId === me && can(P.CHANGE_NICKNAME, g)) || canModerate(g, userId, P.MANAGE_NICKNAMES)) && { label: t('common_change_nickname'), icon: 'edit', action: () => mod.nickname(g, m) },
     g &&

@@ -67,8 +67,8 @@
   }
 
   function keys(e: KeyboardEvent, inSub: boolean) {
-    const list = [...((inSub ? side : root)?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])];
-    const i = list.indexOf(document.activeElement as HTMLButtonElement);
+    const list = [...((inSub ? side : root)?.querySelectorAll<HTMLElement>('button:not(:disabled), input') ?? [])];
+    const i = list.indexOf(document.activeElement as HTMLElement);
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       const n = list.length;
@@ -106,6 +106,12 @@
 {#snippet entry(item: MenuItem, i: number, inSub: boolean)}
   {#if item === 'sep'}
     <hr />
+  {:else if item.range}
+    {@const range = item.range}
+    <label class="range">
+      <span class="row"><span class="grow">{item.label}</span><span class="muted">{Math.round(range.value() * 100)} %</span></span>
+      <input type="range" min="0" max={range.max} step="0.01" value={range.value()} oninput={(e) => range.set(Number(e.currentTarget.value))} ondblclick={() => range.set(1)} />
+    </label>
   {:else}
     {@const checkable = item.checked !== undefined}
     <button
@@ -146,6 +152,25 @@
 {/if}
 
 <style>
+  .range {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    min-width: 200px;
+  }
+  .range .row {
+    display: flex;
+    gap: 8px;
+    font-size: 0.92em;
+  }
+  .range .grow {
+    flex: 1;
+  }
+  .range input {
+    width: 100%;
+    accent-color: var(--accent);
+  }
   .text small {
     display: block;
     margin-top: 2px;

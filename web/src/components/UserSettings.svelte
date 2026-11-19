@@ -15,6 +15,7 @@
   import SettingsPage, { type Section } from './SettingsPage.svelte';
   import Modal from './Modal.svelte';
   import { notifications } from '../lib/notify';
+  import { setInputVolume, setOutputVolume, voice } from '../lib/voice.svelte';
 
   const me = $derived(app.me!);
   let displayName = $state(app.me!.display_name);
@@ -108,6 +109,7 @@
     { id: 'profile', name: t('common_profile'), group: t('user_settings_user_settings') },
     { id: 'appearance', name: t('user_settings_appearance'), group: t('user_settings_app_settings') },
     { id: 'language', name: t('user_settings_language'), group: t('user_settings_app_settings') },
+    { id: 'voice', name: t('user_settings_voice'), group: t('user_settings_app_settings') },
     { id: 'notifications', name: t('user_settings_notifications'), group: t('user_settings_app_settings') },
     { id: 'activity', name: t('user_settings_activity'), group: t('user_settings_app_settings') },
     ...(app.me!.is_admin ? [{ id: 'badges', name: t('user_settings_global_badges'), group: t('user_settings_instance') }] : []),
@@ -257,6 +259,17 @@
         <label class="option"><input type="radio" name="lang" checked={lang === l.id} onchange={() => setLang(l.id)} /> {l.name}</label>
       {/each}
     </div>
+  {:else if section === 'voice'}
+    <h3>{t('voice_volume')}</h3>
+    <label class="slider">
+      <span class="row"><span class="grow">{t('voice_input_volume')}</span><span class="muted">{Math.round(voice.inputVolume * 100)} %</span></span>
+      <input type="range" min="0" max="2" step="0.01" value={voice.inputVolume} oninput={(e) => setInputVolume(Number(e.currentTarget.value))} ondblclick={() => setInputVolume(1)} />
+    </label>
+    <label class="slider">
+      <span class="row"><span class="grow">{t('voice_output_volume')}</span><span class="muted">{Math.round(voice.outputVolume * 100)} %</span></span>
+      <input type="range" min="0" max="2" step="0.01" value={voice.outputVolume} oninput={(e) => setOutputVolume(Number(e.currentTarget.value))} ondblclick={() => setOutputVolume(1)} />
+    </label>
+    <p class="muted">{t('user_settings_voice_user_hint')}</p>
   {:else if section === 'notifications'}
     <h3>{t('user_settings_desktop_notifications')}</h3>
     <p class="muted">{t('user_settings_direct_messages_groups_mentions_replies')}</p>
@@ -328,6 +341,20 @@
 </SettingsPage>
 
 <style>
+  .slider {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 420px;
+    margin-bottom: 16px;
+  }
+  .slider .grow {
+    flex: 1;
+  }
+  .slider input {
+    width: 100%;
+    accent-color: var(--accent);
+  }
   .grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
