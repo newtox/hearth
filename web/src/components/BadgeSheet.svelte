@@ -5,7 +5,22 @@
   import BadgeIcon from './BadgeIcon.svelte';
   import Icon from './Icon.svelte';
 
-  let { badge, name, onprogress, onclose }: { badge: Badge; name: string; onprogress?: () => void; onclose: () => void } = $props();
+  let { badge, name, onprogress, onsince, onclose }: { badge: Badge; name: string; onprogress?: () => void; onsince?: (day: string) => Promise<void>; onclose: () => void } = $props();
+
+  let editing = $state(false);
+  let day = $state('');
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  function editSince() {
+    day = iso(new Date(badge.granted_at ?? Date.now()));
+    editing = true;
+  }
+
+  async function saveSince() {
+    if (!day || !onsince) return;
+    await onsince(day);
+    editing = false;
+  }
 
   const BUILT_IN: Record<string, string> = {
     '00000000-0000-7000-8000-000000000002': 'badge_sheet_part_team_builds_runs_instance',
@@ -39,15 +54,24 @@
     <button class="x" onclick={onclose} aria-label={t('common_close')}><Icon name="close" /></button>
     <div class="art" style:--c={badge.color}><BadgeIcon {badge} size={84} /></div>
     <h2>{title}</h2>
-    <p class="meta">
+    <div class="meta">
       {#if badge.track}
         <span>{t('badge_sheet_earned_badge')}</span>
         <span class="level" style:--c={badge.color}>{t('common_level_tier_10', { tier: (badge.tier ?? 0) + 1 })}</span>
       {:else}
-        <span>{t('badge_sheet_instance_badge')}</span>
-        {#if badge.granted_at}<span>{t('badge_sheet_since_date', { date: date.format(new Date(badge.granted_at)) })}</span>{/if}
+        {#if editing}
+          <form class="since" onsubmit={(e) => (e.preventDefault(), saveSince())}>
+            <label for="badge-since">{t('badge_sheet_since_label')}</label>
+            <input id="badge-since" class="input" type="date" bind:value={day} min="2000-01-01" max={iso(new Date())} required />
+            <button class="btn small primary">{t('common_save')}</button>
+            <button type="button" class="btn small" onclick={() => (editing = false)}>{t('common_cancel')}</button>
+          </form>
+        {:else}
+          <span>{badge.granted_at ? t('badge_sheet_instance_badge_since', { date: date.format(new Date(badge.granted_at)) }) : t('badge_sheet_instance_badge')}</span>
+          {#if onsince && badge.granted_at}<button class="edit" onclick={editSince} aria-label={t('badge_sheet_change_since')} title={t('badge_sheet_change_since')}><Icon name="edit" size={14} /></button>{/if}
+        {/if}
       {/if}
-    </p>
+    </div>
     <div class="box">
       <small>{badge.track ? t('badge_sheet_how_get') : t('common_description')}</small>
       <p>{text}</p>
@@ -120,6 +144,27 @@
     align-items: center;
     gap: 8px;
     color: var(--muted);
+  }
+  .edit {
+    display: grid;
+    place-items: center;
+    padding: 4px;
+    border-radius: var(--radius-s);
+    color: var(--muted);
+  }
+  .edit:hover {
+    background: var(--panel-2);
+    color: var(--ink);
+  }
+  .since {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+  }
+  .since .input {
+    width: auto;
   }
   .level::first-letter {
     text-transform: uppercase;

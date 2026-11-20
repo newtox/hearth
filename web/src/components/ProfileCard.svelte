@@ -28,6 +28,14 @@
     user = (await attempt(api<User>('GET', `/users/${userId}`))) ?? user;
   }
 
+  async function setSince(day: string) {
+    const id = openBadge?.id;
+    if (!id) return;
+    await attempt(api('PUT', `/users/${userId}/badges/${id}`, { since: day }));
+    user = (await attempt(api<User>('GET', `/users/${userId}`))) ?? user;
+    openBadge = user?.badges?.find((x) => x.id === id) ?? openBadge;
+  }
+
   $effect(() => {
     user = null;
     attempt(api<User>('GET', `/users/${userId}`)).then((u) => (user = u ?? null));
@@ -137,7 +145,7 @@
 </div>
 
 {#if openBadge && user}
-  <BadgeSheet badge={openBadge} name={user.display_name} onclose={() => (openBadge = null)} onprogress={user.progress ? () => ((progressTrack = openBadge!.track!), (openBadge = null)) : undefined} />
+  <BadgeSheet badge={openBadge} name={user.display_name} onclose={() => (openBadge = null)} onprogress={user.progress ? () => ((progressTrack = openBadge!.track!), (openBadge = null)) : undefined} onsince={app.me?.is_admin && !openBadge.track ? setSince : undefined} />
 {/if}
 {#if progressTrack && user?.progress}
   <ProgressModal progress={user.progress} track={progressTrack} own={user.id === app.me?.id} name={user.display_name} onclose={() => (progressTrack = null)} />

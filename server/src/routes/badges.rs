@@ -146,9 +146,27 @@ pub async fn delete(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(bi
     Ok(Json(json!({})))
 }
 
-pub async fn grant(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((target, bid)): Path<(Uuid, Uuid)>) -> Result<Json<Value>> {
+#[derive(Deserialize, Default)]
+pub struct GrantBody {
+    since: Option<chrono::NaiveDate>,
+}
+
+pub async fn grant(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((target, bid)): Path<(Uuid, Uuid)>, body: Option<Json<GrantBody>>) -> Result<Json<Value>> {
     require_admin(&st, uid).await?;
-    sqlx::query("INSERT INTO user_badges (user_id, badge_id) VALUES ($1, $2) ON CONFLICT DO NOTHING").bind(target).bind(bid).execute(&st.db).await?;
+    let since = body.and_then(|b| b.0.since);
+    if let Some(day) = since {
+        let today = chrono::Utc::now().date_naive();
+        if day > today || day < chrono::NaiveDate::from_ymd_opt(2000, 1, 1).unwrap_or(day) {
+            return bad("That date is not possible");
+        }
+    }
+    let at = since.and_then(|d| d.and_hms_opt(12, 0, 0)).map(|d| d.and_utc());
+    sqlx::query("INSERT INTO user_badges (user_id, badge_id, granted_at) VALUES ($1, $2, COALESCE($3, now())) ON CONFLICT (user_id, badge_id) DO UPDATE SET granted_at = COALESCE($3, user_badges.granted_at)")
+        .bind(target)
+        .bind(bid)
+        .bind(at)
+        .execute(&st.db)
+        .await?;
     announce(&st, target).await?;
     Ok(Json(json!({})))
 }
