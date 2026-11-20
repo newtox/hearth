@@ -185,6 +185,8 @@
     white-space: normal;
   }
   .menu {
+    animation: pop-in 0.12s ease-out;
+    transform-origin: top left;
     position: fixed;
     z-index: 80;
     min-width: 220px;

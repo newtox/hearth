@@ -25,9 +25,21 @@
   import TitleBar from './components/TitleBar.svelte';
   import { isApp } from './lib/api';
   import UpdateBanner from './components/UpdateBanner.svelte';
+  import { untrack } from 'svelte';
   import { watchUpdates } from './lib/update.svelte';
 
   watchUpdates();
+
+  let cols = $state<HTMLElement>();
+  const view = $derived(`${app.guildId ?? ''}:${app.channelId ?? ''}`);
+  $effect(() => {
+    view;
+    untrack(() => {
+      const pane = cols?.children[1] as HTMLElement | undefined;
+      if (!pane || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      pane.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 160, easing: 'ease-out' });
+    });
+  });
 
   const framed = isApp && !/android|iphone|ipad/i.test(navigator.userAgent);
 </script>
@@ -50,7 +62,7 @@
     <UpdateBanner />
     <div class="window">
       <Dock />
-      <div class="cols" data-pane={app.pane}>
+      <div class="cols" data-pane={app.pane} bind:this={cols}>
         <Sidebar />
         {#if channel()?.kind === 'voice'}<VoiceStage />{:else if !app.guildId && !app.channelId}<FriendsPane />{:else}<Chat />{/if}
         {#if app.side && channel() && channel()?.kind !== 'voice'}<SidePanel />{:else if guild()}<Members />{/if}

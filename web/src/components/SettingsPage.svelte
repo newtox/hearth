@@ -64,10 +64,12 @@
     </div>
   </nav>
   <main class="content scroll" bind:this={main}>
-    <div class="inner">
-      <h2>{active?.name ?? ''}</h2>
-      {@render children()}
-    </div>
+    {#key current}
+      <div class="inner view">
+        <h2>{active?.name ?? ''}</h2>
+        {@render children()}
+      </div>
+    {/key}
   </main>
   <button class="close" onclick={close} aria-label={t('common_close')}>
     <span class="ring"><Icon name="close" /></span>
@@ -76,7 +78,11 @@
 </div>
 
 <style>
+  .view {
+    animation: rise-in 0.18s ease-out;
+  }
   .settings {
+    animation: fade-in 0.16s ease-out;
     position: fixed;
     inset: 0;
     z-index: 60;

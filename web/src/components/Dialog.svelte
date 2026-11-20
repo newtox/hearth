@@ -70,6 +70,7 @@
 
 <style>
   .backdrop {
+    animation: fade-in 0.14s ease-out;
     position: fixed;
     inset: 0;
     z-index: 95;
@@ -81,6 +82,7 @@
     background: rgba(8, 5, 20, 0.6);
   }
   .dialog {
+    animation: pop-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1);
     width: min(440px, 100%);
     max-height: min(92dvh, 640px);
     display: flex;

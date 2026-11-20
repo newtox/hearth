@@ -87,6 +87,7 @@
 
 <style>
   .veil {
+    animation: fade-in 0.14s ease-out;
     position: fixed;
     inset: 0;
     z-index: 90;
@@ -96,6 +97,7 @@
     background: rgb(0 0 0 / 0.55);
   }
   .sheet {
+    animation: pop-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1);
     position: relative;
     width: min(420px, 100%);
     display: grid;

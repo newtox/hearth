@@ -195,6 +195,7 @@
     z-index: 30;
   }
   .picker {
+    animation: pop-in 0.12s ease-out;
     position: absolute;
     right: 12px;
     bottom: 74px;

@@ -155,6 +155,7 @@
     background: rgba(8, 5, 20, 0.6);
   }
   .card {
+    animation: pop-in 0.14s ease-out;
     width: min(400px, 100%);
     overflow: hidden;
   }
