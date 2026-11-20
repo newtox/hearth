@@ -1,10 +1,10 @@
-import { ask } from './dialog.svelte';
-import { api } from './api';
+import { ask, askText } from './dialog.svelte';
+import { api, inviteUrl } from './api';
 import { t } from './i18n.svelte';
 import { w } from './theme.svelte';
-import { app, attempt, can, canModerate, openDm, setStatus, toast, P, type Channel, type Guild, type MenuItem, type Status } from './store.svelte';
+import { app, attempt, can, canModerate, isBlocked, isFriend, openDm, select, setStatus, toast, P, type Channel, type Dm, type Guild, type MenuItem, type Status } from './store.svelte';
 import * as mod from './moderation';
-import { canCall, setInputVolume, setUserVolume, voice } from './voice.svelte';
+import { canCall, joinVoice, setInputVolume, setUserVolume, voice } from './voice.svelte';
 
 type Entry = MenuItem | false | null | undefined | 0;
 
@@ -75,10 +75,89 @@ export function memberMenu(userId: string, g: Guild | null): Entry[] {
   ];
 }
 
+function personOf(userId: string) {
+  return app.friends.friends.find((u) => u.id === userId) ?? app.dms.flatMap((d) => d.recipients).find((u) => u.id === userId) ?? null;
+}
+
+async function call(userId: string, dm?: Dm) {
+  const d = dm ?? (await openDm(userId));
+  if (!d) return;
+  if (dm) select(null, d.id);
+  joinVoice(d);
+}
+
+async function editNote(userId: string) {
+  const current = (await attempt(api<{ note?: string }>('GET', `/users/${userId}`)))?.note ?? '';
+  const next = await askText({ title: t('menu_edit_note'), text: t('menu_note_only_you'), input: { value: current, label: t('menu_note'), placeholder: t('menu_note_placeholder') }, confirm: t('common_save') });
+  if (next === null || next === undefined || next === current) return;
+  if ((await attempt(api('PUT', `/users/${userId}/note`, { note: next }))) !== undefined) toast(t('menu_note_saved'));
+}
+
+async function inviteTo(g: Guild, userId: string) {
+  const inv = await attempt(api<{ code: string }>('POST', `/guilds/${g.id}/invites`, { expires_in_hours: 168, max_uses: 1 }));
+  if (!inv) return;
+  const dm = await openDm(userId, false);
+  if (!dm) return;
+  if ((await attempt(api('POST', `/channels/${dm.id}/messages`, { content: inviteUrl(inv.code) }))) !== undefined) toast(t('menu_invite_sent', { server: g.name }));
+}
+
+async function unfriend(userId: string) {
+  const name = personOf(userId)?.display_name ?? '';
+  if (await ask({ title: t('common_remove_friend'), text: t('friends_pane_really_remove_name_as_friend', { name }), confirm: t('common_remove'), danger: true })) await attempt(api('DELETE', `/friends/${userId}`));
+}
+
+async function block(userId: string) {
+  const name = personOf(userId)?.display_name ?? '';
+  if (await ask({ title: t('profile_card_block_name', { name }), text: t('profile_card_no_longer_able_message_each'), confirm: t('profile_card_block'), danger: true })) await attempt(api('PUT', `/blocks/${userId}`));
+}
+
+async function addFriend(userId: string) {
+  const u = personOf(userId);
+  if (u && (await attempt(api('POST', '/friends', { username: u.username })))) toast(t('friends_pane_request_sent_name', { name: u.display_name }));
+}
+
+async function closeDm(dm: Dm) {
+  await attempt(api('POST', `/channels/${dm.id}/close`));
+}
+
+export function friendMenu(userId: string, dm?: Dm): Entry[] {
+  const guilds = app.guilds.filter((g) => can(P.CREATE_INVITE, g) && !g.members.some((m) => m.id === userId));
+  const friend = isFriend(userId);
+  const blocked = isBlocked(userId);
+  const pending = app.friends.outgoing.some((u) => u.id === userId) || app.friends.incoming.some((u) => u.id === userId);
+  return [
+    dm && app.unread[dm.id] && { label: t('menu_mark_as_read'), icon: 'check', action: () => delete app.unread[dm.id] },
+    'sep',
+    { label: t('common_profile'), icon: 'user', action: () => (app.profile = userId) },
+    !dm && { label: t('common_send_message'), icon: 'message', action: () => openDm(userId) },
+    canCall && !blocked && { label: t('menu_start_call'), icon: 'phone', action: () => call(userId, dm) },
+    { label: t('menu_edit_note'), hint: t('menu_note_only_you'), icon: 'edit', action: () => editNote(userId) },
+    canCall && { label: t('voice_user_volume'), range: { max: 2, value: () => voice.userVolume[userId] ?? 1, set: (v: number) => setUserVolume(userId, v) } },
+    'sep',
+    guilds.length > 0 && { label: t('menu_invite_to_server', { server: w('server') }), icon: 'userPlus', items: guilds.map((g) => ({ label: g.name, action: () => inviteTo(g, userId) })) },
+    friend && { label: t('common_remove_friend'), icon: 'userMinus', action: () => unfriend(userId) },
+    !friend && !blocked && !pending && { label: t('menu_add_friend'), icon: 'userPlus', action: () => addFriend(userId) },
+    dm && { label: t('menu_close_dm'), icon: 'close', action: () => closeDm(dm) },
+    blocked ? { label: t('common_unblock'), icon: 'ban', action: () => attempt(api('DELETE', `/blocks/${userId}`)) } : { label: t('profile_card_block'), icon: 'ban', danger: true, action: () => block(userId) },
+    'sep',
+    { label: t('common_copy_user_id'), icon: 'id', action: () => mod.copy(userId) },
+    dm && { label: t('menu_copy_channel_id'), icon: 'id', action: () => mod.copy(dm.id) },
+  ];
+}
+
+export function groupMenu(dm: Dm): Entry[] {
+  return [
+    app.unread[dm.id] && { label: t('menu_mark_as_read'), icon: 'check', action: () => delete app.unread[dm.id] },
+    { label: t('menu_group_settings'), icon: 'gear', action: () => (app.modal = { kind: 'groupchat', dm }) },
+    'sep',
+    { label: t('menu_copy_channel_id'), icon: 'id', action: () => mod.copy(dm.id) },
+  ];
+}
+
 async function invite(g: Guild) {
   const inv = await attempt(api<{ code: string }>('POST', `/guilds/${g.id}/invites`, { expires_in_hours: 168, max_uses: 0 }));
   if (!inv) return;
-  await mod.copy(`${location.origin}/#/invite/${inv.code}`);
+  await mod.copy(inviteUrl(inv.code));
   toast(t('menu_invite_link_copied_valid_7'));
 }
 

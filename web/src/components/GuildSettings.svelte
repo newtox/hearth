@@ -2,7 +2,7 @@
   import { ask, askText } from '../lib/dialog.svelte';
   import { auditDetail, locale, serverError, t } from '../lib/i18n.svelte';
   import { untrack } from 'svelte';
-  import { api, asset, base, getToken, upload } from '../lib/api';
+  import { api, asset, base, getToken, inviteUrl, upload } from '../lib/api';
   import { PERMISSIONS, has } from '../lib/perms';
   import { app, attempt, can, canModerate, guild, toast, topPosition, P, type Role } from '../lib/store.svelte';
   import { w } from '../lib/theme.svelte';
@@ -206,7 +206,7 @@
   let bans = $state<any[]>([]);
 
   function link(code: string) {
-    return `${location.origin}/#/invite/${code}`;
+    return inviteUrl(code);
   }
 
   async function loadInvites() {

@@ -36,9 +36,20 @@
     openBadge = user?.badges?.find((x) => x.id === id) ?? openBadge;
   }
 
+  let note = $state('');
+
+  async function saveNote() {
+    if (!user || note.trim() === (user.note ?? '')) return;
+    const res = await attempt(api<{ note: string }>('PUT', `/users/${userId}/note`, { note }));
+    if (res) user.note = res.note;
+  }
+
   $effect(() => {
     user = null;
-    attempt(api<User>('GET', `/users/${userId}`)).then((u) => (user = u ?? null));
+    attempt(api<User>('GET', `/users/${userId}`)).then((u) => {
+      user = u ?? null;
+      note = u?.note ?? '';
+    });
     if (app.me?.is_admin) attempt(api<Badge[]>('GET', '/badges')).then((b) => (allBadges = b ?? []));
   });
 
@@ -92,6 +103,12 @@
           </div>
         {/if}
         {#if user.bio}<p class="bio">{user.bio}</p>{/if}
+        {#if user.id !== app.me?.id}
+          <label class="note">
+            <span class="muted small">{t('menu_note')} <span class="faint">· {t('menu_note_only_you')}</span></span>
+            <textarea rows="1" maxlength="256" bind:value={note} placeholder={t('menu_note_placeholder')} onblur={saveNote} onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), e.currentTarget.blur())}></textarea>
+          </label>
+        {/if}
         {#if roles.length}
           <div class="roles">
             {#each roles as r (r.id)}<span class="role" style:--c={r.color ?? 'var(--muted)'}>{r.name}</span>{/each}
@@ -153,6 +170,32 @@
     place-items: center;
     padding: 16px;
     background: rgba(8, 5, 20, 0.6);
+  }
+  .note {
+    display: grid;
+    gap: 2px;
+  }
+  .note .faint {
+    opacity: 0.7;
+  }
+  .note textarea {
+    resize: none;
+    field-sizing: content;
+    min-height: 1.6em;
+    padding: 4px 6px;
+    margin: 0 -6px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-s);
+    background: none;
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.9em;
+  }
+  .note textarea:hover,
+  .note textarea:focus {
+    border-color: var(--line);
+    background: var(--panel-2);
+    outline: none;
   }
   .card {
     animation: pop-in 0.14s ease-out;

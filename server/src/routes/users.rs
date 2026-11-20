@@ -118,8 +118,60 @@ pub async fn clear_banner(State(st): State<AppState>, AuthUser(uid): AuthUser) -
     clear_image(&st, uid, "banner").await
 }
 
-pub async fn get_user(State(st): State<AppState>, AuthUser(_): AuthUser, Path(id): Path<Uuid>) -> Result<Json<PublicUser>> {
-    Ok(Json(public_user(&st, id).await?))
+pub async fn get_user(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(id): Path<Uuid>) -> Result<Json<PublicUser>> {
+    let mut user = public_user(&st, id).await?;
+    if id != uid {
+        user.note = sqlx::query_scalar("SELECT note FROM user_notes WHERE owner_id = $1 AND target_id = $2").bind(uid).bind(id).fetch_optional(&st.db).await?;
+    }
+    Ok(Json(user))
+}
+
+#[derive(Deserialize)]
+pub struct NoteBody {
+    note: String,
+}
+
+pub async fn set_note(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(id): Path<Uuid>, Json(b): Json<NoteBody>) -> Result<Json<Value>> {
+    let note = b.note.trim();
+    if note.chars().count() > 256 {
+        return bad("Note: at most 256 characters");
+    }
+    if id == uid {
+        return bad("You cannot add a note to yourself");
+    }
+    if note.is_empty() {
+        sqlx::query("DELETE FROM user_notes WHERE owner_id = $1 AND target_id = $2").bind(uid).bind(id).execute(&st.db).await?;
+    } else {
+        sqlx::query("INSERT INTO user_notes (owner_id, target_id, note) VALUES ($1, $2, $3) ON CONFLICT (owner_id, target_id) DO UPDATE SET note = $3, updated_at = now()")
+            .bind(uid)
+            .bind(id)
+            .bind(note)
+            .execute(&st.db)
+            .await?;
+    }
+    Ok(Json(json!({ "note": note })))
+}
+
+pub async fn close_dm(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid): Path<Uuid>) -> Result<Json<Value>> {
+    let done = sqlx::query("UPDATE dm_recipients r SET hidden = true FROM channels c WHERE c.id = r.channel_id AND c.kind = 'dm' AND r.channel_id = $1 AND r.user_id = $2")
+        .bind(cid)
+        .bind(uid)
+        .execute(&st.db)
+        .await?;
+    if done.rows_affected() == 0 {
+        return Err(AppError::NotFound);
+    }
+    st.hub.send(&[uid], "DM_DELETE", json!({ "id": cid }));
+    Ok(Json(json!({})))
+}
+
+pub async fn reopen_dm(st: &AppState, cid: Uuid) -> Result<()> {
+    let back: Vec<Uuid> = sqlx::query_scalar("UPDATE dm_recipients SET hidden = false WHERE channel_id = $1 AND hidden RETURNING user_id").bind(cid).fetch_all(&st.db).await?;
+    if !back.is_empty() {
+        let dm = dm_json(st, cid).await?;
+        st.hub.send(&back, "DM_CREATE", &dm);
+    }
+    Ok(())
 }
 
 pub async fn dm_json(st: &AppState, channel_id: Uuid) -> Result<Value> {
@@ -158,6 +210,7 @@ pub async fn open_dm(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b
     .fetch_optional(&st.db)
     .await?;
     if let Some(id) = existing {
+        sqlx::query("UPDATE dm_recipients SET hidden = false WHERE channel_id = $1 AND user_id = $2").bind(id).bind(uid).execute(&st.db).await?;
         return Ok(Json(dm_json(&st, id).await?));
     }
     let shared: bool = sqlx::query_scalar(

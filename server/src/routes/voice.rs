@@ -122,6 +122,7 @@ pub async fn join(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid)
             super::messages::call_joined(&st, cid, uid).await?;
         }
         if gid.is_none() && first {
+            super::users::reopen_dm(&st, cid).await?;
             let others: Vec<Uuid> = sqlx::query_scalar("SELECT user_id FROM dm_recipients WHERE channel_id = $1 AND user_id <> $2 AND user_id NOT IN (SELECT user_id FROM blocks WHERE blocked_id = $2)")
                 .bind(cid)
                 .bind(uid)

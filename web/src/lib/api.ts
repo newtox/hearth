@@ -9,6 +9,10 @@ export function base(): string {
   return (localStorage.getItem('hearth_server') ?? import.meta.env.VITE_SERVER_URL ?? '').replace(/\/+$/, '');
 }
 
+export function inviteUrl(code: string) {
+  return `${base() || location.origin}/#/invite/${code}`;
+}
+
 export function setServer(url: string) {
   const clean = url.trim().replace(/\/+$/, '');
   if (clean) localStorage.setItem('hearth_server', /^https?:\/\//.test(clean) ? clean : `https://${clean}`);

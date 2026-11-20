@@ -4,7 +4,7 @@
   import { api, asset } from '../lib/api';
   import { w } from '../lib/theme.svelte';
   import { leaveVoice, toggleMute, voice, voiceMembers } from '../lib/voice.svelte';
-  import { channelMenu, guildMenu, memberMenu, openBelow, openMenu } from '../lib/menus';
+  import { channelMenu, friendMenu, groupMenu, guildMenu, memberMenu, openBelow, openMenu } from '../lib/menus';
   import Avatar from './Avatar.svelte';
   import { sortable, type Place } from '../lib/drag';
   import Icon from './Icon.svelte';
@@ -122,7 +122,7 @@
       </div>
       {#each app.dms as d (d.id)}
         {@const p = partner(d)}
-        <div class="item" class:active={d.id === app.channelId} class:unread={app.unread[d.id]}>
+        <div class="item" class:active={d.id === app.channelId} class:unread={app.unread[d.id]} role="presentation" oncontextmenu={(e) => openMenu(e, d.kind === 'group' ? groupMenu(d) : friendMenu(p.id, d))}>
           <button class="main row" onclick={() => select(null, d.id)}>
             {#if d.kind === 'group'}
               <span class="groupicon">{#if d.icon}<StillImg src={asset(d.icon)!} alt="" />{:else}<Icon name="users" size={16} />{/if}</span>

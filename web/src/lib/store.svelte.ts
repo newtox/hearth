@@ -32,6 +32,7 @@ export interface User {
   two_factor?: boolean;
   badges?: Badge[];
   streaming?: boolean;
+  note?: string;
   progress?: Progress;
 }
 export interface Progress {
@@ -585,13 +586,16 @@ export async function loadMessages(channelId: string, older = false) {
   app.messages[channelId] = older ? [...page, ...(app.messages[channelId] ?? [])] : page;
 }
 
-export async function openDm(userId: string) {
+export async function openDm(userId: string, show = true) {
   const dm = await attempt(api<Dm>('POST', '/users/@me/channels', { user_id: userId }));
   if (!dm) return;
   if (!app.dms.some((d) => d.id === dm.id)) app.dms.unshift(dm);
-  app.profile = null;
-  app.modal = null;
-  select(null, dm.id);
+  if (show) {
+    app.profile = null;
+    app.modal = null;
+    select(null, dm.id);
+  }
+  return dm;
 }
 
 export function canModerate(g: Guild, targetId: string, bit: number) {

@@ -128,6 +128,8 @@ async fn main() {
         .route("/users/@me/banner", post(users::set_banner).delete(users::clear_banner))
         .route("/users/@me/channels", post(users::open_dm))
         .route("/users/{id}", get(users::get_user))
+        .route("/users/{id}/note", put(users::set_note))
+        .route("/channels/{id}/close", post(users::close_dm))
         .route("/users/{id}/badges/{bid}", put(badges::grant).delete(badges::revoke))
         .route("/badges", get(badges::list).post(badges::create))
         .route("/badges/{bid}", delete(badges::delete).patch(badges::update))

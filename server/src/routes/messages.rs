@@ -274,6 +274,9 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
         }
     }
     tx.commit().await?;
+    if a.channel.guild_id.is_none() {
+        super::users::reopen_dm(&st, cid).await?;
+    }
     let msg = fetch(&st, id).await?;
     st.hub.send(&viewers(&st, &a.channel).await?, "MESSAGE_CREATE", &msg);
     Ok(Json(msg))

@@ -15,7 +15,7 @@ async fn ready(st: &AppState, uid: Uuid) -> Result<Value> {
     for g in guild_ids {
         guilds.push(snapshot(st, g, uid).await?);
     }
-    let dm_ids: Vec<Uuid> = sqlx::query_scalar("SELECT channel_id FROM dm_recipients WHERE user_id = $1 ORDER BY channel_id DESC").bind(uid).fetch_all(&st.db).await?;
+    let dm_ids: Vec<Uuid> = sqlx::query_scalar("SELECT channel_id FROM dm_recipients WHERE user_id = $1 AND NOT hidden ORDER BY channel_id DESC").bind(uid).fetch_all(&st.db).await?;
     let mut dms = Vec::with_capacity(dm_ids.len());
     for d in dm_ids {
         dms.push(dm_json(st, d).await?);
