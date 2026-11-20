@@ -26,8 +26,14 @@
   let topic = $state(modal.channel?.topic ?? '');
   let parent = $state<string>(modal.channel?.parent_id ?? modal.parent ?? '');
 
+  const dirty = $derived(existing ? name !== existing.name || topic !== (existing.topic ?? '') || parent !== (existing.parent_id ?? '') : !!name.trim() || !!topic.trim());
+
   function close() {
     app.modal = null;
+  }
+
+  async function dismiss() {
+    if (!dirty || (await ask({ title: t('unsaved_title'), text: t('unsaved_text'), confirm: t('unsaved_discard'), danger: true }))) close();
   }
 
   async function save(e: SubmitEvent) {
@@ -71,7 +77,7 @@
   }
 </script>
 
-<Modal title={existing ? t(kind === 'category' ? 'common_edit_category' : kind === 'voice' ? 'channel_editor_edit_voice_channel' : 'channel_editor_edit_channel') : t(kind === 'category' ? 'channel_editor_create_category' : kind === 'voice' ? 'channel_editor_create_voice_channel' : 'common_create_channel')} onclose={close} wide={!!existing && kind !== 'category'}>
+<Modal title={existing ? t(kind === 'category' ? 'common_edit_category' : kind === 'voice' ? 'channel_editor_edit_voice_channel' : 'channel_editor_edit_channel') : t(kind === 'category' ? 'channel_editor_create_category' : kind === 'voice' ? 'channel_editor_create_voice_channel' : 'common_create_channel')} onclose={dismiss} wide={!!existing && kind !== 'category'}>
   <div class="stack">
     <form class="stack" onsubmit={save}>
       {#if !existing && kind !== 'category'}

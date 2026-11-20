@@ -17,6 +17,9 @@
   import Modal from './Modal.svelte';
   import TwoFactor from './TwoFactor.svelte';
   import Sessions from './Sessions.svelte';
+  import UnsavedBar from './UnsavedBar.svelte';
+  import { leave } from '../lib/unsaved.svelte';
+  import { onDestroy } from 'svelte';
   import { notifications } from '../lib/notify';
   import { checkForUpdate, installUpdate, update } from '../lib/update.svelte';
   import { allowDevices, canPickOutput, listDevices, setInputDevice, setInputVolume, setOutputDevice, setOutputVolume, voice, type AudioDevice } from '../lib/voice.svelte';
@@ -26,13 +29,56 @@
   let bio = $state(app.me!.bio ?? '');
   let accent = $state(app.me!.accent_color ?? '#6b5bd6');
 
-  async function save(e: SubmitEvent) {
-    e.preventDefault();
-    const u = await attempt(api<User>('PATCH', '/users/@me', { display_name: displayName, bio, accent_color: accent }));
-    if (u) {
-      app.me = u;
-      toast(t('user_settings_profile_saved'));
+  type Draft = { file: File; url: string } | 'remove' | null;
+  let avatarDraft = $state<Draft>(null);
+  let bannerDraft = $state<Draft>(null);
+  let savingProfile = $state(false);
+  const shownAvatar = $derived(avatarDraft === 'remove' ? null : (avatarDraft?.url ?? me.avatar));
+  const shownBanner = $derived(bannerDraft === 'remove' ? null : (bannerDraft?.url ?? me.banner));
+  const profileDirty = $derived(displayName !== me.display_name || bio !== (me.bio ?? '') || accent !== (me.accent_color ?? '#6b5bd6') || avatarDraft !== null || bannerDraft !== null);
+
+  function setDraft(kind: 'avatar' | 'banner', next: Draft) {
+    const old = kind === 'avatar' ? avatarDraft : bannerDraft;
+    if (old && old !== 'remove') URL.revokeObjectURL(old.url);
+    if (kind === 'avatar') avatarDraft = next;
+    else bannerDraft = next;
+  }
+
+  function resetProfile() {
+    displayName = me.display_name;
+    bio = me.bio ?? '';
+    accent = me.accent_color ?? '#6b5bd6';
+    setDraft('avatar', null);
+    setDraft('banner', null);
+  }
+
+  async function sendImage(kind: 'avatar' | 'banner', draft: Draft) {
+    if (!draft) return true;
+    const u = await attempt(draft === 'remove' ? api<User>('DELETE', `/users/@me/${kind}`) : upload<User>(`/users/@me/${kind}`, draft.file));
+    if (!u) return false;
+    app.me = u;
+    setDraft(kind, null);
+    return true;
+  }
+
+  async function saveProfile() {
+    if (savingProfile) return;
+    savingProfile = true;
+    try {
+      if (!(await sendImage('avatar', avatarDraft)) || !(await sendImage('banner', bannerDraft))) return;
+      const u = await attempt(api<User>('PATCH', '/users/@me', { display_name: displayName, bio, accent_color: accent }));
+      if (u) {
+        app.me = u;
+        toast(t('user_settings_profile_saved'));
+      }
+    } finally {
+      savingProfile = false;
     }
+  }
+
+  function save(e: SubmitEvent) {
+    e.preventDefault();
+    saveProfile();
   }
 
   let badges = $state<Badge[]>([]);
@@ -50,7 +96,11 @@
   let canTranslate = $state(false);
   api<{ translate?: boolean }>('GET', '/config').then((c) => (canTranslate = !!c.translate)).catch(() => {});
 
-  function editBadge(b: Badge) {
+  let badgeBase = $state(JSON.stringify(emptyBadge()));
+  const badgeDirty = $derived(JSON.stringify(badge) !== badgeBase);
+
+  async function editBadge(b: Badge) {
+    if (b.id !== badgeEditing && !(await leave())) return;
     badgeEditing = b.id;
     badge = {
       name: b.name,
@@ -62,15 +112,26 @@
         da: { name: b.translations?.da?.name ?? '', description: b.translations?.da?.description ?? '' },
       },
     };
+    badgeBase = JSON.stringify(badge);
   }
 
   function cancelBadge() {
     badgeEditing = null;
     badge = emptyBadge();
+    badgeBase = JSON.stringify(badge);
   }
 
-  async function addBadge(e: SubmitEvent) {
+  function resetBadge() {
+    badge = JSON.parse(badgeBase);
+  }
+
+  function addBadge(e: SubmitEvent) {
     e.preventDefault();
+    saveBadge();
+  }
+
+  async function saveBadge() {
+    if (!badge.name.trim()) return toast(t('validation_required'));
     const saved = await attempt(api<Badge>(badgeEditing ? 'PATCH' : 'POST', badgeEditing ? `/badges/${badgeEditing}` : '/badges', badge));
     if (saved) {
       toast(badgeEditing ? t('user_settings_badge_saved') : t('user_settings_badge_created'));
@@ -90,15 +151,18 @@
 
   async function pick(e: Event, kind: 'avatar' | 'banner') {
     const file = await pickImage(e, kind === 'avatar' ? 'circle' : 'banner');
-    if (!file) return;
-    const u = await attempt(upload<User>(`/users/@me/${kind}`, file));
-    if (u) app.me = u;
+    if (file) setDraft(kind, { file, url: URL.createObjectURL(file) });
   }
 
-  async function clearImage(kind: 'avatar' | 'banner') {
-    const u = await attempt(api<User>('DELETE', `/users/@me/${kind}`));
-    if (u) app.me = u;
+  function clearImage(kind: 'avatar' | 'banner') {
+    const current = kind === 'avatar' ? me.avatar : me.banner;
+    setDraft(kind, current ? 'remove' : null);
   }
+
+  onDestroy(() => {
+    setDraft('avatar', null);
+    setDraft('banner', null);
+  });
 
   let section = $state('account');
   let devices = $state<{ inputs: AudioDevice[]; outputs: AudioDevice[]; labeled: boolean } | null>(null);
@@ -245,17 +309,18 @@
         <div class="row wrap">
           <label class="btn">{t('user_settings_change_avatar')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={(e) => pick(e, 'avatar')} hidden /></label>
           <label class="btn">{t('user_settings_change_banner')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={(e) => pick(e, 'banner')} hidden /></label>
-          {#if me.avatar}<button type="button" class="btn" onclick={() => clearImage('avatar')}>{t('user_settings_remove_avatar')}</button>{/if}
-          {#if me.banner}<button type="button" class="btn" onclick={() => clearImage('banner')}>{t('user_settings_remove_banner')}</button>{/if}
+          {#if shownAvatar}<button type="button" class="btn" onclick={() => clearImage('avatar')}>{t('user_settings_remove_avatar')}</button>{/if}
+          {#if shownBanner}<button type="button" class="btn" onclick={() => clearImage('banner')}>{t('user_settings_remove_banner')}</button>{/if}
         </div>
-        <div><button class="btn primary">{t('user_settings_save_profile')}</button></div>
+        <div><button class="btn primary" disabled={!profileDirty || savingProfile}>{t('user_settings_save_profile')}</button></div>
+        <UnsavedBar dirty={profileDirty} busy={savingProfile} onreset={resetProfile} onsave={saveProfile} />
       </form>
       <div class="stack">
         <span class="muted small">{t('user_settings_preview')}</span>
         <div class="preview" data-hover>
-          <div class="banner" use:hoverHost={(on) => (previewMoving = on)} style:background-color={accent} style:background-image={backdrop(me.banner, previewMoving)}></div>
+          <div class="banner" use:hoverHost={(on) => (previewMoving = on)} style:background-color={accent} style:background-image={backdrop(shownBanner, previewMoving)}></div>
           <div class="who">
-            <Avatar id={me.id} name={displayName || me.username} image={me.avatar} size={64} />
+            <Avatar id={me.id} name={displayName || me.username} image={shownAvatar} size={64} />
             <strong>{displayName}</strong>
             <span class="muted">@{me.username}</span>
             {#if bio}<p class="bio">{bio}</p>{/if}
@@ -360,6 +425,7 @@
         <button class="btn">{badgeEditing ? t('common_save') : t('user_settings_create_badge')}</button>
         {#if badgeEditing}<button type="button" class="btn" onclick={cancelBadge}>{t('common_cancel')}</button>{/if}
       </div>
+      <UnsavedBar dirty={badgeDirty} onreset={resetBadge} onsave={saveBadge} />
     </form>
   {:else if section === 'help'}
     <div class="row version">

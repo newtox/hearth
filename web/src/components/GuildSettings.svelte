@@ -12,6 +12,9 @@
   import { sortable, type Place } from '../lib/drag';
   import { pickImage } from '../lib/crop.svelte';
   import SettingsPage from './SettingsPage.svelte';
+  import UnsavedBar from './UnsavedBar.svelte';
+  import { leave as leaveUnsaved } from '../lib/unsaved.svelte';
+  import { onDestroy } from 'svelte';
 
   let { tab: initial = 'overview' }: { tab?: string } = $props();
 
@@ -35,19 +38,52 @@
   let name = $state(guild()!.name);
   let description = $state(guild()!.description);
 
-  async function saveOverview(e: SubmitEvent) {
+  let iconDraft = $state<{ file: File; url: string } | 'remove' | null>(null);
+  let savingOverview = $state(false);
+  const shownIcon = $derived(iconDraft === 'remove' ? null : (iconDraft?.url ?? g.icon));
+  const overviewDirty = $derived(name !== g.name || description !== g.description || iconDraft !== null);
+
+  function setIcon(next: typeof iconDraft) {
+    if (iconDraft && iconDraft !== 'remove') URL.revokeObjectURL(iconDraft.url);
+    iconDraft = next;
+  }
+
+  function resetOverview() {
+    name = g.name;
+    description = g.description;
+    setIcon(null);
+  }
+
+  async function saveOverviewNow() {
+    if (savingOverview) return;
+    savingOverview = true;
+    try {
+      if (iconDraft) {
+        const ok = iconDraft === 'remove' ? await attempt(api('DELETE', `/guilds/${g.id}/icon`)) : await attempt(upload(`/guilds/${g.id}/icon`, iconDraft.file));
+        if (ok === undefined) return;
+        setIcon(null);
+      }
+      if (await attempt(api('PATCH', `/guilds/${g.id}`, { name, description }))) toast(t('guild_settings_saved'));
+    } finally {
+      savingOverview = false;
+    }
+  }
+
+  function saveOverview(e: SubmitEvent) {
     e.preventDefault();
-    if (await attempt(api('PATCH', `/guilds/${g.id}`, { name, description }))) toast(t('guild_settings_saved'));
+    saveOverviewNow();
   }
 
   async function pickIcon(e: Event) {
     const file = await pickImage(e, 'square');
-    if (file) await attempt(upload(`/guilds/${g.id}/icon`, file));
+    if (file) setIcon({ file, url: URL.createObjectURL(file) });
   }
 
-  async function clearIcon() {
-    await attempt(api('DELETE', `/guilds/${g.id}/icon`));
+  function clearIcon() {
+    setIcon(g.icon ? 'remove' : null);
   }
+
+  onDestroy(() => setIcon(null));
 
   async function leave() {
     if ((await ask({ title: t('common_leave_name', { name: g.name }), text: t('common_only_rejoin_new_invite'), confirm: t('common_leave'), danger: true }))) await attempt(api('DELETE', `/guilds/${g.id}/members/${app.me!.id}`));
@@ -65,18 +101,33 @@
     return owner || r.position < myTop;
   }
 
+  const roleDirty = $derived(!!role && (draft.name !== role.name || draft.colored !== !!role.color || (draft.colored && draft.color !== role.color) || draft.hoist !== role.hoist || draft.permissions !== role.permissions));
+
+  function resetRole() {
+    if (role) pickRole(role);
+  }
+
+  async function chooseRole(r: Role) {
+    if (r.id === roleId || (await leaveUnsaved())) pickRole(r);
+  }
+
   function pickRole(r: Role) {
     roleId = r.id;
     draft = { name: r.name, color: r.color ?? '#8888aa', colored: !!r.color, hoist: r.hoist, permissions: r.permissions };
   }
 
   async function addRole() {
+    if (!(await leaveUnsaved())) return;
     const r = await attempt(api<Role>('POST', `/guilds/${g.id}/roles`, { name: t('guild_settings_new_role') }));
     if (r) pickRole(r);
   }
 
-  async function saveRole(e: SubmitEvent) {
+  function saveRole(e: SubmitEvent) {
     e.preventDefault();
+    saveRoleNow();
+  }
+
+  async function saveRoleNow() {
     if (!role) return;
     const body = { name: draft.name, color: draft.colored ? draft.color : '', hoist: draft.hoist, permissions: draft.permissions };
     if (await attempt(api('PATCH', `/guilds/${g.id}/roles/${role.id}`, body))) toast(t('guild_settings_role_saved'));
@@ -271,13 +322,14 @@
           {#if can(P.MANAGE_GUILD, g)}
             <form class="stack" onsubmit={saveOverview}>
               <div class="row">
-                <Avatar id={g.id} name={g.name} image={g.icon} size={64} square />
+                <Avatar id={g.id} name={name || g.name} image={shownIcon} size={64} square />
                 <label class="btn">{t('guild_settings_change_icon')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={pickIcon} hidden /></label>
-                {#if g.icon}<button type="button" class="btn" onclick={clearIcon}>{t('guild_settings_remove_icon')}</button>{/if}
+                {#if shownIcon}<button type="button" class="btn" onclick={clearIcon}>{t('guild_settings_remove_icon')}</button>{/if}
               </div>
               <label class="field"><span>{t('common_name')}</span><input class="input" bind:value={name} maxlength="60" required /></label>
               <label class="field"><span>{t('common_description')}</span><textarea class="input" rows="3" maxlength="300" bind:value={description}></textarea></label>
-              <button class="btn primary">{t('common_save_changes')}</button>
+              <button class="btn primary" disabled={!overviewDirty || savingOverview}>{t('common_save_changes')}</button>
+              <UnsavedBar dirty={overviewDirty} busy={savingOverview} onreset={resetOverview} onsave={saveOverviewNow} />
             </form>
           {:else}
             <div class="row">
@@ -298,7 +350,7 @@
           <div class="rolelist">
             {#each g.roles as r (r.id)}
               <div class="roleitem" class:on={r.id === roleId} class:movable={!r.is_default && editable(r)} use:sortable={{ id: r.id, group: 'roles', label: r.name, enabled: !r.is_default && editable(r), place: rolePlace, drop: roleDrop }}>
-                <button class="row grow" onclick={() => pickRole(r)} onkeydown={(e) => roleKey(e, r)} title={!r.is_default && editable(r) ? t('guild_settings_drag_to_sort') : undefined}>
+                <button class="row grow" onclick={() => chooseRole(r)} onkeydown={(e) => roleKey(e, r)} title={!r.is_default && editable(r) ? t('guild_settings_drag_to_sort') : undefined}>
                   <span class="swatch" style:background={r.color ?? 'var(--muted)'}></span>
                   <span class="ellipsis">{r.name}</span>
                 </button>
@@ -334,8 +386,9 @@
                     </label>
                   {/each}
                 </div>
+                <UnsavedBar dirty={roleDirty} onreset={resetRole} onsave={saveRoleNow} />
                 <div class="row">
-                  <button class="btn primary">{t('guild_settings_save_role')}</button>
+                  <button class="btn primary" disabled={!roleDirty}>{t('guild_settings_save_role')}</button>
                   {#if !role.is_default}<button type="button" class="btn danger" onclick={deleteRole}>{t('common_delete')}</button>{/if}
                 </div>
               </fieldset>

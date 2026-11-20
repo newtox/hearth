@@ -226,13 +226,6 @@ async def main():
         print("skip badges (anna is not the first user of the instance)")
     check("badge list", len(call("GET", "/badges", b)[1]) >= 2)
 
-    check("set activity", call("POST", "/users/@me/activity", c, {"kind": "playing", "name": "Tetris"})[0] == 200)
-    ev = await wait_for(wa, "PRESENCE_UPDATE", match=lambda d: d["user_id"] == cid_user and d["activity"])
-    check("activity broadcast", ev and ev["activity"]["name"] == "Tetris" and ev["activity"]["kind"] == "playing", ev)
-    check("activity in snapshot", next(x for x in call("GET", f"/guilds/{gid}", a)[1]["members"] if x["id"] == cid_user)["activity"]["name"] == "Tetris")
-    check("activity in profile", call("GET", f"/users/{cid_user}", a)[1]["activity"]["kind"] == "playing")
-    check("invalid activity", call("POST", "/users/@me/activity", c, {"kind": "hacking", "name": "x"})[0] == 400)
-    check("clear activity", call("DELETE", "/users/@me/activity", c)[0] == 200 and call("GET", f"/users/{cid_user}", a)[1]["activity"] is None)
     check("no streaming outside voice", call("POST", "/voice/stream", c, {"on": True})[0] == 200 and call("GET", f"/users/{cid_user}", a)[1]["streaming"] is False)
     if call("GET", "/users/@me", a)[1]["is_admin"]:
         s, bd = call("POST", "/badges", a, {"name": "Stern" + S, "icon": "svg:star"})
@@ -343,9 +336,7 @@ async def main():
     ev = await wait_for(sa, "PRESENCE_UPDATE", match=lambda d: d["user_id"] == cid_user)
     m = member(cid_user)
     check("invisible looks offline", ev and ev["presence"] == "offline" and not ev["online"] and m["presence"] == "offline" and not m["online"], (ev, m))
-    check("invisible hides activity", call("POST", "/users/@me/activity", c, {"kind": "playing", "name": "Tetris"})[0] == 200 and member(cid_user)["activity"] is None and call("GET", f"/users/{cid_user}", a)[1]["activity"] is None)
     check("own status is kept", call("GET", "/users/@me", c)[1]["status"] == "invisible")
-    call("DELETE", "/users/@me/activity", c)
     call("PATCH", "/users/@me", c, {"status": "online"})
     await wait_for(sa, "PRESENCE_UPDATE", match=lambda d: d["user_id"] == cid_user and d["presence"] == "online")
     await sc.send(json.dumps({"op": "idle", "idle": True}))

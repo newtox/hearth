@@ -32,7 +32,7 @@ async fn identify(socket: &mut WebSocket, st: &AppState) -> Option<(Uuid, Uuid)>
     if v["op"] != "identify" {
         return None;
     }
-    auth::session_from_token(&st.db, v["token"].as_str()?).await
+    auth::session_from_token(&st.db, v["token"].as_str()?, None).await
 }
 
 async fn run(mut socket: WebSocket, st: AppState) {

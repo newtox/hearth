@@ -40,23 +40,29 @@ pub fn hash_token(token: &str) -> String {
     hex::encode(Sha256::digest(token.as_bytes()))
 }
 
-pub async fn session_from_token(db: &PgPool, token: &str) -> Option<(Uuid, Uuid)> {
+pub async fn session_from_token(db: &PgPool, token: &str, device: Option<&Device>) -> Option<(Uuid, Uuid)> {
     let hash = hash_token(token);
-    let row: Option<(Uuid, Uuid, bool)> = sqlx::query_as("SELECT user_id, id, last_seen < now() - interval '2 minutes' FROM sessions WHERE token_hash = $1")
+    let row: Option<(Uuid, Uuid, bool)> = sqlx::query_as("SELECT user_id, id, last_seen < now() - interval '2 minutes' OR (user_agent = '' AND $2) FROM sessions WHERE token_hash = $1")
         .bind(&hash)
+        .bind(device.is_some_and(|d| !d.user_agent.is_empty()))
         .fetch_optional(db)
         .await
         .ok()
         .flatten();
     let (user, session, stale) = row?;
     if stale {
-        let _ = sqlx::query("UPDATE sessions SET last_seen = now() WHERE token_hash = $1").bind(&hash).execute(db).await;
+        let (agent, client, ip) = device.map(|d| (d.user_agent.as_str(), d.client.as_str(), d.ip.as_str())).unwrap_or_default();
+        let _ = sqlx::query(
+            "UPDATE sessions SET last_seen = now(), user_agent = CASE WHEN $2 <> '' THEN $2 ELSE user_agent END, client = CASE WHEN $3 <> '' THEN $3 ELSE client END, ip = CASE WHEN $4 <> '' THEN $4 ELSE ip END WHERE token_hash = $1",
+        )
+        .bind(&hash)
+        .bind(agent)
+        .bind(client)
+        .bind(ip)
+        .execute(db)
+        .await;
     }
     Some((user, session))
-}
-
-pub async fn user_from_token(db: &PgPool, token: &str) -> Option<Uuid> {
-    session_from_token(db, token).await.map(|(user, _)| user)
 }
 
 pub fn bearer(parts: &Parts) -> Option<&str> {
@@ -67,8 +73,9 @@ impl FromRequestParts<AppState> for AuthUser {
     type Rejection = AppError;
 
     async fn from_request_parts(parts: &mut Parts, st: &AppState) -> Result<Self> {
-        let token = bearer(parts).ok_or(AppError::Unauthorized)?;
-        user_from_token(&st.db, token).await.map(AuthUser).ok_or(AppError::Unauthorized)
+        let token = bearer(parts).ok_or(AppError::Unauthorized)?.to_string();
+        let device = Device::from_request_parts(parts, st).await.ok();
+        session_from_token(&st.db, &token, device.as_ref()).await.map(|(user, _)| AuthUser(user)).ok_or(AppError::Unauthorized)
     }
 }
 
@@ -76,8 +83,9 @@ impl FromRequestParts<AppState> for AuthSession {
     type Rejection = AppError;
 
     async fn from_request_parts(parts: &mut Parts, st: &AppState) -> Result<Self> {
-        let token = bearer(parts).ok_or(AppError::Unauthorized)?;
-        let (user, session) = session_from_token(&st.db, token).await.ok_or(AppError::Unauthorized)?;
+        let token = bearer(parts).ok_or(AppError::Unauthorized)?.to_string();
+        let device = Device::from_request_parts(parts, st).await.ok();
+        let (user, session) = session_from_token(&st.db, &token, device.as_ref()).await.ok_or(AppError::Unauthorized)?;
         Ok(AuthSession { user, session })
     }
 }

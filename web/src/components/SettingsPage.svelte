@@ -2,6 +2,7 @@
   import { t } from '../lib/i18n.svelte';
   import type { Snippet } from 'svelte';
   import Icon from './Icon.svelte';
+  import { leave } from '../lib/unsaved.svelte';
 
   export interface Section {
     id: string;
@@ -26,14 +27,20 @@
   const active = $derived(sections.find((s) => s.id === current));
   let main = $state<HTMLElement>();
 
-  function pick(s: Section) {
+  async function pick(s: Section) {
+    if (s.id === current && !s.action) return;
+    if (!(await leave())) return;
     if (s.action) return s.action();
     current = s.id;
     main?.scrollTo({ top: 0 });
   }
 
+  async function close() {
+    if (await leave()) onclose();
+  }
+
   function key(e: KeyboardEvent) {
-    if (e.key === 'Escape' && !(e.target as HTMLElement).closest('input, textarea, select') && !document.querySelector('[aria-modal="true"][role="dialog"]:not(.settings)')) onclose();
+    if (e.key === 'Escape' && !(e.target as HTMLElement).closest('input, textarea, select') && !document.querySelector('[aria-modal="true"][role="dialog"]:not(.settings)')) close();
   }
 </script>
 
@@ -42,7 +49,7 @@
 <div class="settings" role="dialog" aria-modal="true" aria-label={title}>
   <div class="mobilebar">
     <strong class="ellipsis">{title}</strong>
-    <button class="icon" onclick={onclose} aria-label={t('common_close')}><Icon name="close" /></button>
+    <button class="icon" onclick={close} aria-label={t('common_close')}><Icon name="close" /></button>
   </div>
   <nav class="nav scroll" aria-label={title}>
     <div class="inner">
@@ -62,7 +69,7 @@
       {@render children()}
     </div>
   </main>
-  <button class="close" onclick={onclose} aria-label={t('common_close')}>
+  <button class="close" onclick={close} aria-label={t('common_close')}>
     <span class="ring"><Icon name="close" /></span>
     <small>ESC</small>
   </button>

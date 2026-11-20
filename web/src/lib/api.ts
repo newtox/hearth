@@ -28,10 +28,12 @@ export function setToken(t: string | null) {
 }
 
 export function thumb(name: string | null | undefined, size: number) {
+  if (name?.startsWith('blob:')) return name;
   return name ? (name.includes('/') ? asset(name) : `${base()}/thumbs/${size}/${name}`) : null;
 }
 
 export function asset(name: string | null | undefined) {
+  if (name?.startsWith('blob:')) return name;
   return name ? `${base()}/uploads/${name}` : null;
 }
 
@@ -67,8 +69,15 @@ export function api<T = any>(method: string, path: string, body?: unknown): Prom
   return send(method, path, body === undefined ? {} : { body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
 }
 
+export const cropOf = new WeakMap<File, { rect: string; size: string }>();
+
 export function upload<T = any>(path: string, file: File): Promise<T> {
   const form = new FormData();
+  const crop = cropOf.get(file);
+  if (crop) {
+    form.append('crop', crop.rect);
+    form.append('size', crop.size);
+  }
   form.append('file', file);
   return send('POST', path, { body: form });
 }

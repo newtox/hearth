@@ -127,6 +127,17 @@ pub async fn save_image(st: &AppState, multipart: Multipart) -> Result<String> {
     let Some((_, data)) = form.file else {
         return bad("No file was sent");
     };
+    let crop = form.fields.get("crop").zip(form.fields.get("size")).and_then(|(r, o)| thumbs::Crop::parse(r, o));
+    if let (Some(crop), Some("gif")) = (crop, image_ext(&data)) {
+        if data.len() > 8 * 1024 * 1024 {
+            return Err(AppError::Bad("The image is too large (max. 8 MB)".into()));
+        }
+        let cut = tokio::task::spawn_blocking(move || thumbs::crop_gif(&data, &crop)).await.map_err(|e| AppError::Internal(e.to_string()))?;
+        let Some(cut) = cut else {
+            return bad("The image could not be read");
+        };
+        return store_image(st, &cut, 8 * 1024 * 1024).await;
+    }
     store_image(st, &data, 8 * 1024 * 1024).await
 }
 

@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { t } from '../lib/i18n.svelte';
   import { crop } from '../lib/crop.svelte';
+  import { cropOf } from '../lib/api';
   import Modal from './Modal.svelte';
 
   const c = $derived(crop.current);
@@ -75,6 +76,12 @@
 
   async function save() {
     if (!c || !img) return;
+    if (c.file.type === 'image/gif') {
+      const copy = new File([c.file], c.file.name, { type: c.file.type });
+      const r = (v: number) => Math.max(0, Math.round(v));
+      cropOf.set(copy, { rect: [r(-pos.x / scale), r(-pos.y / scale), r(W / scale), r(H / scale)].join(','), size: `${OUT.w}x${OUT.h}` });
+      return c.resolve(copy);
+    }
     busy = true;
     const canvas = document.createElement('canvas');
     canvas.width = OUT.w;

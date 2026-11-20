@@ -5,7 +5,6 @@ type Pending = { file: File; url: string; shape: CropShape; resolve: (file: File
 export const crop = $state<{ current: Pending | null }>({ current: null });
 
 export function cropImage(file: File, shape: CropShape) {
-  if (file.type === 'image/gif') return Promise.resolve<File | null>(file);
   crop.current?.resolve(null);
   return new Promise<File | null>((resolve) => {
     const url = URL.createObjectURL(file);

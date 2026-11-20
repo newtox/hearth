@@ -82,7 +82,7 @@
         <div class="grow">
           <strong>{d.name}</strong>
           <small class="muted">
-            {#if s.current}<span class="here">{t('sessions_this_device')}</span>{:else}{t('sessions_last_active', { when: ago(s.last_seen) })}{/if}
+            {#if s.current}<span class="here">{t('sessions_this_device')}</span>{:else if !s.user_agent && !s.client}{t('sessions_from_before_list')}{:else}{t('sessions_last_active', { when: ago(s.last_seen) })}{/if}
             {#if s.ip}· {s.ip}{/if}
           </small>
           <small class="muted">{t('sessions_signed_in_on', { date: day(s.created_at) })}</small>

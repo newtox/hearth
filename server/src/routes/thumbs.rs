@@ -64,6 +64,55 @@ fn render(data: &[u8], ext: &str, size: u32) -> Option<(Vec<u8>, &'static str)> 
     Some((out, "image/png"))
 }
 
+pub struct Crop {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+    pub out_w: u32,
+    pub out_h: u32,
+}
+
+impl Crop {
+    pub fn parse(rect: &str, out: &str) -> Option<Crop> {
+        let n: Vec<u32> = rect.split(',').map(|v| v.trim().parse().ok()).collect::<Option<_>>()?;
+        let o: Vec<u32> = out.split('x').map(|v| v.trim().parse().ok()).collect::<Option<_>>()?;
+        let ([x, y, w, h], [out_w, out_h]) = (n.as_slice(), o.as_slice()) else {
+            return None;
+        };
+        let ok = *w > 0 && *h > 0 && (16..=1200).contains(out_w) && (16..=1200).contains(out_h);
+        ok.then_some(Crop { x: *x, y: *y, w: *w, h: *h, out_w: *out_w, out_h: *out_h })
+    }
+
+    fn apply(&self, img: &RgbaImage) -> Option<RgbaImage> {
+        let (iw, ih) = img.dimensions();
+        if self.x >= iw || self.y >= ih {
+            return None;
+        }
+        let w = self.w.min(iw - self.x);
+        let h = self.h.min(ih - self.y);
+        let part = image::imageops::crop_imm(img, self.x, self.y, w, h).to_image();
+        let scale = (self.out_w as f64 / w as f64).min(self.out_h as f64 / h as f64).min(1.0);
+        let (tw, th) = (((w as f64) * scale).round().max(1.0) as u32, ((h as f64) * scale).round().max(1.0) as u32);
+        Some(if (tw, th) == (w, h) { part } else { image::imageops::resize(&part, tw, th, FilterType::Lanczos3) })
+    }
+}
+
+pub fn crop_gif(data: &[u8], crop: &Crop) -> Option<Vec<u8>> {
+    let frames = GifDecoder::new(Cursor::new(data)).ok()?.into_frames().take(MAX_FRAMES + 1).collect::<Result<Vec<_>, _>>().ok()?;
+    if frames.is_empty() || frames.len() > MAX_FRAMES {
+        return None;
+    }
+    let cut = frames.into_iter().map(|f| Some(Frame::from_parts(crop.apply(f.buffer())?, 0, 0, f.delay()))).collect::<Option<Vec<_>>>()?;
+    let mut out = Vec::new();
+    {
+        let mut enc = GifEncoder::new_with_speed(&mut out, 10);
+        enc.set_repeat(Repeat::Infinite).ok()?;
+        enc.encode_frames(cut).ok()?;
+    }
+    Some(out)
+}
+
 fn reply(bytes: Vec<u8>, mime: &'static str) -> Response {
     Response::builder()
         .header(header::CONTENT_TYPE, mime)

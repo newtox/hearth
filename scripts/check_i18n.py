@@ -27,7 +27,7 @@ for path in list(src.rglob("*.svelte")) + list(src.rglob("*.ts")):
 for key in sorted(set(re.findall(r"\bt\(\s*'([^']*)'", code)) - base):
     problems.append(f"unknown key in t(): {key}")
 for key in sorted(base):
-    if not key.startswith(("error_", "badge_")) and f"'{key}'" not in code:
+    if not key.startswith(("error_", "badge_", "emoji_picker_cat_")) and f"'{key}'" not in code:
         problems.append(f"unused key: {key}")
 
 for name in langs:
