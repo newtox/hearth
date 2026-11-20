@@ -100,7 +100,7 @@
         <div class="row actions">
           {#if user.id === app.me?.id}
             <button class="btn" onclick={() => ((app.profile = null), (app.modal = { kind: 'user' }))}><Icon name="edit" size={16} /> {t('common_edit_profile')}</button>
-            {#if user.progress}<button class="btn" onclick={() => (progressTrack = 'play')}>{t('profile_card_progress')}</button>{/if}
+            {#if user.progress}<button class="btn" onclick={() => (progressTrack = user!.progress!.tracks[0]?.track ?? null)}>{t('profile_card_progress')}</button>{/if}
           {:else}
             <button class="btn primary" onclick={() => openDm(user!.id)}><Icon name="mail" size={16} /> {t('profile_card_send_message')}</button>
             {#if isBlocked(user.id)}

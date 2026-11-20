@@ -9,7 +9,7 @@
 
   let { progress, track: initial, own, name, onclose }: { progress: Progress; track: string; own: boolean; name: string; onclose: () => void } = $props();
 
-  let track = $state(untrack(() => initial));
+  let track = $state(untrack(() => (progress.tracks.some((x) => x.track === initial) ? initial : (progress.tracks[0]?.track ?? initial))));
   const current = $derived(progress.tracks.find((x) => x.track === track) ?? progress.tracks[0]);
   const tier = $derived(current.tier ?? -1);
   const next = $derived(tier + 1 < current.steps.length ? tier + 1 : null);
@@ -23,7 +23,7 @@
       {#each progress.tracks as p (p.track)}
         <button role="tab" aria-selected={track === p.track} class:on={track === p.track} onclick={() => (track = p.track)}>
           <BadgeIcon badge={{ icon: p.icon, color: p.tier === null ? 'var(--muted)' : progress.colors[p.tier] }} size={20} />
-          {t(TRACKS[p.track].name)}
+          {TRACKS[p.track] ? t(TRACKS[p.track].name) : p.track}
         </button>
       {/each}
     </div>
@@ -40,7 +40,7 @@
       {#if next !== null}<BadgeIcon badge={{ icon: current.icon, color: progress.colors[next] }} size={40} />{/if}
     </div>
 
-    <p class="muted">{t(TRACKS[track].hint)}</p>
+    {#if TRACKS[track]}<p class="muted">{t(TRACKS[track].hint)}</p>{/if}
 
     <ol class="levels">
       {#each current.steps as step, i}
