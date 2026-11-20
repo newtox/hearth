@@ -172,6 +172,11 @@ pub async fn set_streaming(State(st): State<AppState>, AuthUser(uid): AuthUser, 
     };
     if changed {
         broadcast(&st, uid).await;
+        if b.on {
+            if let Some(room) = st.hub.voice.get(&uid).map(|c| *c) {
+                super::voice::announce_watchers(&st, room).await;
+            }
+        }
     }
     Ok(Json(json!({})))
 }

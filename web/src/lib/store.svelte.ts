@@ -413,15 +413,17 @@ function handle(t: string, d: any) {
       if (current.voiceChannel) {
         const room = current.voiceChannel;
         const inRoom = d.guilds.some((g: Guild) => g.voice_states.some((v) => v.user_id === d.user.id && v.channel_id === room)) || d.dms.some((x: Dm) => x.id === room && x.voice.includes(d.user.id));
-        if (!inRoom) api('POST', `/channels/${room}/voice`).catch(() => {});
+        (inRoom ? Promise.resolve() : api('POST', `/channels/${room}/voice`)).then(() => current.onRejoin?.()).catch(() => {});
       }
       const invite = location.hash.match(/^#\/invite\/(\w+)/);
       if (invite) {
         app.modal = { kind: 'create', code: invite[1] };
         history.replaceState(null, '', location.pathname);
       }
-      if (channel() && channel()!.kind !== 'voice') loadMessages(app.channelId!);
-      else select(app.guildId && guild() ? app.guildId : (app.guilds[0]?.id ?? null));
+      const open = channel();
+      if (open) {
+        if (open.kind !== 'voice') loadMessages(app.channelId!);
+      } else select(app.guildId && guild() ? app.guildId : (app.guilds[0]?.id ?? null));
       break;
     }
     case 'INVALID_SESSION':

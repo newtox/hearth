@@ -26,7 +26,7 @@ function loadPatchBay() {
 }
 
 function audioServicePid() {
-  const service = app.getAppMetrics().find((m) => m.type === 'Utility' && /audio/i.test(m.name ?? m.serviceName ?? ''));
+  const service = app.getAppMetrics().find((m) => m.type === 'Utility' && /audio/i.test(`${m.name ?? ''} ${m.serviceName ?? ''}`));
   return service ? String(service.pid) : String(process.pid);
 }
 
@@ -120,12 +120,20 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => callback(allowed.has(permission)));
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
   session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
+    let answered = false;
+    const reply = (value) => {
+      if (answered) return;
+      answered = true;
+      try {
+        callback(value);
+      } catch {}
+    };
     try {
       const sources = await desktopCapturer.getSources({ types: ['screen', 'window'], thumbnailSize: { width: 320, height: 180 } });
       const chosen = sources.length === 1 ? sources[0] : sources.length ? await pick(sources) : null;
-      callback(chosen ? { video: chosen } : {});
+      reply(chosen ? { video: chosen } : {});
     } catch {
-      callback({});
+      reply({});
     }
   });
   ipcMain.handle('window', (_e, action) => {
@@ -142,10 +150,21 @@ app.whenReady().then(() => {
     const bay = loadPatchBay();
     if (!bay) return false;
     if (!on) {
-      bay.unlink();
+      try {
+        bay.unlink();
+      } catch {}
       return true;
     }
-    return bay.link({ exclude: [{ 'application.process.id': audioServicePid() }], ignore_devices: true, only_default_speakers: true });
+    try {
+      return bay.link({
+        exclude: [{ 'application.process.id': audioServicePid() }, { 'media.class': 'Stream/Input/Audio' }, { 'media.class': 'Audio/Sink' }],
+        ignore_devices: true,
+        only_speakers: false,
+        only_default_speakers: false,
+      });
+    } catch {
+      return false;
+    }
   });
   ipcMain.handle('audio-share-available', () => !!loadPatchBay());
   createWindow();

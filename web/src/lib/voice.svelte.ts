@@ -31,6 +31,8 @@ export const voice = $state({
   userVolume: load<Record<string, number>>('hearth_user_volume', {}),
   inputVolume: load<number>('hearth_input_volume', 1),
   outputVolume: load<number>('hearth_output_volume', 1),
+  inputDevice: load<string>('hearth_input_device', ''),
+  outputDevice: load<string>('hearth_output_device', ''),
   watchers: {} as Record<string, string[]>,
   names: {} as Record<string, string>,
 });
@@ -137,11 +139,47 @@ export function setInputVolume(value: number) {
   else boostMic(micTrack());
 }
 
+export const canPickOutput = typeof AudioContext !== 'undefined' && 'setSinkId' in AudioContext.prototype;
+
+export interface AudioDevice {
+  id: string;
+  name: string;
+}
+
+export async function listDevices() {
+  const all = await navigator.mediaDevices?.enumerateDevices().catch(() => []) ?? [];
+  const pick = (kind: MediaDeviceKind) =>
+    all
+      .filter((d) => d.kind === kind && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications' && !/vencord-screen-share/i.test(d.label))
+      .map((d, i) => ({ id: d.deviceId, name: d.label || `${kind === 'audioinput' ? t('voice_microphone') : t('voice_speaker')} ${i + 1}` }));
+  return { inputs: pick('audioinput'), outputs: pick('audiooutput'), labeled: all.some((d) => d.kind === 'audioinput' && d.label) };
+}
+
+export async function allowDevices() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+  stream?.getTracks().forEach((track) => track.stop());
+  return !!stream;
+}
+
+export async function setInputDevice(id: string) {
+  voice.inputDevice = id;
+  save('hearth_input_device', id);
+  if (room) await room.switchActiveDevice('audioinput', id || 'default', false).catch(() => toast(t('voice_device_switch_failed')));
+}
+
+export async function setOutputDevice(id: string) {
+  voice.outputDevice = id;
+  save('hearth_output_device', id);
+  if (room && canPickOutput) await room.switchActiveDevice('audiooutput', id || 'default').catch(() => toast(t('voice_device_switch_failed')));
+}
+
 export const canCall = typeof window !== 'undefined' && typeof (window as any).RTCPeerConnection === 'function';
 
 export const canShareScreen = canCall && typeof navigator !== 'undefined' && !!navigator.mediaDevices && 'getDisplayMedia' in navigator.mediaDevices;
 
 let room: any = null;
+const wanted = new Set<string>();
+const healedAt = new Map<string, number>();
 let lk: typeof import('livekit-client') | null = null;
 
 const meters = new Map<string, { track: MediaStreamTrack; source: MediaStreamAudioSourceNode; analyser: AnalyserNode }>();
@@ -226,6 +264,8 @@ function sync() {
   voice.silent = silent;
   voice.muted = !room.localParticipant.isMicrophoneEnabled;
   voice.sharing = room.localParticipant.isScreenShareEnabled;
+  for (const id of wanted) if (!streams.some((x) => x.userId === id)) wanted.delete(id);
+  heal();
 }
 
 function isScreen(pub: any) {
@@ -250,13 +290,43 @@ function setWatchers(pairs: [string, string][], quiet = false) {
     }
   }
   voice.watchers = next;
+  heal();
+}
+
+let healTimer: ReturnType<typeof setTimeout> | null = null;
+
+function heal() {
+  const me = app.me?.id;
+  if (!room || !me) return;
+  const now = Date.now();
+  for (const s of voice.streams) {
+    if (s.local || !wanted.has(s.userId) || (voice.watchers[s.userId] ?? []).includes(me)) continue;
+    const wait = 1500 - (now - (healedAt.get(s.userId) ?? 0));
+    if (wait > 0) {
+      healTimer ??= setTimeout(() => {
+        healTimer = null;
+        heal();
+      }, wait + 50);
+      continue;
+    }
+    healedAt.set(s.userId, now);
+    api('POST', '/voice/watch', { user_id: s.userId, on: true }).catch(() => {});
+  }
 }
 
 current.onWatchers = (pairs) => setWatchers(pairs);
 
+current.onRejoin = () => {
+  if (!room) return;
+  if (voice.sharing) api('POST', '/voice/stream', { on: true }).catch(() => {});
+  for (const s of voice.streams) if (!s.local && wanted.has(s.userId)) api('POST', '/voice/watch', { user_id: s.userId, on: true }).catch(() => {});
+};
+
 export async function watchStream(userId: string, on: boolean) {
   const p = room?.remoteParticipants.get(userId);
   if (!p) return;
+  if (on) wanted.add(userId);
+  else wanted.delete(userId);
   for (const pub of p.trackPublications.values()) if (isScreen(pub)) pub.setSubscribed(on);
   await api('POST', '/voice/watch', { user_id: userId, on }).catch(() => {});
   sync();
@@ -266,6 +336,10 @@ function cleanup() {
   if (current.voiceChannel) play('leave');
   current.voiceChannel = null;
   stopDesktopAudio();
+  wanted.clear();
+  healedAt.clear();
+  if (healTimer) clearTimeout(healTimer);
+  healTimer = null;
   room = null;
   stopMeters();
   micGain = null;
@@ -284,7 +358,7 @@ export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
   try {
     const res = await api('POST', `/channels/${ch.id}/voice`);
     lk = await import('livekit-client');
-    const r = new lk.Room({ adaptiveStream: true, dynacast: true, webAudioMix: true });
+    const r = new lk.Room({ adaptiveStream: true, dynacast: true, webAudioMix: true, audioCaptureDefaults: voice.inputDevice ? { deviceId: { ideal: voice.inputDevice } } : undefined });
     room = r;
     const E = lk.RoomEvent;
     r.on(E.LocalTrackUnpublished, () => setTimeout(() => room === r && api('POST', '/voice/stream', { on: r.localParticipant.isScreenShareEnabled }).catch(() => {}), 300));
@@ -310,6 +384,7 @@ export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
         const el = track.attach() as HTMLMediaElement;
         el.dataset.hearthVoice = '1';
         el.dataset.user = p.identity;
+        el.dataset.source = pub.source;
         el.hidden = true;
         document.body.append(el);
       }
@@ -327,6 +402,7 @@ export async function joinVoice(ch: { id: string; guild_id?: string | null }) {
       }
     });
     await r.connect(res.url, res.token, { autoSubscribe: false });
+    if (voice.outputDevice && canPickOutput && (await listDevices()).outputs.some((d) => d.id === voice.outputDevice)) await r.switchActiveDevice('audiooutput', voice.outputDevice).catch(() => {});
     for (const p of r.remoteParticipants.values()) for (const pub of p.trackPublications.values()) follow(pub);
     applyVolumes();
     setWatchers(res.watchers ?? [], true);
@@ -362,18 +438,19 @@ export async function toggleMute() {
 const desktop = typeof window !== 'undefined' ? (window as any).hearthDesktop : null;
 let shareAudio: any = null;
 
-async function startDesktopAudio() {
-  if (!room || !lk || !desktop || !(await desktop.audioShareAvailable().catch(() => false))) return;
-  if (!(await desktop.audioShare(true).catch(() => false))) return;
-  for (let i = 0; i < 15; i++) {
+async function startDesktopAudio(): Promise<string | null> {
+  if (!room || !lk || !desktop) return null;
+  if (!(await desktop.audioShareAvailable().catch(() => false))) return 'voice_share_no_audio_pipewire';
+  if (!(await desktop.audioShare(true).catch(() => false))) return 'voice_share_audio_failed';
+  for (let i = 0; i < 25; i++) {
     const device = (await navigator.mediaDevices.enumerateDevices()).find((d) => d.kind === 'audioinput' && /vencord-screen-share/i.test(d.label));
     if (device) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: device.deviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2 } });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: device.deviceId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2, sampleRate: 48000 } });
         const track = new lk.LocalAudioTrack(stream.getAudioTracks()[0], undefined, false);
         await room.localParticipant.publishTrack(track, { source: lk.Track.Source.ScreenShareAudio, audioPreset: lk.AudioPresets.musicHighQualityStereo, dtx: false, red: false });
         shareAudio = track;
-        return;
+        return null;
       } catch {
         break;
       }
@@ -381,6 +458,14 @@ async function startDesktopAudio() {
     await new Promise((r) => setTimeout(r, 200));
   }
   desktop.audioShare(false).catch(() => {});
+  return 'voice_share_audio_failed';
+}
+
+function noAudioHint() {
+  const ua = navigator.userAgent;
+  if (/Firefox\//.test(ua)) return 'voice_share_no_audio_firefox';
+  if (/Linux/i.test(ua) && !/Android/i.test(ua)) return 'voice_share_no_audio_linux';
+  return 'voice_share_no_audio';
 }
 
 async function stopDesktopAudio() {
@@ -409,10 +494,11 @@ export async function toggleShare() {
       },
       { audioPreset: lk!.AudioPresets.musicHighQualityStereo, dtx: false, red: false },
     );
-    if (start && room.localParticipant.isScreenShareEnabled && desktop) await startDesktopAudio();
     if (start && room.localParticipant.isScreenShareEnabled) {
+      api('POST', '/voice/stream', { on: true }).catch(() => {});
+      const problem = desktop ? await startDesktopAudio() : null;
       const sound = [...room.localParticipant.trackPublications.values()].some((pub: any) => pub.source === lk!.Track.Source.ScreenShareAudio);
-      if (!sound) toast(t(desktop ? 'voice_share_no_audio_pipewire' : /Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent) ? 'voice_share_no_audio_linux' : 'voice_share_no_audio'));
+      if (!sound) toast(t(problem ?? noAudioHint()));
     }
   } catch {
     if (!voice.sharing) toast(t('voice_screen_sharing_was_cancelled_not'));

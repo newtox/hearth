@@ -15,7 +15,7 @@
   import SettingsPage, { type Section } from './SettingsPage.svelte';
   import Modal from './Modal.svelte';
   import { notifications } from '../lib/notify';
-  import { setInputVolume, setOutputVolume, voice } from '../lib/voice.svelte';
+  import { allowDevices, canPickOutput, listDevices, setInputDevice, setInputVolume, setOutputDevice, setOutputVolume, voice, type AudioDevice } from '../lib/voice.svelte';
 
   const me = $derived(app.me!);
   let displayName = $state(app.me!.display_name);
@@ -104,6 +104,23 @@
   }
 
   let section = $state('account');
+  let devices = $state<{ inputs: AudioDevice[]; outputs: AudioDevice[]; labeled: boolean } | null>(null);
+
+  async function loadDevices() {
+    devices = await listDevices();
+  }
+
+  $effect(() => {
+    if (section !== 'voice' || !navigator.mediaDevices) return;
+    loadDevices();
+    navigator.mediaDevices.addEventListener('devicechange', loadDevices);
+    return () => navigator.mediaDevices.removeEventListener('devicechange', loadDevices);
+  });
+
+  async function revealDevices() {
+    if (await allowDevices()) await loadDevices();
+    else toast(t('voice_no_access_microphone'));
+  }
   const sections = $derived<Section[]>([
     { id: 'account', name: t('user_settings_my_account'), group: t('user_settings_user_settings') },
     { id: 'profile', name: t('common_profile'), group: t('user_settings_user_settings') },
@@ -260,6 +277,30 @@
       {/each}
     </div>
   {:else if section === 'voice'}
+    <h3>{t('voice_devices')}</h3>
+    {#if devices}
+      <label class="field device">
+        <span>{t('voice_input_device')}</span>
+        <select class="input" value={devices.inputs.some((d) => d.id === voice.inputDevice) ? voice.inputDevice : ''} onchange={(e) => setInputDevice(e.currentTarget.value)}>
+          <option value="">{t('voice_device_default')}</option>
+          {#each devices.inputs as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
+        </select>
+      </label>
+      {#if canPickOutput}
+        <label class="field device">
+          <span>{t('voice_output_device')}</span>
+          <select class="input" value={devices.outputs.some((d) => d.id === voice.outputDevice) ? voice.outputDevice : ''} onchange={(e) => setOutputDevice(e.currentTarget.value)}>
+            <option value="">{t('voice_device_default')}</option>
+            {#each devices.outputs as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
+          </select>
+        </label>
+      {:else}
+        <p class="muted">{t('voice_output_device_unsupported')}</p>
+      {/if}
+      {#if !devices.labeled}
+        <p class="muted row hint">{t('voice_devices_need_access')} <button class="btn small" onclick={revealDevices}>{t('voice_devices_allow')}</button></p>
+      {/if}
+    {/if}
     <h3>{t('voice_volume')}</h3>
     <label class="slider">
       <span class="row"><span class="grow">{t('voice_input_volume')}</span><span class="muted">{Math.round(voice.inputVolume * 100)} %</span></span>
@@ -341,6 +382,16 @@
 </SettingsPage>
 
 <style>
+  .device {
+    max-width: 420px;
+    margin-bottom: 14px;
+  }
+  .hint {
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 18px;
+  }
   .slider {
     display: flex;
     flex-direction: column;
