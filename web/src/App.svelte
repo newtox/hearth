@@ -32,7 +32,7 @@
 </script>
 
 {#if framed}<TitleBar />{/if}
-<div class="frame" class:framed>
+<div class="frame" class:framed onscroll={(e) => (e.currentTarget.scrollTop = 0)}>
 
 {#if !app.authed}
   <Auth />

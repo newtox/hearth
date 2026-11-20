@@ -21,9 +21,15 @@
     open = null;
   }
 
+  function area(el: HTMLElement) {
+    const frame = el.closest('.framed');
+    return frame ? frame.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
+  }
+
   function place(el: HTMLElement, x: number, y: number) {
     const r = el.getBoundingClientRect();
-    return { x: Math.max(8, Math.min(x, innerWidth - r.width - 8)), y: Math.max(8, Math.min(y, innerHeight - r.height - 8)) };
+    const a = area(el);
+    return { x: Math.max(8, Math.min(x - a.left, a.width - r.width - 8)), y: Math.max(8, Math.min(y - a.top, a.height - r.height - 8)) };
   }
 
   $effect(() => {
@@ -33,7 +39,7 @@
     tick().then(() => {
       if (!root) return;
       pos = place(root, menu.x, menu.y);
-      first(root)?.focus();
+      first(root)?.focus({ preventScroll: true });
     });
   });
 
@@ -43,7 +49,7 @@
 
   async function showSub(i: number, button: HTMLElement, focus = false) {
     if (open === i) {
-      if (focus) first(side)?.focus();
+      if (focus) first(side)?.focus({ preventScroll: true });
       return;
     }
     open = i;
@@ -53,7 +59,7 @@
     const r = side.getBoundingClientRect();
     const x = b.right + r.width + 6 > innerWidth ? b.left - r.width - 6 : b.right + 6;
     subPos = place(side, x, b.top - 6);
-    if (focus) first(side)?.focus();
+    if (focus) first(side)?.focus({ preventScroll: true });
   }
 
   function run(item: Item, i: number | null, e: MouseEvent | KeyboardEvent) {
@@ -72,12 +78,12 @@
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       const n = list.length;
-      list[(i + (e.key === 'ArrowDown' ? 1 : -1) + n) % n]?.focus();
+      list[(i + (e.key === 'ArrowDown' ? 1 : -1) + n) % n]?.focus({ preventScroll: true });
     } else if (e.key === 'ArrowLeft' && inSub) {
       e.preventDefault();
       const parent = root?.querySelector<HTMLButtonElement>(`[data-index="${open}"]`);
       open = null;
-      parent?.focus();
+      parent?.focus({ preventScroll: true });
     } else if (e.key === 'ArrowRight' && !inSub) {
       const el = document.activeElement as HTMLElement;
       const idx = Number(el?.dataset.index);
