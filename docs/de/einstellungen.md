@@ -28,6 +28,7 @@ Die App liest diese direkt. Die erste Gruppe setzt der Stack für dich.
 | `PUBLIC_URL` | | Öffentliche Adresse. Dient für Links in E-Mails, Linkvorschauen und die erlaubten Herkünfte. Ohne sie ist jede Herkunft erlaubt, das ist nur für die lokale Entwicklung gedacht. |
 | `CORS_ORIGINS` | | Weitere erlaubte Herkünfte, durch Komma getrennt. Die Web-Adresse und die Apps sind immer erlaubt. |
 | `EMAIL_VERIFICATION` | `on` | Mit eingerichteter E-Mail müssen neue Konten ihre Adresse bestätigen, bevor sie schreiben können. `off` schaltet das ab. |
+| `DEEPL_API_KEY` | | Schlüssel für die DeepL API. Damit werden englische Namen und Beschreibungen globaler Abzeichen automatisch übersetzt. Ein kostenloser Schlüssel (Endung `:fx`) reicht. |
 | `TRUST_PROXY` | `0` | `1` hinter einem Reverse Proxy, damit Ratenlimits die echte Adresse sehen |
 | `UPLOAD_DIR` | `uploads` | Ordner für hochgeladene Dateien |
 | `WEB_DIR` | `../web/dist` | Ordner der gebauten Weboberfläche |

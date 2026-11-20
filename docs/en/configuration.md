@@ -28,6 +28,7 @@ The app reads these directly. The stack sets the first group for you.
 | `PUBLIC_URL` | | Public address. Used for links in emails, link previews and the allowed origins. Without it every origin is allowed, which is only meant for local development. |
 | `CORS_ORIGINS` | | Further allowed origins, comma separated. The web address and the apps are always allowed. |
 | `EMAIL_VERIFICATION` | `on` | With email set up, new accounts must confirm their address before they can write. `off` turns this off. |
+| `DEEPL_API_KEY` | | Key for the DeepL API. With it, English names and descriptions of global badges are translated automatically. A free key (ending in `:fx`) is enough. |
 | `TRUST_PROXY` | `0` | `1` behind a reverse proxy, so rate limits use the real client address |
 | `UPLOAD_DIR` | `uploads` | Folder for uploaded files |
 | `WEB_DIR` | `../web/dist` | Folder of the built web interface |

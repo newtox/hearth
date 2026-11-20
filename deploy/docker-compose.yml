@@ -41,6 +41,7 @@ services:
       SMTP_TLS: ${SMTP_TLS:-}
       EMAIL_VERIFICATION: ${EMAIL_VERIFICATION:-on}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
+      DEEPL_API_KEY: ${DEEPL_API_KEY:-}
     ports:
       - "127.0.0.1:${APP_PORT:-8090}:8080"
     volumes:
