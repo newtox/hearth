@@ -24,11 +24,24 @@ jobs:
         shell: bash
         run: node -e "const f='src-tauri/tauri.conf.json';const c=JSON.parse(require('fs').readFileSync(f));c.version=process.env.GITHUB_REF_NAME.slice(1);require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
       - working-directory: web
-        run: npx tauri build
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY }}
+        run: |
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] && [ -n "$UPDATER_PUBKEY" ]; then
+            node -e "const e=process.env;require('fs').writeFileSync('updater.json',JSON.stringify({bundle:{createUpdaterArtifacts:true},plugins:{updater:{pubkey:e.UPDATER_PUBKEY,endpoints:['https://github.com/'+e.GITHUB_REPOSITORY+'/releases/latest/download/latest.json'],windows:{installMode:'passive'}}}}))"
+            npx tauri build --config updater.json
+          else
+            npx tauri build
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: hearth-Windows
-          path: web/src-tauri/target/release/bundle/nsis/*.exe
+          path: |
+            web/src-tauri/target/release/bundle/nsis/*.exe
+            web/src-tauri/target/release/bundle/nsis/*.exe.sig
 
   linux:
     runs-on: ubuntu-22.04
@@ -56,6 +69,7 @@ jobs:
             desktop/dist/*.AppImage
             desktop/dist/*.deb
             desktop/dist/*.rpm
+            desktop/dist/latest-linux.yml
 
   flatpak:
     needs: linux
@@ -142,6 +156,11 @@ jobs:
           pick '*.flatpak' "Hearth_${v}_linux_x86_64.flatpak"
           pick '*.apk' "Hearth_${v}_android.apk" universal
           [ -e "out/Hearth_${v}_android.apk" ] || pick '*.apk' "Hearth_${v}_android.apk"
+          find artifacts -name latest-linux.yml | head -n1 | xargs -r -I{} cp {} out/latest-linux.yml
+          sig=$(find artifacts -name '*.exe.sig' | head -n1)
+          if [ -n "$sig" ] && [ -e "out/Hearth_${v}_windows_x64_setup.exe" ]; then
+            SIG="$(cat "$sig")" V="$v" node -e "const e=process.env;console.log(JSON.stringify({version:e.V,notes:'',pub_date:new Date().toISOString(),platforms:{'windows-x86_64':{signature:e.SIG,url:'https://github.com/'+e.GITHUB_REPOSITORY+'/releases/download/v'+e.V+'/Hearth_'+e.V+'_windows_x64_setup.exe'}}}))" > out/latest.json
+          fi
           ls -la out
           [ -n "$(ls out)" ]
       - uses: softprops/action-gh-release@v2

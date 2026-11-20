@@ -25,6 +25,23 @@ function loadPatchBay() {
   return patchBay;
 }
 
+let updater = null;
+
+function loadUpdater() {
+  if (updater !== null) return updater;
+  updater = false;
+  if (!app.isPackaged || process.env.FLATPAK_ID) return updater;
+  try {
+    const { autoUpdater } = require('electron-updater');
+    autoUpdater.autoDownload = false;
+    autoUpdater.autoInstallOnAppQuit = false;
+    autoUpdater.logger = null;
+    autoUpdater.on('download-progress', (p) => win?.webContents.send('update-progress', p.percent));
+    updater = autoUpdater;
+  } catch {}
+  return updater;
+}
+
 function audioServicePid() {
   const service = app.getAppMetrics().find((m) => m.type === 'Utility' && /audio/i.test(`${m.name ?? ''} ${m.serviceName ?? ''}`));
   return service ? String(service.pid) : String(process.pid);
@@ -167,6 +184,29 @@ app.whenReady().then(() => {
     }
   });
   ipcMain.handle('audio-share-available', () => !!loadPatchBay());
+  ipcMain.handle('app-version', () => app.getVersion());
+  ipcMain.handle('update-check', async () => {
+    const u = loadUpdater();
+    if (!u) return { supported: false };
+    try {
+      const result = await u.checkForUpdates();
+      return { supported: true, version: result?.isUpdateAvailable ? result.updateInfo.version : null };
+    } catch {
+      return { supported: false };
+    }
+  });
+  ipcMain.handle('update-install', async () => {
+    const u = loadUpdater();
+    if (!u) return false;
+    try {
+      await u.checkForUpdates();
+      await u.downloadUpdate();
+      setImmediate(() => u.quitAndInstall(false, true));
+      return true;
+    } catch {
+      return false;
+    }
+  });
   createWindow();
 });
 

@@ -10,4 +10,8 @@ contextBridge.exposeInMainWorld('hearthDesktop', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   audioShareAvailable: () => ipcRenderer.invoke('audio-share-available'),
   audioShare: (on) => ipcRenderer.invoke('audio-share', on),
+  version: () => ipcRenderer.invoke('app-version'),
+  updateCheck: () => ipcRenderer.invoke('update-check'),
+  updateInstall: () => ipcRenderer.invoke('update-install'),
+  onUpdateProgress: (fn) => ipcRenderer.on('update-progress', (_e, percent) => fn(percent)),
 });

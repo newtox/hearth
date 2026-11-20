@@ -1,6 +1,7 @@
 <script lang="ts">
   const PATHS: Record<string, string> = {
     plus: 'M12 5v14M5 12h14',
+    download: 'M12 3v12M7 10l5 5 5-5M5 21h14',
     reply: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 5 5v6',
     pin: 'M12 17v5M5 17h14l-2-5V5h1V3H6v2h1v7z',
     bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',

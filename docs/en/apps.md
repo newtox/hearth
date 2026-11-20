@@ -26,6 +26,35 @@ git push origin v0.2.0
 
 The "Apps" workflow builds every file and attaches them to a new release named after the tag. It takes about 20 to 30 minutes. The same tag also publishes the server image as `ghcr.io/newtox/hearth:0.2.0`. Under **Actions → Apps → Run workflow** you can build without a release; the files are then only in the run's artifacts.
 
+## Updates
+
+Hearth checks for a new version at startup and regularly afterwards, and shows a notice at the top. **Settings → Help** shows your version and lets you check by hand.
+
+| Where | What happens |
+| --- | --- |
+| Browser | "Reload" loads the version that is running on the server. |
+| Linux (AppImage, deb, rpm) | "Update now" downloads the new version and restarts Hearth. For deb and rpm the system asks for your password once. |
+| Linux (Flatpak) | "Download" opens the release page. |
+| Windows | "Update now" installs the new version once signing is set up (see below). Otherwise the release page opens. |
+| Android | "Download" fetches the new APK for you to open. |
+
+### Setting up Windows updates
+
+Windows only installs updates signed with your key. Set this up once:
+
+```sh
+cd web
+npx tauri signer generate -w ~/.tauri/hearth.key
+```
+
+Then in the repository under **Settings → Secrets and variables → Actions**:
+
+- Secret `TAURI_SIGNING_PRIVATE_KEY`: contents of `~/.tauri/hearth.key`
+- Secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: the password you chose
+- Variable `TAURI_UPDATER_PUBKEY`: contents of `~/.tauri/hearth.key.pub`
+
+From the next tag on, the release contains a `latest.json`, and Windows apps from that version on update themselves. Keep the key safe: with a new key everyone has to reinstall by hand once.
+
 ## Limits
 
 - The APK is a debug build. It installs fine but cannot go to the Play Store without a signing key.

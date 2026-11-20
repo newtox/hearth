@@ -1,3 +1,48 @@
+#[cfg(desktop)]
+mod update {
+    use tauri::{AppHandle, Emitter, Manager};
+    use tauri_plugin_updater::UpdaterExt;
+
+    pub struct Enabled(pub bool);
+
+    fn enabled(app: &AppHandle) -> Result<(), String> {
+        if app.state::<Enabled>().0 {
+            Ok(())
+        } else {
+            Err("updates are not set up for this build".into())
+        }
+    }
+
+    #[tauri::command]
+    pub async fn update_check(app: AppHandle) -> Result<Option<String>, String> {
+        enabled(&app)?;
+        let update = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())?;
+        Ok(update.map(|u| u.version))
+    }
+
+    #[tauri::command]
+    pub async fn update_install(app: AppHandle) -> Result<(), String> {
+        enabled(&app)?;
+        let Some(update) = app.updater().map_err(|e| e.to_string())?.check().await.map_err(|e| e.to_string())? else {
+            return Err("no update available".into());
+        };
+        let mut done = 0u64;
+        update
+            .download_and_install(
+                |chunk, total| {
+                    done += chunk as u64;
+                    if let Some(total) = total.filter(|t| *t > 0) {
+                        let _ = app.emit("update-progress", done as f64 * 100.0 / total as f64);
+                    }
+                },
+                || {},
+            )
+            .await
+            .map_err(|e| e.to_string())?;
+        app.restart();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "linux")]
@@ -6,11 +51,22 @@ pub fn run() {
     }
     let builder = tauri::Builder::default();
     #[cfg(desktop)]
-    let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+    let builder = builder
+        .plugin(tauri_plugin_window_state::Builder::default().build())
+        .invoke_handler(tauri::generate_handler![update::update_check, update::update_install]);
     builder
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            #[cfg(desktop)]
+            {
+                use tauri::Manager;
+                let on = app.config().plugins.0.contains_key("updater");
+                if on {
+                    app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+                }
+                app.manage(update::Enabled(on));
+            }
             #[cfg(target_os = "linux")]
             {
                 use tauri::Manager;

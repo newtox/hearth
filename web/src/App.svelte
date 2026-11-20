@@ -23,6 +23,10 @@
   import { lang } from './lib/i18n.svelte';
   import TitleBar from './components/TitleBar.svelte';
   import { isApp } from './lib/api';
+  import UpdateBanner from './components/UpdateBanner.svelte';
+  import { watchUpdates } from './lib/update.svelte';
+
+  watchUpdates();
 
   const framed = isApp && !/android|iphone|ipad/i.test(navigator.userAgent);
 </script>
@@ -42,6 +46,7 @@
         <button class="btn small" onclick={() => resendVerification(lang)}>{t('verify_resend')}</button>
       </div>
     {/if}
+    <UpdateBanner />
     <div class="window">
       <Dock />
       <div class="cols" data-pane={app.pane}>
@@ -84,10 +89,13 @@
   }
   .shell {
     height: 100%;
+    display: flex;
+    flex-direction: column;
     padding: max(var(--gap), env(safe-area-inset-top)) max(var(--gap), env(safe-area-inset-right)) max(var(--gap), env(safe-area-inset-bottom)) max(var(--gap), env(safe-area-inset-left));
   }
   .window {
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: var(--gap);
@@ -143,8 +151,5 @@
     margin-bottom: var(--gap);
     font-size: 0.9em;
     border-left: 3px solid var(--danger);
-  }
-  .shell:has(.verify) .window {
-    height: calc(100% - 52px);
   }
 </style>

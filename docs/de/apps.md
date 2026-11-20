@@ -26,6 +26,35 @@ git push origin v0.2.0
 
 Der Workflow „Apps“ baut alle Dateien und hängt sie an ein neues Release mit dem Namen des Tags. Das dauert etwa 20 bis 30 Minuten. Derselbe Tag veröffentlicht auch das Server-Image als `ghcr.io/newtox/hearth:0.2.0`. Unter **Actions → Apps → Run workflow** kannst du ohne Release bauen, die Dateien liegen dann nur bei den Artifacts des Laufs.
 
+## Updates
+
+Hearth sucht beim Start und danach regelmäßig nach einer neuen Version und zeigt oben einen Hinweis. Unter **Einstellungen → Hilfe** steht die eigene Version, dort lässt sich auch von Hand suchen.
+
+| Wo | Was passiert |
+| --- | --- |
+| Browser | „Neu laden“ holt die Version, die gerade auf dem Server läuft. |
+| Linux (AppImage, deb, rpm) | „Jetzt aktualisieren“ lädt die neue Version und startet Hearth neu. Bei deb und rpm fragt das System einmal nach deinem Passwort. |
+| Linux (Flatpak) | „Herunterladen“ öffnet die Release-Seite. |
+| Windows | „Jetzt aktualisieren“ installiert die neue Version, sobald die Signatur eingerichtet ist (siehe unten). Sonst öffnet sich die Release-Seite. |
+| Android | „Herunterladen“ lädt die neue APK, die du dann öffnest. |
+
+### Windows-Updates einrichten
+
+Windows installiert nur Updates, die mit deinem Schlüssel signiert sind. Das richtest du einmal ein:
+
+```sh
+cd web
+npx tauri signer generate -w ~/.tauri/hearth.key
+```
+
+Dann im Repository unter **Settings → Secrets and variables → Actions**:
+
+- Secret `TAURI_SIGNING_PRIVATE_KEY`: Inhalt von `~/.tauri/hearth.key`
+- Secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: das Passwort, das du vergeben hast
+- Variable `TAURI_UPDATER_PUBKEY`: Inhalt von `~/.tauri/hearth.key.pub`
+
+Ab dem nächsten Tag enthält das Release eine `latest.json`, und Windows-Apps ab dieser Version aktualisieren sich selbst. Den Schlüssel gut aufheben: Mit einem neuen Schlüssel müssen alle einmal von Hand neu installieren.
+
 ## Grenzen
 
 - Die APK ist ein Debug-Build. Sie lässt sich normal installieren, für den Play Store bräuchte sie einen Signaturschlüssel.

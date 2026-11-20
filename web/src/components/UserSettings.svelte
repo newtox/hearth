@@ -15,6 +15,7 @@
   import SettingsPage, { type Section } from './SettingsPage.svelte';
   import Modal from './Modal.svelte';
   import { notifications } from '../lib/notify';
+  import { checkForUpdate, installUpdate, update } from '../lib/update.svelte';
   import { allowDevices, canPickOutput, listDevices, setInputDevice, setInputVolume, setOutputDevice, setOutputVolume, voice, type AudioDevice } from '../lib/voice.svelte';
 
   const me = $derived(app.me!);
@@ -373,6 +374,14 @@
       </div>
     </form>
   {:else if section === 'help'}
+    <div class="row version">
+      <span class="grow muted">{update.current ? t('update_version', { version: update.current }) : t('update_web_version')}</span>
+      {#if update.mode}
+        <button class="btn small primary" onclick={installUpdate} disabled={update.busy}>{update.mode === 'reload' ? t('update_reload') : update.mode === 'install' ? t('update_install') : t('update_download')}</button>
+      {:else}
+        <button class="btn small" onclick={() => checkForUpdate(true)}>{t('update_check')}</button>
+      {/if}
+    </div>
     <div class="stack">
       <a class="btn" href={docs('guide')} target="_blank" rel="noopener noreferrer">{t('user_settings_guide')}</a>
       <a class="btn" href={releases} target="_blank" rel="noopener noreferrer">{t('user_settings_download_apps')}</a>
@@ -382,6 +391,12 @@
 </SettingsPage>
 
 <style>
+  .version {
+    gap: 10px;
+    align-items: center;
+    max-width: 420px;
+    margin-bottom: 16px;
+  }
   .device {
     max-width: 420px;
     margin-bottom: 14px;

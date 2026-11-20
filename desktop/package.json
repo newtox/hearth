@@ -14,7 +14,8 @@
     "build": "electron-builder --linux"
   },
   "dependencies": {
-    "@vencord/venmic": "7.2.5"
+    "@vencord/venmic": "7.2.5",
+    "electron-updater": "^6.8.11"
   },
   "devDependencies": {
     "electron": "45.3.3",
@@ -74,6 +75,12 @@
         "pipewire-libs"
       ]
     },
-    "publish": null
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "newtox",
+        "repo": "hearth"
+      }
+    ]
   }
 }
