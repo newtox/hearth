@@ -85,7 +85,6 @@ async fn members(st: &AppState, guild_id: Uuid) -> Result<Vec<Member>> {
         let shown = st.hub.visible(&m.id);
         m.online = shown;
         m.presence = st.hub.presence(&m.id).to_string();
-        m.activity = if shown { st.hub.activity.get(&m.id).map(|a| a.clone()) } else { None };
         m.streaming = shown && st.hub.streaming.contains_key(&m.id);
     }
     Ok(members)
@@ -202,6 +201,15 @@ pub async fn set_icon(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(
     remove_upload(&st, old).await;
     refresh_parts(&st, gid, &["guild"]).await?;
     Ok(Json(json!({ "icon": name })))
+}
+
+pub async fn clear_icon(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gid): Path<Uuid>) -> Result<Json<Value>> {
+    perms::ctx(&st.db, gid, uid).await?.require(perms::MANAGE_GUILD)?;
+    let old: Option<String> = sqlx::query_scalar("SELECT icon FROM guilds WHERE id = $1").bind(gid).fetch_one(&st.db).await?;
+    sqlx::query("UPDATE guilds SET icon = NULL WHERE id = $1").bind(gid).execute(&st.db).await?;
+    remove_upload(&st, old).await;
+    refresh_parts(&st, gid, &["guild"]).await?;
+    Ok(Json(json!({ "icon": null })))
 }
 
 pub async fn delete(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gid): Path<Uuid>) -> Result<Json<Value>> {

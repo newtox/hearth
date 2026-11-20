@@ -9,7 +9,6 @@ pub fn decorate(st: &AppState, u: &mut PublicUser) {
     let shown = st.hub.visible(&u.id);
     u.online = shown;
     u.presence = st.hub.presence(&u.id).to_string();
-    u.activity = if shown { st.hub.activity.get(&u.id).map(|a| a.clone()) } else { None };
     u.streaming = shown && st.hub.streaming.contains_key(&u.id);
 }
 
@@ -32,6 +31,8 @@ pub async fn me_json(st: &AppState, id: Uuid) -> Result<Value> {
     let status: String = sqlx::query_scalar("SELECT status FROM users WHERE id = $1").bind(id).fetch_one(&st.db).await?;
     v["status"] = json!(status);
     v["voice"] = json!(st.livekit.is_some());
+    let two_factor: bool = sqlx::query_scalar("SELECT totp_secret IS NOT NULL FROM users WHERE id = $1").bind(id).fetch_one(&st.db).await?;
+    v["two_factor"] = json!(two_factor);
     Ok(v)
 }
 
@@ -99,6 +100,22 @@ pub async fn set_avatar(State(st): State<AppState>, AuthUser(uid): AuthUser, mul
 
 pub async fn set_banner(State(st): State<AppState>, AuthUser(uid): AuthUser, multipart: Multipart) -> Result<Json<Value>> {
     set_image(&st, uid, "banner", multipart).await
+}
+
+async fn clear_image(st: &AppState, uid: Uuid, column: &str) -> Result<Json<Value>> {
+    let old: Option<String> = sqlx::query_scalar(&format!("SELECT {column} FROM users WHERE id = $1")).bind(uid).fetch_one(&st.db).await?;
+    sqlx::query(&format!("UPDATE users SET {column} = NULL WHERE id = $1")).bind(uid).execute(&st.db).await?;
+    remove_upload(st, old).await;
+    announce(st, uid).await?;
+    Ok(Json(me_json(st, uid).await?))
+}
+
+pub async fn clear_avatar(State(st): State<AppState>, AuthUser(uid): AuthUser) -> Result<Json<Value>> {
+    clear_image(&st, uid, "avatar").await
+}
+
+pub async fn clear_banner(State(st): State<AppState>, AuthUser(uid): AuthUser) -> Result<Json<Value>> {
+    clear_image(&st, uid, "banner").await
 }
 
 pub async fn get_user(State(st): State<AppState>, AuthUser(_): AuthUser, Path(id): Path<Uuid>) -> Result<Json<PublicUser>> {

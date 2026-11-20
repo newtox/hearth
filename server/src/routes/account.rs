@@ -1,10 +1,10 @@
 use crate::{
-    auth::{bearer, create_session, hash_password, hash_token, verify_password, AuthUser},
+    auth::{hash_password, hash_token, sign_in, verify_password, AuthSession, AuthUser, Device},
     error::{bad, AppError, Result},
     limit::ClientIp,
     AppState,
 };
-use axum::{extract::State, http::request::Parts, Json};
+use axum::{extract::State, Json};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::time::Duration;
@@ -19,7 +19,8 @@ pub struct AccountBody {
     lang: Option<String>,
 }
 
-pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, parts: Parts, Json(b): Json<AccountBody>) -> Result<Json<Value>> {
+pub async fn update(State(st): State<AppState>, auth: AuthSession, Json(b): Json<AccountBody>) -> Result<Json<Value>> {
+    let uid = auth.user;
     st.limits.check(format!("account:{uid}"), 10, Duration::from_secs(600))?;
     let hash: String = sqlx::query_scalar("SELECT password_hash FROM users WHERE id = $1").bind(uid).fetch_one(&st.db).await?;
     if !verify_password(b.password, hash).await {
@@ -56,8 +57,8 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, parts: 
         }
         let hash = hash_password(new).await?;
         sqlx::query("UPDATE users SET password_hash = $1 WHERE id = $2").bind(hash).bind(uid).execute(&st.db).await?;
-        let keep = bearer(&parts).map(hash_token).unwrap_or_default();
-        sqlx::query("DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2").bind(uid).bind(keep).execute(&st.db).await?;
+        sqlx::query("DELETE FROM sessions WHERE user_id = $1 AND id <> $2").bind(uid).bind(auth.session).execute(&st.db).await?;
+        st.hub.end_sessions(uid, Some(auth.session), None);
     }
     super::users::announce(&st, uid).await?;
     Ok(Json(super::users::me_json(&st, uid).await?))
@@ -222,7 +223,8 @@ pub struct ResetBody {
     password: String,
 }
 
-pub async fn reset(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b): Json<ResetBody>) -> Result<Json<Value>> {
+pub async fn reset(State(st): State<AppState>, device: Device, Json(b): Json<ResetBody>) -> Result<Json<Value>> {
+    let ip = device.ip.clone();
     st.limits.check(format!("reset:{ip}"), 10, Duration::from_secs(3600))?;
     if b.password.len() < 8 || b.password.len() > 128 {
         return bad("Password: 8–128 characters");
@@ -235,6 +237,6 @@ pub async fn reset(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b): 
     let hash = hash_password(b.password).await?;
     sqlx::query("UPDATE users SET password_hash = $1 WHERE id = $2").bind(hash).bind(uid).execute(&st.db).await?;
     sqlx::query("DELETE FROM sessions WHERE user_id = $1").bind(uid).execute(&st.db).await?;
-    let token = create_session(&st.db, uid).await?;
-    Ok(Json(json!({ "token": token })))
+    st.hub.end_sessions(uid, None, None);
+    sign_in(&st, uid, &device).await
 }

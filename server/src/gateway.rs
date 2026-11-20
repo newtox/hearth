@@ -25,18 +25,18 @@ async fn ready(st: &AppState, uid: Uuid) -> Result<Value> {
 }
 
 
-async fn identify(socket: &mut WebSocket, st: &AppState) -> Option<Uuid> {
+async fn identify(socket: &mut WebSocket, st: &AppState) -> Option<(Uuid, Uuid)> {
     let msg = tokio::time::timeout(Duration::from_secs(10), socket.next()).await.ok()??.ok()?;
     let Message::Text(text) = msg else { return None };
     let v: Value = serde_json::from_str(&text).ok()?;
     if v["op"] != "identify" {
         return None;
     }
-    auth::user_from_token(&st.db, v["token"].as_str()?).await
+    auth::session_from_token(&st.db, v["token"].as_str()?).await
 }
 
 async fn run(mut socket: WebSocket, st: AppState) {
-    let Some(uid) = identify(&mut socket, &st).await else {
+    let Some((uid, session)) = identify(&mut socket, &st).await else {
         let _ = socket.send(Message::Text(json!({ "t": "INVALID_SESSION" }).to_string().into())).await;
         return;
     };
@@ -46,7 +46,7 @@ async fn run(mut socket: WebSocket, st: AppState) {
     } else {
         st.hub.status.insert(uid, status);
     }
-    let (conn, mut rx, first) = st.hub.add(uid);
+    let (conn, mut rx, first) = st.hub.add(uid, session);
     let (mut sink, mut stream) = socket.split();
     let hello = match ready(&st, uid).await {
         Ok(v) => v.to_string(),
@@ -85,7 +85,6 @@ async fn run(mut socket: WebSocket, st: AppState) {
     }
     if st.hub.remove(uid, conn) {
         crate::routes::voice::leave_all(&st, uid).await;
-        st.hub.activity.remove(&uid);
         st.hub.afk.remove(&uid);
         stats::broadcast(&st, uid).await;
     }

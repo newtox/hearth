@@ -12,8 +12,11 @@
   import Avatar from './Avatar.svelte';
   import { backdrop, hoverHost } from '../lib/still.svelte';
   import { resendVerification } from '../lib/verify';
+  import { pickImage } from '../lib/crop.svelte';
   import SettingsPage, { type Section } from './SettingsPage.svelte';
   import Modal from './Modal.svelte';
+  import TwoFactor from './TwoFactor.svelte';
+  import Sessions from './Sessions.svelte';
   import { notifications } from '../lib/notify';
   import { checkForUpdate, installUpdate, update } from '../lib/update.svelte';
   import { allowDevices, canPickOutput, listDevices, setInputDevice, setInputVolume, setOutputDevice, setOutputVolume, voice, type AudioDevice } from '../lib/voice.svelte';
@@ -39,19 +42,7 @@
     badges = (await attempt(api<Badge[]>('GET', '/badges'))) ?? [];
   }
 
-  let kind = $state(app.me!.activity?.kind ?? 'playing');
-  let activityName = $state(app.me!.activity?.name ?? '');
   let soundOn = $state(sounds.enabled());
-
-  async function setActivity(e: SubmitEvent) {
-    e.preventDefault();
-    if (await attempt(api('POST', '/users/@me/activity', { kind, name: activityName }))) toast(t('user_settings_activity_set'));
-  }
-
-  async function clearActivity() {
-    await attempt(api('DELETE', '/users/@me/activity'));
-    activityName = '';
-  }
 
 
   const emptyBadge = () => ({ name: '', icon: 'svg:star', description: '', color: '#8b6cff', translations: { de: { name: '', description: '' }, da: { name: '', description: '' } } });
@@ -98,9 +89,14 @@
   if (app.me!.is_admin) loadBadges();
 
   async function pick(e: Event, kind: 'avatar' | 'banner') {
-    const file = (e.target as HTMLInputElement).files?.[0];
+    const file = await pickImage(e, kind === 'avatar' ? 'circle' : 'banner');
     if (!file) return;
     const u = await attempt(upload<User>(`/users/@me/${kind}`, file));
+    if (u) app.me = u;
+  }
+
+  async function clearImage(kind: 'avatar' | 'banner') {
+    const u = await attempt(api<User>('DELETE', `/users/@me/${kind}`));
     if (u) app.me = u;
   }
 
@@ -125,11 +121,11 @@
   const sections = $derived<Section[]>([
     { id: 'account', name: t('user_settings_my_account'), group: t('user_settings_user_settings') },
     { id: 'profile', name: t('common_profile'), group: t('user_settings_user_settings') },
+    { id: 'devices', name: t('user_settings_devices'), group: t('user_settings_user_settings') },
     { id: 'appearance', name: t('user_settings_appearance'), group: t('user_settings_app_settings') },
     { id: 'language', name: t('user_settings_language'), group: t('user_settings_app_settings') },
     { id: 'voice', name: t('user_settings_voice'), group: t('user_settings_app_settings') },
     { id: 'notifications', name: t('user_settings_notifications'), group: t('user_settings_app_settings') },
-    { id: 'activity', name: t('user_settings_activity'), group: t('user_settings_app_settings') },
     ...(app.me!.is_admin ? [{ id: 'badges', name: t('user_settings_global_badges'), group: t('user_settings_instance') }] : []),
     { id: 'help', name: t('user_settings_help') },
     { id: 'logout', name: t('user_settings_sign_out'), danger: true, action: async () => (await ask({ title: t('user_settings_sign_out'), text: t('user_settings_do_really_want_log_out'), confirm: t('user_settings_sign_out'), danger: true })) && logout() },
@@ -154,7 +150,7 @@
     const u = await attempt(api<User>('PATCH', '/users/@me/account', body));
     if (u) {
       app.me = { ...app.me!, ...u };
-      badgeEditing = null;
+      editing = null;
       toast(t('user_settings_account_saved'));
     }
   }
@@ -208,8 +204,9 @@
 
     <h3>{t('common_password')}</h3>
     <div><button class="btn primary" onclick={() => edit('password')}>{t('user_settings_change_password')}</button></div>
+    <TwoFactor />
     {#if editing}
-      <Modal title={editing === 'username' ? t('user_settings_change_username') : editing === 'email' ? t('user_settings_change_email') : t('user_settings_change_password')} onclose={() => (badgeEditing = null)}>
+      <Modal title={editing === 'username' ? t('user_settings_change_username') : editing === 'email' ? t('user_settings_change_email') : t('user_settings_change_password')} onclose={() => (editing = null)}>
         <form class="stack" onsubmit={saveAccount}>
           {#if editing === 'username'}
             <label class="field"><span>{t('common_username')}</span><input class="input" bind:value={form.value} maxlength="32" autocomplete="username" required /></label>
@@ -222,12 +219,14 @@
           {/if}
           <label class="field"><span>{t('user_settings_current_password')}</span><input class="input" type="password" bind:value={form.password} autocomplete="current-password" required /></label>
           <div class="row end">
-            <button type="button" class="btn" onclick={() => (badgeEditing = null)}>{t('common_cancel')}</button>
+            <button type="button" class="btn" onclick={() => (editing = null)}>{t('common_cancel')}</button>
             <button class="btn primary">{t('common_save')}</button>
           </div>
         </form>
       </Modal>
     {/if}
+  {:else if section === 'devices'}
+    <Sessions />
   {:else if section === 'profile'}
     <div class="grid">
       <form class="stack" onsubmit={save}>
@@ -246,6 +245,8 @@
         <div class="row wrap">
           <label class="btn">{t('user_settings_change_avatar')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={(e) => pick(e, 'avatar')} hidden /></label>
           <label class="btn">{t('user_settings_change_banner')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={(e) => pick(e, 'banner')} hidden /></label>
+          {#if me.avatar}<button type="button" class="btn" onclick={() => clearImage('avatar')}>{t('user_settings_remove_avatar')}</button>{/if}
+          {#if me.banner}<button type="button" class="btn" onclick={() => clearImage('banner')}>{t('user_settings_remove_banner')}</button>{/if}
         </div>
         <div><button class="btn primary">{t('user_settings_save_profile')}</button></div>
       </form>
@@ -322,19 +323,6 @@
     {/if}
     <h3>{t('user_settings_sounds')}</h3>
     <label class="row"><input type="checkbox" bind:checked={soundOn} onchange={() => (sounds.set(soundOn), play('message'))} /> {t('user_settings_sounds_messages_calls_voice_channels')}</label>
-  {:else if section === 'activity'}
-    <h3>{t('user_settings_set_activity_hand')}</h3>
-    <form class="row wrap" onsubmit={setActivity}>
-      <select class="input kind" bind:value={kind} aria-label={t('common_type')}>
-        <option value="playing">{t('user_settings_playing')}</option>
-        <option value="listening">{t('user_settings_listening')}</option>
-        <option value="watching">{t('user_settings_watching')}</option>
-        <option value="custom">{t('user_settings_custom_text')}</option>
-      </select>
-      <input class="input grow" bind:value={activityName} maxlength="64" placeholder={t('user_settings_e_g_tetris')} required />
-      <button class="btn small">{t('user_settings_set')}</button>
-      <button type="button" class="btn small" onclick={clearActivity}>{t('common_remove')}</button>
-    </form>
   {:else if section === 'badges'}
     <p class="muted">{t('user_settings_only_visible_instance_admins_badges')}</p>
     <div class="row wrap">
@@ -452,6 +440,11 @@
   .who-row p {
     margin: 0;
   }
+  .who-row .grow {
+    padding-top: 30px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
   .big {
     font-size: 1.2em;
   }
@@ -508,9 +501,6 @@
     border: 1px solid var(--line);
     border-radius: var(--radius-s);
     background: none;
-  }
-  .kind {
-    width: 130px;
   }
   .row .grow {
     min-width: 120px;

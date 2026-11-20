@@ -29,20 +29,14 @@ export interface User {
   email_verified?: boolean;
   is_admin?: boolean;
   voice?: boolean;
+  two_factor?: boolean;
   badges?: Badge[];
-  activity?: Activity | null;
   streaming?: boolean;
   progress?: Progress;
 }
 export interface Progress {
   colors: string[];
   tracks: { track: string; icon: string; value: number; tier: number | null; steps: number[] }[];
-}
-export interface Activity {
-  kind: 'playing' | 'listening' | 'watching' | 'custom';
-  name: string;
-  details: string;
-  since: string;
 }
 export interface Badge {
   id: string;
@@ -332,18 +326,24 @@ export function dmUnread() {
   return app.dms.some((d) => app.unread[d.id]);
 }
 
-export async function login(path: 'login' | 'register', body: Record<string, string>) {
-  const res = await api('POST', `/auth/${path}`, body);
-  setToken(res.token);
+function signedIn(res: { token?: string; two_factor?: boolean; ticket?: string }) {
+  if (res.two_factor && res.ticket) return res.ticket;
+  setToken(res.token!);
   app.authed = true;
   connect();
+  return null;
+}
+
+export async function login(path: 'login' | 'register', body: Record<string, string>) {
+  return signedIn(await api('POST', `/auth/${path}`, body));
+}
+
+export async function loginSecondFactor(ticket: string, code: string) {
+  return signedIn(await api('POST', '/auth/login/2fa', { ticket, code }));
 }
 
 export async function resetPassword(token: string, password: string) {
-  const res = await api('POST', '/auth/reset', { token, password });
-  setToken(res.token);
-  app.authed = true;
-  connect();
+  return signedIn(await api('POST', '/auth/reset', { token, password }));
 }
 
 export async function logout() {
@@ -463,7 +463,7 @@ function handle(t: string, d: any) {
       if (d.user_id !== app.me?.id) (app.typing[d.channel_id] ??= {})[d.user_id] = Date.now() + 6000;
       break;
     case 'PRESENCE_UPDATE':
-      patchUser(d.user_id, { online: d.online, presence: d.presence, activity: d.activity, streaming: d.streaming });
+      patchUser(d.user_id, { online: d.online, presence: d.presence, streaming: d.streaming });
       break;
     case 'USER_UPDATE':
       patchUser(d.id, d);

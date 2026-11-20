@@ -8,6 +8,7 @@
   import Icon from './Icon.svelte';
   import StillImg from './StillImg.svelte';
   import Modal from './Modal.svelte';
+  import { pickImage } from '../lib/crop.svelte';
 
   let { dm: given }: { dm: Dm | null } = $props();
 
@@ -18,8 +19,12 @@
   const admin = $derived(myRole === 2);
 
   async function pickIcon(e: Event) {
-    const file = (e.target as HTMLInputElement).files?.[0];
+    const file = await pickImage(e, 'circle');
     if (file && dm) await attempt(upload(`/channels/${dm.id}/group/icon`, file));
+  }
+
+  async function clearIcon() {
+    if (dm) await attempt(api('DELETE', `/channels/${dm.id}/group/icon`));
   }
 
   let name = $state('');
@@ -60,6 +65,7 @@
         {#if groupMay(dm, 'edit')}
           <button class="btn small" onclick={rename}><Icon name="edit" size={14} />{t('group_modal_rename')}</button>
           <label class="btn small">{t('group_modal_change_picture')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={pickIcon} hidden /></label>
+          {#if dm.icon}<button type="button" class="btn small" onclick={clearIcon}>{t('group_modal_remove_picture')}</button>{/if}
         {/if}
         <button class="btn small danger" onclick={leave}>{t('group_modal_leave_group')}</button>
       </div>

@@ -1,4 +1,3 @@
-use crate::models::Activity;
 use dashmap::DashMap;
 use std::time::Instant;
 use serde::Serialize;
@@ -11,26 +10,36 @@ type Tx = mpsc::UnboundedSender<String>;
 
 #[derive(Default)]
 pub struct Hub {
-    conns: DashMap<Uuid, Vec<(u64, Tx)>>,
+    conns: DashMap<Uuid, Vec<(u64, Uuid, Tx)>>,
     pub voice: DashMap<Uuid, Uuid>,
     pub voice_tick: DashMap<Uuid, Instant>,
     pub calls: DashMap<Uuid, Uuid>,
     pub streaming: DashMap<Uuid, Instant>,
     pub watching: DashMap<Uuid, Vec<Uuid>>,
-    pub activity: DashMap<Uuid, Activity>,
     pub status: DashMap<Uuid, String>,
     pub afk: DashMap<Uuid, ()>,
     next: AtomicU64,
 }
 
 impl Hub {
-    pub fn add(&self, user: Uuid) -> (u64, mpsc::UnboundedReceiver<String>, bool) {
+    pub fn add(&self, user: Uuid, session: Uuid) -> (u64, mpsc::UnboundedReceiver<String>, bool) {
         let (tx, rx) = mpsc::unbounded_channel();
         let id = self.next.fetch_add(1, Ordering::Relaxed);
         let mut entry = self.conns.entry(user).or_default();
         let first = entry.is_empty();
-        entry.push((id, tx));
+        entry.push((id, session, tx));
         (id, rx, first)
+    }
+
+    pub fn end_sessions(&self, user: Uuid, keep: Option<Uuid>, only: Option<Uuid>) {
+        let text = json!({ "t": "INVALID_SESSION" }).to_string();
+        if let Some(entry) = self.conns.get(&user) {
+            for (_, session, tx) in entry.iter() {
+                if Some(*session) != keep && only.is_none_or(|o| o == *session) {
+                    let _ = tx.send(text.clone());
+                }
+            }
+        }
     }
 
     pub fn remove(&self, user: Uuid, id: u64) -> bool {
@@ -73,7 +82,7 @@ impl Hub {
         let text = json!({ "t": t, "d": d }).to_string();
         for u in users {
             if let Some(entry) = self.conns.get(u) {
-                for (_, tx) in entry.iter() {
+                for (_, _, tx) in entry.iter() {
                     let _ = tx.send(text.clone());
                 }
             }

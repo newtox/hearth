@@ -412,3 +412,15 @@ optgroup {
     animation: none;
   }
 }
+
+.input.invalid {
+  border-color: var(--danger);
+}
+.field-error,
+.field > .field-error {
+  display: block;
+  margin-top: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--danger);
+}

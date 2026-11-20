@@ -1,6 +1,5 @@
 <script lang="ts">
   import { ask } from '../lib/dialog.svelte';
-  import { activityText } from '../lib/activity';
   import { api } from '../lib/api';
   import { t } from '../lib/i18n.svelte';
   import { app, attempt, openDm, toast, type User, presenceOf } from '../lib/store.svelte';
@@ -82,7 +81,7 @@
           <Avatar id={u.id} name={u.display_name} image={u.avatar} size={38} status={presenceOf(u)} />
           <span class="names">
             <strong class="ellipsis">{u.display_name}</strong>
-            <small class="muted ellipsis">{u.activity ? activityText(u.activity) : u.online ? t('common_online') : t('common_offline')}</small>
+            <small class="muted ellipsis">{u.online ? t('common_online') : t('common_offline')}</small>
           </span>
         </button>
         <button class="btn small" onclick={() => openDm(u.id)}><Icon name="mail" size={15} />{t('friends_pane_message')}</button>

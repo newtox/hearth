@@ -1,5 +1,5 @@
 use super::related_users;
-use crate::{auth::AuthUser, error::{bad, Result}, models::{Activity, Badge}, AppState};
+use crate::{auth::AuthUser, error::Result, models::Badge, AppState};
 use axum::{extract::State, Json};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -105,56 +105,12 @@ pub async fn tracked(st: &AppState, uid: Uuid) -> Result<(Vec<Badge>, Value)> {
 pub async fn broadcast(st: &AppState, uid: Uuid) {
     if let Ok(users) = related_users(st, uid).await {
         let shown = st.hub.visible(&uid);
-        let activity = if shown { st.hub.activity.get(&uid).map(|a| a.clone()) } else { None };
         st.hub.send(
             &users,
             "PRESENCE_UPDATE",
-            json!({ "user_id": uid, "online": shown, "presence": st.hub.presence(&uid), "activity": activity, "streaming": shown && st.hub.streaming.contains_key(&uid) }),
+            json!({ "user_id": uid, "online": shown, "presence": st.hub.presence(&uid), "streaming": shown && st.hub.streaming.contains_key(&uid) }),
         );
     }
-}
-
-#[derive(Deserialize)]
-pub struct ActivityBody {
-    kind: String,
-    name: String,
-    #[serde(default)]
-    details: String,
-}
-
-pub async fn set_activity(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b): Json<ActivityBody>) -> Result<Json<Value>> {
-    st.limits.check(format!("activity:{uid}"), 30, Duration::from_secs(60))?;
-    if !["playing", "listening", "watching", "custom"].contains(&b.kind.as_str()) {
-        return bad("Unknown activity");
-    }
-    let name = b.name.trim();
-    let details = b.details.trim();
-    if name.is_empty() || name.chars().count() > 64 || details.chars().count() > 64 {
-        return bad("Activity: 1–64 characters");
-    }
-    if !st.hub.is_online(&uid) {
-        return bad("Not connected");
-    }
-    flush(&st, uid).await;
-    let source = "manual";
-    let same = st.hub.activity.get(&uid).is_some_and(|a| a.kind == b.kind && a.name == name && a.source == source);
-    if same {
-        if let Some(mut a) = st.hub.activity.get_mut(&uid) {
-            a.details = details.to_string();
-        }
-    } else {
-        st.hub.activity.insert(uid, Activity { kind: b.kind, name: name.to_string(), details: details.to_string(), since: chrono::Utc::now(), tick: Instant::now(), source });
-    }
-    broadcast(&st, uid).await;
-    Ok(Json(json!({})))
-}
-
-pub async fn clear_activity(State(st): State<AppState>, AuthUser(uid): AuthUser) -> Result<Json<Value>> {
-    flush(&st, uid).await;
-    if st.hub.activity.remove(&uid).is_some() {
-        broadcast(&st, uid).await;
-    }
-    Ok(Json(json!({})))
 }
 
 #[derive(Deserialize)]

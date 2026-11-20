@@ -11,6 +11,7 @@ pub mod messages;
 pub mod roles;
 pub mod thumbs;
 pub mod stats;
+pub mod security;
 pub mod users;
 pub mod voice;
 

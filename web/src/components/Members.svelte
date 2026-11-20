@@ -1,7 +1,6 @@
 <script lang="ts">
   import { t } from '../lib/i18n.svelte';
   import { app, guild, memberColor, type Member, presenceOf } from '../lib/store.svelte';
-  import { activityText } from '../lib/activity';
   import { w } from '../lib/theme.svelte';
   import { memberMenu, openMenu } from '../lib/menus';
   import Avatar from './Avatar.svelte';
@@ -37,7 +36,6 @@
           <Avatar id={m.id} name={m.display_name} image={m.avatar} size={30} status={presenceOf(m)} />
           <span class="who">
             <span class="ellipsis" style:color={memberColor(g, m.id)}>{m.nickname || m.display_name}</span>
-            {#if m.activity}<small class="ellipsis muted">{activityText(m.activity)}</small>{/if}
           </span>
           {#if m.streaming}<span class="live" title={t('common_sharing_their_screen')}><Icon name="broadcast" size={15} /></span>{/if}
           {#if m.id === g.owner_id}<span class="crown" title={t('common_owner')}><Icon name="crown" size={14} /></span>{/if}
@@ -84,9 +82,6 @@
     display: grid;
     min-width: 0;
     line-height: 1.25;
-  }
-  .who small {
-    font-size: 0.8em;
   }
   .live {
     color: var(--danger);

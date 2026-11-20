@@ -137,6 +137,14 @@ pub async fn set_icon(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(
     Ok(Json(updated(&st, cid).await?))
 }
 
+pub async fn clear_icon(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid): Path<Uuid>) -> Result<Json<Value>> {
+    group(&st, uid, cid).await?.require("edit")?;
+    let old: Option<String> = sqlx::query_scalar("SELECT icon FROM channels WHERE id = $1").bind(cid).fetch_one(&st.db).await?;
+    sqlx::query("UPDATE channels SET icon = NULL WHERE id = $1").bind(cid).execute(&st.db).await?;
+    remove_upload(&st, old).await;
+    Ok(Json(updated(&st, cid).await?))
+}
+
 pub async fn add(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((cid, target)): Path<(Uuid, Uuid)>) -> Result<Json<Value>> {
     group(&st, uid, cid).await?.require("invite")?;
     let members = recipients(&st, cid).await?;

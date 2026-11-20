@@ -19,6 +19,7 @@
   import ModView from './components/ModView.svelte';
   import SidePanel from './components/SidePanel.svelte';
   import Dialog from './components/Dialog.svelte';
+  import ImageCropper from './components/ImageCropper.svelte';
   import { resendVerification } from './lib/verify';
   import { lang } from './lib/i18n.svelte';
   import TitleBar from './components/TitleBar.svelte';
@@ -68,6 +69,7 @@
 {/if}
 
 <Dialog />
+<ImageCropper />
 
 {#if app.toast}<div class="toast panel" role="alert">{app.toast}</div>{/if}
 </div>

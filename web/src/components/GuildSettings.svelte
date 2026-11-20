@@ -10,6 +10,7 @@
   import Avatar from './Avatar.svelte';
   import Icon from './Icon.svelte';
   import { sortable, type Place } from '../lib/drag';
+  import { pickImage } from '../lib/crop.svelte';
   import SettingsPage from './SettingsPage.svelte';
 
   let { tab: initial = 'overview' }: { tab?: string } = $props();
@@ -40,8 +41,12 @@
   }
 
   async function pickIcon(e: Event) {
-    const file = (e.target as HTMLInputElement).files?.[0];
+    const file = await pickImage(e, 'square');
     if (file) await attempt(upload(`/guilds/${g.id}/icon`, file));
+  }
+
+  async function clearIcon() {
+    await attempt(api('DELETE', `/guilds/${g.id}/icon`));
   }
 
   async function leave() {
@@ -268,6 +273,7 @@
               <div class="row">
                 <Avatar id={g.id} name={g.name} image={g.icon} size={64} square />
                 <label class="btn">{t('guild_settings_change_icon')}<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onchange={pickIcon} hidden /></label>
+                {#if g.icon}<button type="button" class="btn" onclick={clearIcon}>{t('guild_settings_remove_icon')}</button>{/if}
               </div>
               <label class="field"><span>{t('common_name')}</span><input class="input" bind:value={name} maxlength="60" required /></label>
               <label class="field"><span>{t('common_description')}</span><textarea class="input" rows="3" maxlength="300" bind:value={description}></textarea></label>

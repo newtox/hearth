@@ -1,7 +1,7 @@
 <script lang="ts">
   import { LANGS, lang, setLang, t } from '../lib/i18n.svelte';
   import { api, base, isApp, setServer } from '../lib/api';
-  import { login, resetPassword } from '../lib/store.svelte';
+  import { login, loginSecondFactor, resetPassword } from '../lib/store.svelte';
   import { THEMES, applyTheme, theme, w } from '../lib/theme.svelte';
 
   const tokenFromHash = () => location.hash.match(/^#\/reset\/([0-9a-f]{64})/)?.[1] ?? '';
@@ -23,6 +23,14 @@
   let error = $state('');
   let busy = $state(false);
   let server = $state(base());
+  let ticket = $state('');
+  let code = $state('');
+
+  function back() {
+    ticket = '';
+    code = '';
+    error = '';
+  }
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
@@ -30,14 +38,15 @@
     busy = true;
     if (isApp) setServer(server);
     try {
-      if (mode === 'login') await login('login', { login: username, password });
+      if (ticket) await loginSecondFactor(ticket, code);
+      else if (mode === 'login') ticket = (await login('login', { login: username, password })) ?? '';
       else if (mode === 'register') await login('register', { username, email, password, lang });
       else if (mode === 'forgot') {
         await api('POST', '/auth/forgot', { login: username, lang });
         sent = true;
       } else if (password !== repeat) error = t('common_new_passwords_do_not_match');
       else {
-        await resetPassword(resetToken, password);
+        ticket = (await resetPassword(resetToken, password)) ?? '';
         history.replaceState(null, '', location.pathname);
       }
     } catch (err) {
@@ -55,6 +64,17 @@
       <h1>Hearth</h1>
       <p class="muted">{theme.id === 'pergament' ? t('auth_step_up_fire_traveller') : t('auth_place_fire')}</p>
     </div>
+    {#if ticket}
+      <h2>{t('auth_two_factor_title')}</h2>
+      <p class="muted">{t('auth_two_factor_text')}</p>
+      <label class="field">
+        <span>{t('auth_two_factor_code')}</span>
+        <input class="input code" bind:value={code} autocomplete="one-time-code" autocapitalize="off" spellcheck="false" maxlength="11" required />
+      </label>
+      {#if error}<p class="error" role="alert">{error}</p>{/if}
+      <button class="btn primary" disabled={busy}>{t('auth_two_factor_confirm')}</button>
+      <button type="button" class="switch" onclick={back}>{t('auth_two_factor_back')}</button>
+    {:else}
     {#if mode === 'forgot' || mode === 'reset'}
       <h2>{mode === 'forgot' ? t('auth_forgot_password') : t('auth_choose_new_password')}</h2>
     {/if}
@@ -100,6 +120,7 @@
     <button type="button" class="switch" onclick={() => ((mode = mode === 'login' ? 'register' : 'login'), (error = ''))}>
       {mode === 'login' ? t('auth_no_account_yet_create_one') : t('auth_already_have_account_sign')}
     </button>
+    {/if}
     <div class="row themes">
       {#each LANGS as l}
         <button type="button" class="btn small" class:primary={lang === l.id} onclick={() => setLang(l.id)}>{l.name}</button>
@@ -130,6 +151,10 @@
   }
   .error {
     color: var(--danger);
+  }
+  .input.code {
+    font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+    letter-spacing: 0.15em;
   }
   .switch {
     text-decoration: underline;

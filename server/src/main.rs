@@ -8,10 +8,11 @@ mod models;
 #[allow(dead_code)]
 mod perms;
 mod routes;
+mod totp;
 
 use axum::{extract::DefaultBodyLimit, http::{header, HeaderValue}, response::Html, routing::{delete, get, patch, post, put}, Router};
 use hub::Hub;
-use routes::{account, badges, channels, emojis, friends, groups, guilds, invites, members, messages, roles, stats, thumbs, users, voice};
+use routes::{account, badges, channels, emojis, friends, groups, guilds, invites, members, messages, roles, security, stats, thumbs, users, voice};
 use sqlx::postgres::PgPoolOptions;
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tower_http::{cors::CorsLayer, services::ServeDir, set_header::SetResponseHeaderLayer, trace::TraceLayer};
@@ -104,6 +105,7 @@ async fn main() {
     let api = Router::new()
         .route("/auth/register", post(auth::register))
         .route("/auth/login", post(auth::login))
+        .route("/auth/login/2fa", post(auth::login_second_factor))
         .route("/auth/logout", post(auth::logout))
         .route("/auth/forgot", post(account::forgot))
         .route("/auth/reset", post(account::reset))
@@ -111,18 +113,24 @@ async fn main() {
         .route("/users/@me/verify", post(account::resend))
         .route("/config", get(account::config))
         .route("/users/@me/account", patch(account::update))
+        .route("/users/@me/sessions", get(security::list_sessions).delete(security::end_other_sessions))
+        .route("/users/@me/sessions/{id}", delete(security::end_session))
+        .route("/users/@me/2fa", get(security::recovery_count))
+        .route("/users/@me/2fa/setup", post(security::two_factor_setup))
+        .route("/users/@me/2fa/enable", post(security::two_factor_enable))
+        .route("/users/@me/2fa/disable", post(security::two_factor_disable))
+        .route("/users/@me/2fa/codes", post(security::recovery_codes))
         .route("/search", get(messages::search))
         .route("/channels/{cid}/pins", get(messages::pins))
         .route("/channels/{cid}/pins/{mid}", put(messages::pin).delete(messages::unpin))
         .route("/users/@me", get(users::me).patch(users::update_me))
-        .route("/users/@me/avatar", post(users::set_avatar))
-        .route("/users/@me/banner", post(users::set_banner))
+        .route("/users/@me/avatar", post(users::set_avatar).delete(users::clear_avatar))
+        .route("/users/@me/banner", post(users::set_banner).delete(users::clear_banner))
         .route("/users/@me/channels", post(users::open_dm))
         .route("/users/{id}", get(users::get_user))
         .route("/users/{id}/badges/{bid}", put(badges::grant).delete(badges::revoke))
         .route("/badges", get(badges::list).post(badges::create))
         .route("/badges/{bid}", delete(badges::delete).patch(badges::update))
-        .route("/users/@me/activity", post(stats::set_activity).delete(stats::clear_activity))
         .route("/voice/stream", post(stats::set_streaming))
         .route("/voice/watch", post(voice::watch))
         .route("/friends", get(friends::list).post(friends::add))
@@ -130,7 +138,7 @@ async fn main() {
         .route("/users/@me/groups", post(groups::create))
         .route("/blocks/{uid}", put(friends::block).delete(friends::unblock))
         .route("/channels/{cid}/group", patch(groups::update))
-        .route("/channels/{cid}/group/icon", post(groups::set_icon))
+        .route("/channels/{cid}/group/icon", post(groups::set_icon).delete(groups::clear_icon))
         .route("/channels/{cid}/recipients/{uid}/role", put(groups::set_role))
         .route("/channels/{cid}/recipients/{uid}", put(groups::add).delete(groups::remove))
         .route("/voice", delete(voice::leave))
@@ -143,7 +151,7 @@ async fn main() {
         .route("/guilds/{gid}/emojis/{eid}", delete(emojis::delete))
         .route("/guilds", post(guilds::create))
         .route("/guilds/{gid}", get(guilds::get).patch(guilds::update).delete(guilds::delete))
-        .route("/guilds/{gid}/icon", post(guilds::set_icon))
+        .route("/guilds/{gid}/icon", post(guilds::set_icon).delete(guilds::clear_icon))
         .route("/guilds/{gid}/channels", post(channels::create).put(channels::reorder))
         .route("/guilds/{gid}/roles", post(roles::create).put(roles::reorder))
         .route("/guilds/{gid}/roles/{rid}", patch(roles::update).delete(roles::delete))

@@ -3,6 +3,7 @@ import { serverError, t } from './i18n.svelte';
 export const isTauri = '__TAURI_INTERNALS__' in window;
 export const isElectron = 'hearthDesktop' in window;
 export const isApp = isTauri || isElectron;
+const client = !isApp ? 'web' : /android/i.test(navigator.userAgent) ? 'android' : 'desktop';
 
 export function base(): string {
   return (localStorage.getItem('hearth_server') ?? import.meta.env.VITE_SERVER_URL ?? '').replace(/\/+$/, '');
@@ -50,6 +51,7 @@ export class ApiError extends Error {
 async function send(method: string, path: string, init: RequestInit) {
   const headers = new Headers(init.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
+  headers.set('X-Hearth-Client', client);
   let res: Response;
   try {
     res = await fetch(`${base()}/api${path}`, { ...init, method, headers });

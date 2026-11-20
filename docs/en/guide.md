@@ -21,7 +21,9 @@ Under Settings, Notifications, you can turn on desktop notifications. They show 
 
 ## Account
 
-Settings is a full page with your account, profile, connections, appearance, language, notifications and activity. Under **My account** you change username, email and password; all of these need your current password. A new password signs out every other device. If you forgot your password, "Forgot your password?" on the sign-in page sends a link by email, if the server has email set up.
+Settings is a full page with your account, profile, connections, appearance, language, notifications and devices. Under **My account** you change username, email and password; all of these need your current password. A new password signs out every other device.
+
+That is also where you turn on **two-factor authentication**: enter your password, scan the QR code with an authenticator app (or type the key) and confirm a code. You then get ten recovery codes that each work once instead of an app code; keep them somewhere safe. From then on, signing in asks for password and code. Under **Devices** you see where you are signed in, with browser or app, system, IP and last activity, and sign out single devices or all others. If you forgot your password, "Forgot your password?" on the sign-in page sends a link by email, if the server has email set up.
 
 ## Moderator view
 
@@ -29,7 +31,7 @@ Opens from a member's menu for anyone with a moderation permission. It shows the
 
 ## Messages
 
-Markdown: `**bold**`, `*italic*`, `~~struck~~`, `` `code` `` and code blocks. Mention people with `@username` and everyone with `@everyone`; messages that mention you are highlighted. The emoji button has a search that understands English and German words, for example `fire` or `feuer`.
+Markdown: `**bold**`, `*italic*`, `~~struck~~`, `` `code` `` and code blocks. Mention people with `@username` and everyone with `@everyone`; messages that mention you are highlighted. The emoji button shows every emoji by category; the rail on the left jumps to servers with custom emojis or to a category. The search understands English and German words and shortcodes, for example `fire`, `feuer` or `thumbsup`.
 
 Polls are created with the poll button next to the message field, with one or several answers and an optional end time.
 
@@ -37,13 +39,9 @@ Polls are created with the poll button next to the message field, with one or se
 
 Click a voice channel to join. Screen shares appear as tiles; you start watching by clicking one, and the sharer sees who watches. Sounds play when people join, leave and start or stop sharing.
 
-## Activity
-
-Under Settings, Activity you can show what you are doing: playing, listening, watching or a custom text. It stays until you remove it or close Hearth.
-
 ## Profiles and badges
 
-Profiles have avatar, banner, bio, accent colour and activity. Badges come in two kinds: badges the instance admin gives, and earned badges for stream time, voice time and account age in ten colour levels. Stream time counts while someone watches, voice time while at least two people are in the channel. Click an earned badge to see your progress.
+Profiles have avatar, banner, bio and accent colour. When you upload an avatar, banner or server icon you pick the crop by dragging and zooming; GIFs are kept as they are. Every image can be removed again. Badges come in two kinds: badges the instance admin gives, and earned badges for stream time, voice time and account age in ten colour levels. Stream time counts while someone watches, voice time while at least two people are in the channel. Click an earned badge to see your progress.
 
 ## Status
 
@@ -52,7 +50,7 @@ Click your own avatar to pick a status:
 - **Online**
 - **Idle**, also set automatically after 10 minutes without input and cleared as soon as you are back
 - **Do not disturb**: no sounds for messages and calls
-- **Invisible**: others see you as offline and without activity, you can still use everything
+- **Invisible**: others see you as offline, you can still use everything
 
 The status is saved and stays after a restart.
 

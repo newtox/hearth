@@ -1,19 +1,5 @@
 import { fromEnglish, lang, locale, t } from './i18n.svelte';
-import type { Activity, Badge } from './store.svelte';
-
-export function activityText(a: Activity) {
-  if (a.kind === 'playing') return t('activity_playing_name', { name: a.name });
-  if (a.kind === 'listening') return t('activity_listening_name', { name: a.name });
-  if (a.kind === 'watching') return t('activity_watching_name', { name: a.name });
-  return a.name;
-}
-
-export function elapsed(since: string) {
-  const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(since)) / 60000));
-  if (minutes < 1) return t('activity_just_now');
-  if (minutes < 60) return t('activity_n_min', { n: minutes });
-  return t('activity_n_h', { n: Math.floor(minutes / 60) });
-}
+import type { Badge } from './store.svelte';
 
 export const TRACKS: Record<string, { name: string; hint: string; years?: boolean }> = {
   stream: { name: 'activity_stream_time', hint: 'activity_counts_while_share_screen_voice' },

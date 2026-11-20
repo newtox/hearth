@@ -21,7 +21,9 @@ Unter Einstellungen, Benachrichtigungen schaltest du Desktop-Benachrichtigungen 
 
 ## Konto
 
-Die Einstellungen sind eine eigene Seite mit Konto, Profil, Verbindungen, Darstellung, Sprache, Benachrichtigungen und Aktivität. Unter **Mein Konto** änderst du Benutzername, E-Mail und Passwort, jeweils mit deinem aktuellen Passwort. Ein neues Passwort meldet alle anderen Geräte ab. Wer sein Passwort vergessen hat, bekommt über „Passwort vergessen?“ auf der Anmeldeseite einen Link per E-Mail, sofern der Server E-Mail eingerichtet hat.
+Die Einstellungen sind eine eigene Seite mit Konto, Profil, Verbindungen, Darstellung, Sprache, Benachrichtigungen und Geräte. Unter **Mein Konto** änderst du Benutzername, E-Mail und Passwort, jeweils mit deinem aktuellen Passwort. Ein neues Passwort meldet alle anderen Geräte ab.
+
+Dort schaltest du auch die **Zwei-Faktor-Authentifizierung** ein: Passwort eingeben, den QR-Code mit einer Authenticator-App scannen (oder den Schlüssel abtippen) und den Code bestätigen. Danach bekommst du zehn Wiederherstellungscodes, die je einmal statt eines App-Codes funktionieren; bewahre sie gut auf. Beim Anmelden fragt Hearth dann nach Passwort und Code. Unter **Geräte** siehst du, wo du angemeldet bist, mit Browser oder App, System, IP und letzter Aktivität, und meldest einzelne Geräte oder alle anderen ab. Wer sein Passwort vergessen hat, bekommt über „Passwort vergessen?“ auf der Anmeldeseite einen Link per E-Mail, sofern der Server E-Mail eingerichtet hat.
 
 ## Moderatorenansicht
 
@@ -29,7 +31,7 @@ Die Einstellungen sind eine eigene Seite mit Konto, Profil, Verbindungen, Darste
 
 ## Nachrichten
 
-Markdown: `**fett**`, `*kursiv*`, `~~durchgestrichen~~`, `` `Code` `` und Codeblöcke. Leute erwähnst du mit `@benutzername`, alle mit `@everyone`; Nachrichten, die dich erwähnen, sind hervorgehoben. Der Emoji-Knopf hat eine Suche, die deutsche und englische Wörter versteht, zum Beispiel `feuer` oder `fire`.
+Markdown: `**fett**`, `*kursiv*`, `~~durchgestrichen~~`, `` `Code` `` und Codeblöcke. Leute erwähnst du mit `@benutzername`, alle mit `@everyone`; Nachrichten, die dich erwähnen, sind hervorgehoben. Der Emoji-Knopf zeigt alle Emojis nach Kategorien, links springst du zu Servern mit eigenen Emojis oder zu einer Kategorie. Die Suche versteht deutsche und englische Wörter und Kürzel, zum Beispiel `feuer`, `fire` oder `thumbsup`.
 
 Umfragen legst du mit dem Umfrage-Knopf neben dem Nachrichtenfeld an, mit einer oder mehreren Antworten und optionalem Ende.
 
@@ -37,13 +39,9 @@ Umfragen legst du mit dem Umfrage-Knopf neben dem Nachrichtenfeld an, mit einer 
 
 Ein Klick auf einen Sprachkanal tritt bei. Geteilte Bildschirme erscheinen als Kacheln; zuschauen startest du per Klick, und wer teilt, sieht die Zuschauer. Töne spielen, wenn jemand beitritt, geht oder das Teilen startet oder beendet.
 
-## Aktivität
-
-Unter Einstellungen, Aktivität kannst du zeigen, was du gerade machst: Spielt, Hört, Schaut oder ein eigener Text. Sie bleibt, bis du sie entfernst oder Hearth schließt.
-
 ## Profile und Abzeichen
 
-Profile haben Avatar, Banner, Bio, Akzentfarbe und Aktivität. Abzeichen gibt es in zwei Arten: solche, die der Instanz-Admin vergibt, und verdiente für Streamzeit, Sprachzeit und Kontoalter in zehn Farbstufen. Streamzeit zählt, solange jemand zuschaut, Sprachzeit, solange mindestens zwei Leute im Kanal sind. Ein Klick auf ein verdientes Abzeichen zeigt den Fortschritt.
+Profile haben Avatar, Banner, Bio und Akzentfarbe. Beim Hochladen von Avatar, Banner oder Server-Icon wählst du den Ausschnitt per Ziehen und Zoomen; GIFs werden unverändert übernommen. Jedes Bild lässt sich auch wieder entfernen. Abzeichen gibt es in zwei Arten: solche, die der Instanz-Admin vergibt, und verdiente für Streamzeit, Sprachzeit und Kontoalter in zehn Farbstufen. Streamzeit zählt, solange jemand zuschaut, Sprachzeit, solange mindestens zwei Leute im Kanal sind. Ein Klick auf ein verdientes Abzeichen zeigt den Fortschritt.
 
 ## Status
 
@@ -52,7 +50,7 @@ Ein Klick auf deinen eigenen Avatar öffnet die Statusauswahl:
 - **Online**
 - **Abwesend**, kommt auch automatisch nach 10 Minuten ohne Eingabe und verschwindet, sobald du wieder da bist
 - **Bitte nicht stören**: keine Töne für Nachrichten und Anrufe
-- **Unsichtbar**: andere sehen dich offline und ohne Aktivität, du kannst trotzdem alles nutzen
+- **Unsichtbar**: andere sehen dich offline, du kannst trotzdem alles nutzen
 
 Der Status wird gespeichert und bleibt nach einem Neustart erhalten.
 

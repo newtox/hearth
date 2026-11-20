@@ -10,17 +10,53 @@ use uuid::Uuid;
 
 pub struct AuthUser(pub Uuid);
 
+pub struct AuthSession {
+    pub user: Uuid,
+    pub session: Uuid,
+}
+
+pub struct Device {
+    pub user_agent: String,
+    pub client: String,
+    pub ip: String,
+}
+
+impl FromRequestParts<AppState> for Device {
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, st: &AppState) -> Result<Self> {
+        let ClientIp(ip) = ClientIp::from_request_parts(parts, st).await?;
+        let header = |name: &str| parts.headers.get(name).and_then(|v| v.to_str().ok()).unwrap_or_default().to_string();
+        let user_agent: String = header("user-agent").chars().take(300).collect();
+        let client = match header("x-hearth-client").as_str() {
+            c @ ("web" | "desktop" | "android") => c.to_string(),
+            _ => String::new(),
+        };
+        Ok(Device { user_agent, client, ip })
+    }
+}
+
 pub fn hash_token(token: &str) -> String {
     hex::encode(Sha256::digest(token.as_bytes()))
 }
 
-pub async fn user_from_token(db: &PgPool, token: &str) -> Option<Uuid> {
-    sqlx::query_scalar("SELECT user_id FROM sessions WHERE token_hash = $1")
-        .bind(hash_token(token))
+pub async fn session_from_token(db: &PgPool, token: &str) -> Option<(Uuid, Uuid)> {
+    let hash = hash_token(token);
+    let row: Option<(Uuid, Uuid, bool)> = sqlx::query_as("SELECT user_id, id, last_seen < now() - interval '2 minutes' FROM sessions WHERE token_hash = $1")
+        .bind(&hash)
         .fetch_optional(db)
         .await
         .ok()
-        .flatten()
+        .flatten();
+    let (user, session, stale) = row?;
+    if stale {
+        let _ = sqlx::query("UPDATE sessions SET last_seen = now() WHERE token_hash = $1").bind(&hash).execute(db).await;
+    }
+    Some((user, session))
+}
+
+pub async fn user_from_token(db: &PgPool, token: &str) -> Option<Uuid> {
+    session_from_token(db, token).await.map(|(user, _)| user)
 }
 
 pub fn bearer(parts: &Parts) -> Option<&str> {
@@ -33,6 +69,16 @@ impl FromRequestParts<AppState> for AuthUser {
     async fn from_request_parts(parts: &mut Parts, st: &AppState) -> Result<Self> {
         let token = bearer(parts).ok_or(AppError::Unauthorized)?;
         user_from_token(&st.db, token).await.map(AuthUser).ok_or(AppError::Unauthorized)
+    }
+}
+
+impl FromRequestParts<AppState> for AuthSession {
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, st: &AppState) -> Result<Self> {
+        let token = bearer(parts).ok_or(AppError::Unauthorized)?;
+        let (user, session) = session_from_token(&st.db, token).await.ok_or(AppError::Unauthorized)?;
+        Ok(AuthSession { user, session })
     }
 }
 
@@ -56,14 +102,78 @@ pub async fn verify_password(password: String, hash: String) -> bool {
     .unwrap_or(false)
 }
 
-pub async fn create_session(db: &PgPool, user_id: Uuid) -> Result<String> {
+pub async fn create_session(db: &PgPool, user_id: Uuid, device: &Device) -> Result<String> {
     let token = hex::encode(rand::random::<[u8; 32]>());
-    sqlx::query("INSERT INTO sessions (token_hash, user_id) VALUES ($1, $2)")
+    sqlx::query("INSERT INTO sessions (token_hash, user_id, user_agent, client, ip) VALUES ($1, $2, $3, $4, $5)")
         .bind(hash_token(&token))
         .bind(user_id)
+        .bind(&device.user_agent)
+        .bind(&device.client)
+        .bind(&device.ip)
         .execute(db)
         .await?;
     Ok(token)
+}
+
+pub async fn sign_in(st: &AppState, user_id: Uuid, device: &Device) -> Result<Json<Value>> {
+    let two_factor: bool = sqlx::query_scalar("SELECT totp_secret IS NOT NULL FROM users WHERE id = $1").bind(user_id).fetch_one(&st.db).await?;
+    if !two_factor {
+        let token = create_session(&st.db, user_id, device).await?;
+        return Ok(Json(json!({ "token": token })));
+    }
+    let ticket = hex::encode(rand::random::<[u8; 32]>());
+    sqlx::query("DELETE FROM login_tickets WHERE expires_at < now()").execute(&st.db).await?;
+    sqlx::query("INSERT INTO login_tickets (ticket_hash, user_id, expires_at) VALUES ($1, $2, now() + interval '10 minutes')")
+        .bind(hash_token(&ticket))
+        .bind(user_id)
+        .execute(&st.db)
+        .await?;
+    Ok(Json(json!({ "two_factor": true, "ticket": ticket })))
+}
+
+pub async fn check_second_factor(st: &AppState, user_id: Uuid, code: &str) -> Result<bool> {
+    let (secret, last): (Option<String>, i64) = sqlx::query_as("SELECT totp_secret, totp_last_step FROM users WHERE id = $1").bind(user_id).fetch_one(&st.db).await?;
+    let Some(secret) = secret else { return Ok(false) };
+    if let Some(step) = crate::totp::matching_step(&secret, code, last) {
+        sqlx::query("UPDATE users SET totp_last_step = $1 WHERE id = $2").bind(step).bind(user_id).execute(&st.db).await?;
+        return Ok(true);
+    }
+    let normalized: String = code.chars().filter(|c| c.is_ascii_alphanumeric()).collect::<String>().to_lowercase();
+    if normalized.len() != 10 {
+        return Ok(false);
+    }
+    let used = sqlx::query("DELETE FROM recovery_codes WHERE user_id = $1 AND code_hash = $2")
+        .bind(user_id)
+        .bind(hash_token(&normalized))
+        .execute(&st.db)
+        .await?;
+    Ok(used.rows_affected() == 1)
+}
+
+#[derive(Deserialize)]
+pub struct SecondFactor {
+    ticket: String,
+    code: String,
+}
+
+pub async fn login_second_factor(State(st): State<AppState>, device: Device, Json(b): Json<SecondFactor>) -> Result<Json<Value>> {
+    st.limits.check(format!("login2fa:{}", device.ip), 20, Duration::from_secs(300))?;
+    let hash = hash_token(b.ticket.trim());
+    let row: Option<(Uuid, i32)> = sqlx::query_as("UPDATE login_tickets SET attempts = attempts + 1 WHERE ticket_hash = $1 AND expires_at > now() RETURNING user_id, attempts")
+        .bind(&hash)
+        .fetch_optional(&st.db)
+        .await?;
+    let Some((user_id, attempts)) = row else { return bad("This sign-in has expired, please start again") };
+    if attempts > 5 {
+        sqlx::query("DELETE FROM login_tickets WHERE ticket_hash = $1").bind(&hash).execute(&st.db).await?;
+        return bad("This sign-in has expired, please start again");
+    }
+    if !check_second_factor(&st, user_id, &b.code).await? {
+        return bad("Wrong code");
+    }
+    sqlx::query("DELETE FROM login_tickets WHERE ticket_hash = $1").bind(&hash).execute(&st.db).await?;
+    let token = create_session(&st.db, user_id, &device).await?;
+    Ok(Json(json!({ "token": token })))
 }
 
 pub fn clean_username(raw: &str) -> Option<String> {
@@ -80,7 +190,8 @@ pub struct Register {
     lang: Option<String>,
 }
 
-pub async fn register(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b): Json<Register>) -> Result<Json<Value>> {
+pub async fn register(State(st): State<AppState>, device: Device, Json(b): Json<Register>) -> Result<Json<Value>> {
+    let ip = device.ip.clone();
     st.limits.check(format!("register:{ip}"), 20, Duration::from_secs(3600))?;
     let Some(username) = clean_username(&b.username) else {
         return bad("Username: 2–32 characters, only letters, digits, spaces, dot, dash and underscore");
@@ -119,7 +230,7 @@ pub async fn register(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b
     if first {
         sqlx::query("INSERT INTO user_badges (user_id, badge_id) SELECT $1, id FROM badges WHERE id = '00000000-0000-7000-8000-000000000002'").bind(id).execute(&st.db).await?;
     }
-    let token = create_session(&st.db, id).await?;
+    let token = create_session(&st.db, id, &device).await?;
     Ok(Json(json!({ "token": token })))
 }
 
@@ -129,7 +240,8 @@ pub struct Login {
     password: String,
 }
 
-pub async fn login(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b): Json<Login>) -> Result<Json<Value>> {
+pub async fn login(State(st): State<AppState>, device: Device, Json(b): Json<Login>) -> Result<Json<Value>> {
+    let ip = device.ip.clone();
     st.limits.check(format!("login:{ip}"), 10, Duration::from_secs(60))?;
     let login = b.login.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase();
     let row: Option<(Uuid, String)> = sqlx::query_as("SELECT id, password_hash FROM users WHERE lower(username) = $1 OR email = $1")
@@ -146,8 +258,7 @@ pub async fn login(State(st): State<AppState>, ClientIp(ip): ClientIp, Json(b): 
     if !verify_password(b.password, hash).await {
         return bad("Wrong username or password");
     }
-    let token = create_session(&st.db, id).await?;
-    Ok(Json(json!({ "token": token })))
+    sign_in(&st, id, &device).await
 }
 
 pub async fn logout(State(st): State<AppState>, parts: Parts) -> Result<Json<Value>> {

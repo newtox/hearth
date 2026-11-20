@@ -31,12 +31,12 @@ Or add [`deploy/docker-compose.yml`](deploy/docker-compose.yml) as a stack in Po
 - Roles with hierarchy, colour, 21 permissions, channel rules per role and per member
 - Right-click menus for members, messages, channels and servers, a server menu on the server name, and a moderator view per member
 - Replies, pinned messages, search across a server with an author filter, desktop notifications
-- Real-time chat: Markdown, mentions, attachments up to 25 MB, reactions, custom emojis and stickers, emoji search in German and English, typing indicator, unread markers
+- Real-time chat: Markdown, mentions, attachments up to 25 MB, reactions, custom emojis and stickers, an emoji picker with categories and search in German and English, typing indicator, unread markers
 - Friends, direct messages, group chats with up to 10 people, three group roles and per-group permissions, blocking
 - Voice channels and calls with screen sharing, watched on demand with a viewer list, and sounds
-- Profiles with avatar, banner, bio, accent colour, badges with built-in icons and linked accounts
+- Profiles with cropped avatar, banner, bio, accent colour, badges with built-in icons and linked accounts
 - Status online, idle (also automatic), do not disturb and invisible
-- Activity status set by hand: playing, listening, watching or a custom text
+- Two-factor authentication with recovery codes, a device list with remote sign-out
 - Badges earned from stream time, voice time and account age in ten colour levels
 - Moderation: timeouts, kicks, bans, audit log, rate limits
 - Six themes: Light, Ash, Dark, Onyx, Midnight and Parchment

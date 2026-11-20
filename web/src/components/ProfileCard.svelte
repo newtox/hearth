@@ -3,7 +3,7 @@
   import { fromEnglish, locale, t } from '../lib/i18n.svelte';
   import { api } from '../lib/api';
   import { app, attempt, canModerate, guild, isBlocked, isFriend, openDm, P, type Badge, type User, presenceOf } from '../lib/store.svelte';
-  import { activityText, badgeLabel, elapsed } from '../lib/activity';
+  import { badgeLabel } from '../lib/activity';
   import Avatar from './Avatar.svelte';
   import BadgeIcon from './BadgeIcon.svelte';
   import ProgressModal from './ProgressModal.svelte';
@@ -42,7 +42,7 @@
     if (app.me?.is_admin) attempt(api<Badge[]>('GET', '/badges')).then((b) => (allBadges = b ?? []));
   });
 
-  const shown = $derived(member ?? app.dms.flatMap((d) => d.recipients).find((r) => r.id === userId) ?? user ?? { activity: null, streaming: false });
+  const shown = $derived(member ?? app.dms.flatMap((d) => d.recipients).find((r) => r.id === userId) ?? user ?? { streaming: false });
   const since = new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
 
   function close() {
@@ -86,16 +86,9 @@
             {/each}
           </div>
         {/if}
-        {#if shown.activity || shown.streaming}
+        {#if shown.streaming}
           <div class="activity">
-            {#if shown.activity}
-              <Icon name={shown.activity.kind === 'playing' ? 'gamepad' : shown.activity.kind === 'listening' ? 'volume' : 'smile'} size={20} />
-              <div class="grow">
-                <strong class="ellipsis">{activityText(shown.activity)}</strong>
-                <small class="muted">{shown.activity.details ? shown.activity.details + ', ' : ''}{elapsed(shown.activity.since)}</small>
-              </div>
-            {/if}
-            {#if shown.streaming}<span class="live"><Icon name="broadcast" size={16} /> {t('common_sharing_their_screen')}</span>{/if}
+            <span class="live"><Icon name="broadcast" size={16} /> {t('common_sharing_their_screen')}</span>
           </div>
         {/if}
         {#if user.bio}<p class="bio">{user.bio}</p>{/if}
@@ -244,10 +237,6 @@
     padding: 10px 12px;
     border-radius: var(--radius-s);
     border: 1px solid var(--line);
-  }
-  .activity .grow {
-    display: grid;
-    line-height: 1.3;
   }
   .live {
     display: inline-flex;

@@ -31,18 +31,6 @@ pub struct Badge {
     pub granted_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Serialize, Clone)]
-pub struct Activity {
-    pub kind: String,
-    pub name: String,
-    pub details: String,
-    pub since: DateTime<Utc>,
-    #[serde(skip)]
-    pub tick: std::time::Instant,
-    #[serde(skip)]
-    pub source: &'static str,
-}
-
 #[derive(Serialize, FromRow, Clone)]
 pub struct PublicUser {
     pub id: Uuid,
@@ -59,8 +47,6 @@ pub struct PublicUser {
     pub online: bool,
     #[sqlx(skip)]
     pub presence: String,
-    #[sqlx(skip)]
-    pub activity: Option<Activity>,
     #[sqlx(default)]
     pub streaming: bool,
     #[sqlx(skip)]
@@ -117,8 +103,6 @@ pub struct Member {
     pub online: bool,
     #[sqlx(skip)]
     pub presence: String,
-    #[sqlx(skip)]
-    pub activity: Option<Activity>,
     #[sqlx(default)]
     pub streaming: bool,
 }
