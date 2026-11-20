@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-pub const ICONS: [&str; 12] = ["crown", "shield", "gem", "star", "heart", "bolt", "flame", "leaf", "gamepad", "broadcast", "mic", "calendar"];
+pub const ICONS: [&str; 13] = ["crown", "wrench", "shield", "gem", "star", "heart", "bolt", "flame", "leaf", "gamepad", "broadcast", "mic", "calendar"];
 
 async fn require_admin(st: &AppState, uid: Uuid) -> Result<()> {
     let admin: bool = sqlx::query_scalar("SELECT is_admin FROM users WHERE id = $1").bind(uid).fetch_one(&st.db).await?;
