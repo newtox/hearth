@@ -34,7 +34,7 @@ Hearth checks for a new version at startup and regularly afterwards, and shows a
 | --- | --- |
 | Browser | "Reload" loads the version that is running on the server. |
 | Linux (AppImage, deb, rpm) | "Update now" downloads the new version and restarts Hearth. For deb and rpm the system asks for your password once. |
-| Linux (Flatpak) | "Download" opens the release page. |
+| Linux (Flatpak) | "Update now" downloads the new Flatpak, installs it through the system and restarts Hearth. For this the app may talk to Flatpak on your system (`org.freedesktop.Flatpak`). |
 | Windows | "Update now" installs the new version once signing is set up (see below). Otherwise the release page opens. |
 | Android | "Download" fetches the new APK for you to open. |
 

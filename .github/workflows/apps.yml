@@ -86,7 +86,7 @@ jobs:
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
           cp bundle/*.deb flatpak/hearth.deb
           flatpak-builder --user --install-deps-from=flathub --force-clean --repo=repo build flatpak/de.newtox.hearth.yml
-          flatpak build-bundle repo hearth.flatpak de.newtox.hearth
+          flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo repo hearth.flatpak de.newtox.hearth
       - uses: actions/upload-artifact@v4
         with:
           name: hearth-Flatpak

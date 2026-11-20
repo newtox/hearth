@@ -2,6 +2,7 @@ const { app, BrowserWindow, desktopCapturer, ipcMain, net, protocol, session, sh
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { spawn } = require('node:child_process');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }]);
 app.setName('Hearth');
@@ -40,6 +41,68 @@ function loadUpdater() {
     updater = autoUpdater;
   } catch {}
   return updater;
+}
+
+const flatpak = !!process.env.FLATPAK_ID;
+const repo = (() => {
+  const target = [require('./package.json').build?.publish ?? []].flat().find((p) => p.provider === 'github');
+  return target ? `${target.owner}/${target.repo}` : 'newtox/hearth';
+})();
+
+function newer(a, b) {
+  const parts = (v) => String(v).replace(/^v/, '').split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+  const [x, y] = [parts(a), parts(b)];
+  for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0);
+  return false;
+}
+
+async function flatpakRelease() {
+  const res = await net.fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'Hearth' } });
+  if (!res.ok) throw new Error(String(res.status));
+  const data = await res.json();
+  const asset = (data.assets ?? []).find((a) => /\.flatpak$/i.test(a.name));
+  const version = String(data.tag_name ?? '').replace(/^v/, '');
+  return asset && newer(version, app.getVersion()) ? { version, url: asset.browser_download_url, size: asset.size } : null;
+}
+
+function host(args) {
+  return new Promise((resolve) => {
+    const child = spawn('flatpak-spawn', ['--host', ...args], { stdio: 'ignore' });
+    child.on('error', () => resolve(false));
+    child.on('exit', (code) => resolve(code === 0));
+  });
+}
+
+function flatpakScope() {
+  try {
+    return /^app-path=.*\/\.local\/share\/flatpak\//m.test(fs.readFileSync('/.flatpak-info', 'utf8')) ? '--user' : '--system';
+  } catch {
+    return '--user';
+  }
+}
+
+async function installFlatpak() {
+  const release = await flatpakRelease();
+  if (!release) return false;
+  const dir = process.env.XDG_CACHE_HOME || app.getPath('userData');
+  const file = path.join(dir, 'hearth-update.flatpak');
+  const res = await net.fetch(release.url);
+  if (!res.ok || !res.body) return false;
+  const total = Number(res.headers.get('content-length')) || release.size || 0;
+  const out = fs.createWriteStream(file);
+  let done = 0;
+  for await (const chunk of res.body) {
+    out.write(chunk);
+    done += chunk.length;
+    if (total) win?.webContents.send('update-progress', (done * 100) / total);
+  }
+  await new Promise((resolve, reject) => out.end((err) => (err ? reject(err) : resolve())));
+  const ok = await host(['flatpak', 'install', flatpakScope(), '-y', '--noninteractive', '--reinstall', '--bundle', file]);
+  fs.rm(file, { force: true }, () => {});
+  if (!ok) return false;
+  spawn('flatpak-spawn', ['--host', 'sh', '-c', `sleep 2; flatpak run ${process.env.FLATPAK_ID}`], { detached: true, stdio: 'ignore' }).unref();
+  setImmediate(() => app.quit());
+  return true;
 }
 
 function audioServicePid() {
@@ -186,6 +249,14 @@ app.whenReady().then(() => {
   ipcMain.handle('audio-share-available', () => !!loadPatchBay());
   ipcMain.handle('app-version', () => app.getVersion());
   ipcMain.handle('update-check', async () => {
+    if (flatpak && app.isPackaged) {
+      try {
+        const release = await flatpakRelease();
+        return { supported: true, version: release?.version ?? null };
+      } catch {
+        return { supported: false };
+      }
+    }
     const u = loadUpdater();
     if (!u) return { supported: false };
     try {
@@ -196,6 +267,7 @@ app.whenReady().then(() => {
     }
   });
   ipcMain.handle('update-install', async () => {
+    if (flatpak && app.isPackaged) return installFlatpak().catch(() => false);
     const u = loadUpdater();
     if (!u) return false;
     try {

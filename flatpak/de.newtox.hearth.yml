@@ -1,9 +1,9 @@
 id: de.newtox.hearth
 runtime: org.freedesktop.Platform
-runtime-version: "24.08"
+runtime-version: "26.08"
 sdk: org.freedesktop.Sdk
 base: org.electronjs.Electron2.BaseApp
-base-version: "24.08"
+base-version: "26.08"
 command: hearth
 separate-locales: false
 finish-args:
@@ -15,6 +15,7 @@ finish-args:
   - --share=network
   - --filesystem=xdg-run/pipewire-0
   - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.Flatpak
 modules:
   - name: hearth
     buildsystem: simple

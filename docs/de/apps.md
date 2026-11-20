@@ -34,7 +34,7 @@ Hearth sucht beim Start und danach regelmäßig nach einer neuen Version und zei
 | --- | --- |
 | Browser | „Neu laden“ holt die Version, die gerade auf dem Server läuft. |
 | Linux (AppImage, deb, rpm) | „Jetzt aktualisieren“ lädt die neue Version und startet Hearth neu. Bei deb und rpm fragt das System einmal nach deinem Passwort. |
-| Linux (Flatpak) | „Herunterladen“ öffnet die Release-Seite. |
+| Linux (Flatpak) | „Jetzt aktualisieren“ lädt das neue Flatpak, installiert es über das System und startet Hearth neu. Dafür darf die App mit Flatpak auf deinem System sprechen (`org.freedesktop.Flatpak`). |
 | Windows | „Jetzt aktualisieren“ installiert die neue Version, sobald die Signatur eingerichtet ist (siehe unten). Sonst öffnet sich die Release-Seite. |
 | Android | „Herunterladen“ lädt die neue APK, die du dann öffnest. |
 
