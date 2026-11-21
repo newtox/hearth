@@ -170,6 +170,7 @@
     color: var(--muted);
   }
   .dot {
+    flex: none;
     width: 26px;
     height: 26px;
     border-radius: 8px;
@@ -181,10 +182,13 @@
     outline-color: var(--accent);
   }
   .themes.second {
+    max-width: 190px;
+    margin: 0 auto;
     border-top: 0;
     padding-top: 0;
   }
   .themes {
+    flex-wrap: wrap;
     justify-content: center;
     padding-top: 6px;
     border-top: 1px solid var(--line);
