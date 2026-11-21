@@ -750,6 +750,34 @@
   :global([data-style='modern']) section {
     background: var(--chat);
   }
+  :global([data-style='modern']) header {
+    border-bottom: 0;
+    padding: 14px 18px 6px;
+  }
+  :global([data-style='modern']) header :global(h2),
+  :global([data-style='modern']) header :global(h3) {
+    font-size: 1.25em;
+  }
+  :global([data-style='modern']) .composer {
+    margin: 0 14px 14px;
+    padding: 6px 6px 6px 10px;
+    align-items: center;
+    background: var(--panel-2);
+    border-radius: 26px;
+    transition: box-shadow 0.15s ease;
+  }
+  :global([data-style='modern']) .composer:focus-within {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  :global([data-style='modern']) .composer textarea,
+  :global([data-style='modern']) .composer textarea:focus {
+    background: transparent;
+    box-shadow: none;
+    padding-left: 4px;
+  }
+  :global([data-style='modern']) .composer .tool {
+    margin-bottom: 0;
+  }
   .name:hover {
     text-decoration: underline;
   }

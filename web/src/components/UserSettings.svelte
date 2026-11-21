@@ -2,6 +2,7 @@
   import { ask } from '../lib/dialog.svelte';
   import { LANGS, fromEnglish, lang, setLang, t } from '../lib/i18n.svelte';
   import { api, upload } from '../lib/api';
+  import Icon from './Icon.svelte';
   import { play, sounds } from '../lib/sounds';
   import { BADGE_ICONS } from '../lib/badges';
   import BadgeIcon from './BadgeIcon.svelte';
@@ -82,7 +83,7 @@
   }
 
   let badges = $state<Badge[]>([]);
-  let badge = $state({ name: '', icon: 'svg:star', description: '', color: '#8b6cff', translations: { de: { name: '', description: '' }, da: { name: '', description: '' } } });
+  let badge = $state({ name: '', icon: 'svg:star', description: '', color: '#8b6cff', grants_admin: false, translations: { de: { name: '', description: '' }, da: { name: '', description: '' } } });
 
   async function loadBadges() {
     badges = (await attempt(api<Badge[]>('GET', '/badges'))) ?? [];
@@ -91,7 +92,7 @@
   let soundOn = $state(sounds.enabled());
 
 
-  const emptyBadge = () => ({ name: '', icon: 'svg:star', description: '', color: '#8b6cff', translations: { de: { name: '', description: '' }, da: { name: '', description: '' } } });
+  const emptyBadge = () => ({ name: '', icon: 'svg:star', description: '', color: '#8b6cff', grants_admin: false, translations: { de: { name: '', description: '' }, da: { name: '', description: '' } } });
   let badgeEditing = $state<string | null>(null);
   let canTranslate = $state(false);
   api<{ translate?: boolean }>('GET', '/config').then((c) => (canTranslate = !!c.translate)).catch(() => {});
@@ -107,6 +108,7 @@
       icon: b.icon,
       description: b.description,
       color: b.color,
+      grants_admin: !!b.grants_admin,
       translations: {
         de: { name: b.translations?.de?.name ?? '', description: b.translations?.de?.description ?? '' },
         da: { name: b.translations?.da?.name ?? '', description: b.translations?.da?.description ?? '' },
@@ -393,7 +395,7 @@
     <div class="row wrap">
       {#each badges as b (b.id)}
         {@const label = badgeLabel(b)}
-        <span class="badge" class:on={badgeEditing === b.id} style:--c={b.color} title={label.description}><BadgeIcon badge={b} size={16} /> {label.name}<button onclick={() => editBadge(b)} aria-label={t('common_edit')}>✎</button><button onclick={() => removeBadge(b)} aria-label={t('common_delete_name', { name: label.name })}>✕</button></span>
+        <span class="badge" class:on={badgeEditing === b.id} style:--c={b.color} title={label.description}><BadgeIcon badge={b} size={16} /> {label.name}{#if b.grants_admin}<span class="admin" title={t('badge_grants_admin')}><Icon name="shield" size={12} /></span>{/if}<button onclick={() => editBadge(b)} aria-label={t('common_edit')}>✎</button><button onclick={() => removeBadge(b)} aria-label={t('common_delete_name', { name: label.name })}>✕</button></span>
       {/each}
     </div>
     <h3>{badgeEditing ? t('user_settings_edit_badge') : t('user_settings_create_badge')}</h3>
@@ -421,6 +423,10 @@
           </div>
         {/each}
       </details>
+      <label class="grant">
+        <input type="checkbox" bind:checked={badge.grants_admin} />
+        <span><strong>{t('badge_grants_admin')}</strong><small class="muted">{t('badge_grants_admin_hint')}</small></span>
+      </label>
       <div class="row">
         <button class="btn">{badgeEditing ? t('common_save') : t('user_settings_create_badge')}</button>
         {#if badgeEditing}<button type="button" class="btn" onclick={cancelBadge}>{t('common_cancel')}</button>{/if}
@@ -445,6 +451,27 @@
 </SettingsPage>
 
 <style>
+  .grant {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    max-width: 560px;
+    cursor: pointer;
+  }
+  .grant input {
+    margin-top: 3px;
+    accent-color: var(--accent);
+  }
+  .grant strong,
+  .grant small {
+    display: block;
+  }
+  .admin {
+    display: inline-grid;
+    place-items: center;
+    margin-left: 2px;
+    color: var(--accent);
+  }
   .version {
     gap: 10px;
     align-items: center;

@@ -49,6 +49,7 @@ export interface Badge {
   tier?: number;
   hours?: number;
   granted_at?: string;
+  grants_admin?: boolean;
   translations?: Record<string, { name: string; description: string }>;
 }
 export interface Emoji {

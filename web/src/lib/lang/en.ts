@@ -26,6 +26,8 @@ export const EN: Record<string, string> = {
   auth_two_factor_text: 'Enter the 6-digit code from your authenticator app or a recovery code.',
   auth_two_factor_title: 'Two-factor authentication',
   auth_username_email: 'Username or email',
+  badge_grants_admin: 'Makes instance admin',
+  badge_grants_admin_hint: 'Whoever has this badge gets the same rights as you: manage and grant global badges. Take it away and the rights are gone again.',
   badge_part_instance_staff: 'Part of the instance staff',
   badge_sheet_change_since: 'Change date',
   badge_sheet_earned_badge: 'Earned badge',

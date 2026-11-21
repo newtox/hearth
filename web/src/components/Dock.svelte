@@ -74,61 +74,54 @@
     color: var(--accent-ink);
   }
   :global([data-style='modern']) .dock {
-    background: var(--rail);
+    background: transparent;
+    padding: 0 0 2px;
+    gap: 8px;
   }
-  @media (min-width: 861px) {
-    :global([data-style='modern']) .dock {
-      flex-direction: column;
-      width: 76px;
-      padding: 14px 0;
-      gap: 12px;
-    }
-    :global([data-style='modern']) .tabs {
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      overflow: hidden auto;
-      width: 100%;
-      padding: 4px 0;
-    }
-    :global([data-style='modern']) .label {
-      display: none;
-    }
-    :global([data-style='modern']) .tab {
-      width: 48px;
-      height: 48px;
-      padding: 0;
-      justify-content: center;
-      border-radius: 50%;
-      background: var(--panel-2);
-      color: var(--ink);
-    }
-    :global([data-style='modern']) .tab :global(.avatar) {
-      --s: 42px !important;
-      border-radius: 50%;
-    }
-    :global([data-style='modern']) .tab.active {
-      background: var(--accent-fill);
-    }
-    :global([data-style='modern']) .tab.active::before {
-      content: '';
-      position: absolute;
-      left: -14px;
-      width: 5px;
-      height: 30px;
-      border-radius: 0 6px 6px 0;
-      background: var(--accent-fill);
-    }
-    :global([data-style='modern']) .tab.add {
-      background: transparent;
-      border: 1.5px dashed rgba(255, 255, 255, 0.35);
-    }
-    :global([data-style='modern']) .pip {
-      top: 0;
-      right: 0;
-      border: 2px solid var(--rail);
-      width: 13px;
-      height: 13px;
+  :global([data-style='modern']) .tabs {
+    gap: 8px;
+    padding: 2px;
+  }
+  :global([data-style='modern']) .tab {
+    height: 42px;
+    padding: 0 16px 0 6px;
+    border-radius: 999px;
+    background: var(--panel);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-weight: 650;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  }
+  :global([data-style='modern']) .tab:not(.banner):not(.me) {
+    padding: 0 13px;
+  }
+  :global([data-style='modern']) .tab :global(.avatar) {
+    border-radius: 50%;
+  }
+  :global([data-style='modern']) .tab:hover {
+    background: var(--panel-2);
+  }
+  :global([data-style='modern']) .tab.active {
+    background: var(--accent-fill);
+    color: var(--accent-ink);
+    box-shadow: 0 8px 22px -10px var(--accent-fill);
+  }
+  :global([data-style='modern']) .tab.add {
+    background: transparent;
+    border: 1.5px dashed color-mix(in srgb, var(--muted) 55%, transparent);
+    color: var(--muted);
+  }
+  :global([data-style='modern']) .pip {
+    top: 1px;
+    right: 1px;
+    width: 11px;
+    height: 11px;
+    border: 2px solid var(--rail);
+  }
+  @media (max-width: 860px) {
+    :global([data-style='modern']) .tab.banner,
+    :global([data-style='modern']) .tab.me {
+      padding: 0 6px;
     }
   }
   .tab.add {

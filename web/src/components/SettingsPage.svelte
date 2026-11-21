@@ -156,6 +156,32 @@
   .mobilebar {
     display: none;
   }
+  @media (min-width: 861px) {
+    :global([data-style='modern']) .settings {
+      gap: 8px;
+      padding: 8px;
+      background: var(--rail);
+    }
+    :global([data-style='modern']) .nav,
+    :global([data-style='modern']) .content {
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+    :global([data-style='modern']) .content {
+      background: var(--chat);
+    }
+    :global([data-style='modern']) .close {
+      top: 36px;
+      right: max(32px, calc((100vw - 1240px) / 2));
+    }
+  }
+  :global([data-style='modern']) .item:hover {
+    background: var(--panel-2);
+  }
+  :global([data-style='modern']) .item.on {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--ink);
+  }
   .close {
     position: absolute;
     top: 44px;

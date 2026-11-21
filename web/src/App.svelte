@@ -152,22 +152,13 @@
     flex-direction: column;
     gap: var(--gap);
   }
-  :global([data-style='modern']) .window {
-    overflow: hidden;
-    background: var(--panel);
+  :global([data-style='modern']) .shell {
+    background: var(--rail);
   }
   :global([data-style='modern']) .window :global(.panel) {
-    border-radius: 0;
     border: 0;
     box-shadow: none;
-  }
-  :global([data-style='modern']) .cols > :global(* + *) {
-    border-left: 1px solid var(--line);
-  }
-  @media (min-width: 861px) {
-    :global([data-style='modern']) .window {
-      flex-direction: row;
-    }
+    overflow: hidden;
   }
   .cols {
     flex: 1;

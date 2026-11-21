@@ -26,6 +26,8 @@ export const DA: Record<string, string> = {
   auth_two_factor_text: 'Indtast den 6-cifrede kode fra din godkendelsesapp eller en gendannelseskode.',
   auth_two_factor_title: 'Totrinsbekræftelse',
   auth_username_email: 'Brugernavn eller e-mail',
+  badge_grants_admin: 'Gør til instans-admin',
+  badge_grants_admin_hint: 'Den, der har dette badge, får de samme rettigheder som dig: administrere og tildele globale badges. Fjerner du det, forsvinder rettighederne igen.',
   badge_part_instance_staff: 'Del af instansens staff',
   badge_sheet_change_since: 'Skift dato',
   badge_sheet_earned_badge: 'Optjent emblem',

@@ -26,6 +26,8 @@ export const DE: Record<string, string> = {
   auth_two_factor_text: 'Gib den 6-stelligen Code aus deiner Authenticator-App oder einen Wiederherstellungscode ein.',
   auth_two_factor_title: 'Zwei-Faktor-Authentifizierung',
   auth_username_email: 'Benutzername oder E-Mail',
+  badge_grants_admin: 'Macht zum Instanz-Admin',
+  badge_grants_admin_hint: 'Wer dieses Abzeichen hat, bekommt dieselben Rechte wie du: globale Abzeichen verwalten und vergeben. Nimmst du es weg, sind die Rechte auch wieder weg.',
   badge_part_instance_staff: 'Gehört zum Team der Instanz',
   badge_sheet_change_since: 'Datum ändern',
   badge_sheet_earned_badge: 'Verdientes Abzeichen',

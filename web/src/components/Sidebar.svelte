@@ -219,6 +219,25 @@
     color: var(--ink);
     font-weight: 700;
   }
+  :global([data-style='modern']) .item {
+    border-radius: 10px;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+  :global([data-style='modern']) .item.active {
+    box-shadow: none;
+    background: var(--accent-fill);
+    color: var(--accent-ink);
+  }
+  :global([data-style='modern']) .item.active :global(svg),
+  :global([data-style='modern']) .item.active :global(button) {
+    color: var(--accent-ink);
+  }
+  :global([data-style='modern']) header {
+    border-bottom: 0;
+  }
+  :global([data-style='modern']) .title h3 {
+    font-size: 1.12em;
+  }
   .main {
     flex: 1;
     min-width: 0;
