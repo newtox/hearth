@@ -3,9 +3,9 @@
   import { t } from '../lib/i18n.svelte';
   import { guard } from '../lib/unsaved.svelte';
 
-  let { dirty, busy = false, onreset, onsave }: { dirty: boolean; busy?: boolean; onreset: () => void; onsave: () => void } = $props();
+  let { dirty, busy = false, guarded = true, onreset, onsave }: { dirty: boolean; busy?: boolean; guarded?: boolean; onreset: () => void; onsave: () => void } = $props();
 
-  onMount(() => guard({ dirty: () => dirty, reset: () => onreset() }));
+  onMount(() => (guarded ? guard({ dirty: () => dirty, reset: () => onreset() }) : undefined));
 </script>
 
 {#if dirty}

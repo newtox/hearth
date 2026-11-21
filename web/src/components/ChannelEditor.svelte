@@ -8,6 +8,9 @@
   import { openBelow } from '../lib/menus';
   import Icon from './Icon.svelte';
   import Modal from './Modal.svelte';
+  import SettingsPage, { type Section } from './SettingsPage.svelte';
+  import UnsavedBar from './UnsavedBar.svelte';
+  import NotifySettings from './NotifySettings.svelte';
 
   let { modal: live }: { modal: { channel: Channel | null; parent?: string | null; type?: 'text' | 'category' | 'voice' } } = $props();
   const modal = untrack(() => live);
@@ -42,8 +45,20 @@
     if (!dirty || (await ask({ title: t('unsaved_title'), text: t('unsaved_text'), confirm: t('unsaved_discard'), danger: true }))) close();
   }
 
-  async function save(e: SubmitEvent) {
+  let section = $state('overview');
+  const sections = $derived<Section[]>([
+    { id: 'overview', icon: 'gear', name: t('channel_settings_overview') },
+    ...(can(P.MANAGE_ROLES) ? [{ id: 'permissions', icon: 'shield', name: t('channel_settings_permissions') }] : []),
+    { id: 'notifications', icon: 'bell', name: t('notify_settings') },
+    { id: 'delete', icon: 'trash', name: t(kind === 'category' ? 'channel_editor_delete_category' : 'channel_editor_delete_channel'), danger: true, action: remove },
+  ]);
+
+  function save(e: SubmitEvent) {
     e.preventDefault();
+    saveNow();
+  }
+
+  async function saveNow() {
     if (saving) return;
     saving = true;
     try {
@@ -54,7 +69,7 @@
       }
       if ((name !== existing.name || topic !== (existing.topic ?? '') || parent !== (existing.parent_id ?? '')) && !(await attempt(api('PATCH', `/channels/${existing.id}`, body)))) return;
       if (rulesDirty && !(await saveRules(existing))) return;
-      close();
+      draft = (g.channels.find((c) => c.id === existing.id)?.overwrites ?? draft).map((o) => ({ ...o }));
     } finally {
       saving = false;
     }
@@ -115,7 +130,7 @@
   const groups = $derived(
     [
       { title: 'channel_editor_group_general', bits: [P.VIEW_CHANNEL] },
-      { title: 'channel_editor_group_text', bits: [P.SEND_MESSAGES, P.ATTACH_FILES, P.ADD_REACTIONS, P.USE_EXTERNAL_EMOJIS, P.PIN_MESSAGES, P.MANAGE_MESSAGES] },
+      { title: 'channel_editor_group_text', bits: [P.SEND_MESSAGES, P.ATTACH_FILES, P.ADD_REACTIONS, P.USE_EXTERNAL_EMOJIS, P.MENTION_EVERYONE, P.PIN_MESSAGES, P.MANAGE_MESSAGES] },
       { title: 'channel_editor_group_voice', bits: [P.CONNECT, P.SPEAK, P.STREAM] },
     ]
       .filter((x) => kind === 'category' || (kind === 'voice' ? x.title !== 'channel_editor_group_text' : x.title !== 'channel_editor_group_voice'))
@@ -177,9 +192,7 @@
   ];
 </script>
 
-<Modal title={existing ? t(kind === 'category' ? 'common_edit_category' : kind === 'voice' ? 'channel_editor_edit_voice_channel' : 'channel_editor_edit_channel') : t(kind === 'category' ? 'channel_editor_create_category' : kind === 'voice' ? 'channel_editor_create_voice_channel' : 'common_create_channel')} onclose={dismiss} wide={!!existing && can(P.MANAGE_ROLES)}>
-  <div class="stack">
-    <form class="stack" id="channel-form" onsubmit={save}>
+{#snippet fields()}
       {#if !existing && kind !== 'category'}
         <div class="field" role="radiogroup" aria-label={t('channel_editor_channel_type')}>
           <span>{t('channel_editor_channel_type')}</span>
@@ -211,17 +224,11 @@
           </select>
         </label>
       {/if}
-      {#if !existing}
-        <div class="row">
-          <button class="btn primary">{t('channel_editor_create')}</button>
-        </div>
-      {/if}
-    </form>
+{/snippet}
 
-    {#if existing && can(P.MANAGE_ROLES)}
+{#snippet permsBody()}
       <section class="perms">
         <div>
-          <h3>{t('channel_editor_permissions')}</h3>
           <p class="muted">{t(kind === 'category' ? 'channel_editor_category_rules_hint' : 'channel_editor_rules_hint')}</p>
         </div>
         {#if parentCat}
@@ -271,17 +278,31 @@
           {/if}
         </div>
       </section>
+{/snippet}
+
+{#if existing}
+  <SettingsPage title={t(kind === 'category' ? 'category_settings_title' : 'channel_settings_title') + ' · ' + existing.name} {sections} bind:current={section} list={false} onclose={dismiss}>
+    {#if section === 'overview'}
+      <form class="stack" id="channel-form" onsubmit={save}>
+        {@render fields()}
+      </form>
+    {:else if section === 'permissions'}
+      {@render permsBody()}
+    {:else if section === 'notifications'}
+      <NotifySettings id={existing.id} kind={kind === 'category' ? 'category' : 'channel'} />
     {/if}
-    {#if existing}
-      <div class="row actions">
-        <button class="btn primary" form="channel-form" disabled={!dirty || saving}>{t('common_save_changes')}</button>
-        <button type="button" class="btn" disabled={!dirty || saving} onclick={reset}>{t('unsaved_reset')}</button>
-        <span class="grow"></span>
-        <button type="button" class="btn danger" onclick={remove}>{t('common_delete')}</button>
+    <UnsavedBar {dirty} busy={saving} guarded={false} onreset={reset} onsave={saveNow} />
+  </SettingsPage>
+{:else}
+  <Modal title={t(kind === 'category' ? 'channel_editor_create_category' : kind === 'voice' ? 'channel_editor_create_voice_channel' : 'common_create_channel')} onclose={dismiss}>
+    <form class="stack" onsubmit={save}>
+      {@render fields()}
+      <div class="row">
+        <button class="btn primary">{t('channel_editor_create')}</button>
       </div>
-    {/if}
-  </div>
-</Modal>
+    </form>
+  </Modal>
+{/if}
 
 <style>
   .type {
@@ -307,16 +328,6 @@
     width: 18px;
     height: 18px;
   }
-  .actions {
-    flex-wrap: wrap;
-    position: sticky;
-    bottom: -1px;
-    padding: 10px 0 2px;
-    background: var(--panel);
-    border-top: 1px solid var(--line);
-    box-shadow: 0 24px 0 var(--panel);
-    z-index: 1;
-  }
   .perms {
     display: grid;
     gap: 12px;
@@ -329,9 +340,6 @@
   .perm strong,
   .perm small {
     overflow-wrap: anywhere;
-  }
-  .perms h3 {
-    margin: 0 0 4px;
   }
   .perms p {
     margin: 0;

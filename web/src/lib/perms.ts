@@ -13,6 +13,7 @@ export const P = {
   ADMINISTRATOR: 1 << 11,
   ATTACH_FILES: 1 << 12,
   ADD_REACTIONS: 1 << 13,
+  MENTION_EVERYONE: 1 << 14,
   CONNECT: 1 << 15,
   SPEAK: 1 << 16,
   STREAM: 1 << 17,
@@ -28,6 +29,7 @@ export const PERMISSIONS: { bit: number; name: string; hint: string }[] = [
   { bit: P.ATTACH_FILES, name: 'perm_attach_files', hint: 'perm_upload_images_files' },
   { bit: P.ADD_REACTIONS, name: 'perm_add_reactions', hint: 'perm_react_with_emojis' },
   { bit: P.USE_EXTERNAL_EMOJIS, name: 'perm_use_external_emojis', hint: 'perm_post_emojis_stickers_from_other' },
+  { bit: P.MENTION_EVERYONE, name: 'perm_mention_everyone', hint: 'perm_mention_everyone_hint' },
   { bit: P.PIN_MESSAGES, name: 'common_pin_messages', hint: 'perm_pin_unpin_messages' },
   { bit: P.MANAGE_MESSAGES, name: 'perm_manage_messages', hint: 'common_delete_other_people_s_messages' },
   { bit: P.MANAGE_CHANNELS, name: 'perm_manage_channels', hint: 'perm_create_edit_delete_channels' },
@@ -46,7 +48,7 @@ export const PERMISSIONS: { bit: number; name: string; hint: string }[] = [
   { bit: P.ADMINISTRATOR, name: 'common_administrator', hint: 'perm_all_permissions_bypasses_channel_rules' },
 ];
 
-export const CHANNEL_PERMISSIONS = PERMISSIONS.filter((p) => [P.VIEW_CHANNEL, P.SEND_MESSAGES, P.ATTACH_FILES, P.ADD_REACTIONS, P.USE_EXTERNAL_EMOJIS, P.PIN_MESSAGES, P.MANAGE_MESSAGES, P.CONNECT, P.SPEAK, P.STREAM].includes(p.bit));
+export const CHANNEL_PERMISSIONS = PERMISSIONS.filter((p) => [P.VIEW_CHANNEL, P.SEND_MESSAGES, P.ATTACH_FILES, P.ADD_REACTIONS, P.USE_EXTERNAL_EMOJIS, P.MENTION_EVERYONE, P.PIN_MESSAGES, P.MANAGE_MESSAGES, P.CONNECT, P.SPEAK, P.STREAM].includes(p.bit));
 
 export function has(perms: number | undefined, bit: number) {
   return ((perms ?? 0) & bit) === bit;

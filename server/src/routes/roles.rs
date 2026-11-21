@@ -11,6 +11,7 @@ pub struct RoleBody {
     color: Option<String>,
     permissions: Option<i64>,
     hoist: Option<bool>,
+    mentionable: Option<bool>,
 }
 
 fn check_grant(ctx: &perms::Ctx, old: i64, new: i64) -> Result<()> {
@@ -37,7 +38,7 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gi
     let mut tx = st.db.begin().await?;
     sqlx::query("UPDATE roles SET position = position + 1 WHERE guild_id = $1 AND NOT is_default").bind(gid).execute(&mut *tx).await?;
     let role: Role = sqlx::query_as(
-        "INSERT INTO roles (id, guild_id, name, color, permissions, position, hoist) VALUES ($1, $2, $3, $4, $5, 1, $6) RETURNING *",
+        "INSERT INTO roles (id, guild_id, name, color, permissions, position, hoist, mentionable) VALUES ($1, $2, $3, $4, $5, 1, $6, $7) RETURNING *",
     )
     .bind(Uuid::now_v7())
     .bind(gid)
@@ -45,6 +46,7 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(gi
     .bind(color)
     .bind(permissions)
     .bind(b.hoist.unwrap_or(false))
+    .bind(b.mentionable.unwrap_or(false))
     .fetch_one(&mut *tx)
     .await?;
     tx.commit().await?;
@@ -67,20 +69,22 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((g
     let role = editable(&st, &ctx, gid, rid).await?;
     let permissions = b.permissions.unwrap_or(role.permissions);
     check_grant(&ctx, role.permissions, permissions)?;
-    let (name, color, hoist) = if role.is_default {
-        (role.name.clone(), None, false)
+    let (name, color, hoist, mentionable) = if role.is_default {
+        (role.name.clone(), None, false, false)
     } else {
         (
             match &b.name { Some(n) => clean_name(n, 40, "Name")?, None => role.name.clone() },
             if b.color.is_some() { clean_color(&b.color)? } else { role.color.clone() },
             b.hoist.unwrap_or(role.hoist),
+            b.mentionable.unwrap_or(role.mentionable),
         )
     };
-    let role: Role = sqlx::query_as("UPDATE roles SET name = $1, color = $2, permissions = $3, hoist = $4 WHERE id = $5 RETURNING *")
+    let role: Role = sqlx::query_as("UPDATE roles SET name = $1, color = $2, permissions = $3, hoist = $4, mentionable = $5 WHERE id = $6 RETURNING *")
         .bind(name)
         .bind(color)
         .bind(permissions)
         .bind(hoist)
+        .bind(mentionable)
         .bind(rid)
         .fetch_one(&st.db)
         .await?;

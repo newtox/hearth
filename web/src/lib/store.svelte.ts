@@ -73,6 +73,7 @@ export interface Role {
   position: number;
   hoist: boolean;
   is_default: boolean;
+  mentionable?: boolean;
 }
 export interface Overwrite {
   channel_id: string;
@@ -144,6 +145,16 @@ export interface Message {
   channel_name?: string;
   kind?: string;
   call?: { ended_at: string | null; participants: string[] } | null;
+  mention_everyone?: boolean;
+  mention_roles?: string[];
+}
+export type NotifyLevel = 'all' | 'mentions' | 'none';
+export interface NotifyPref {
+  target_id: string;
+  level: NotifyLevel | null;
+  muted: boolean;
+  suppress_everyone: boolean;
+  suppress_roles: boolean;
 }
 export interface Poll {
   question: string;
@@ -184,6 +195,7 @@ export const app = $state({
   messages: {} as Record<string, Message[]>,
   more: {} as Record<string, boolean>,
   unread: {} as Record<string, boolean>,
+  notify: {} as Record<string, NotifyPref>,
   typing: {} as Record<string, Record<string, number>>,
   pane: 'chat' as 'side' | 'chat' | 'members',
   modal: null as Modal,
@@ -321,11 +333,60 @@ export function findEmoji(name: string, kind: 'emoji' | 'sticker' = 'emoji', ext
 }
 
 export function guildUnread(g: Guild) {
-  return g.channels.some((c) => app.unread[c.id]);
+  if (app.notify[g.id]?.muted) return false;
+  return g.channels.some((c) => app.unread[c.id] && !channelMuted(c.id));
 }
 
 export function dmUnread() {
-  return app.dms.some((d) => app.unread[d.id]);
+  return app.dms.some((d) => app.unread[d.id] && !app.notify[d.id]?.muted);
+}
+
+export function notifyPref(id: string): NotifyPref {
+  return app.notify[id] ?? { target_id: id, level: null, muted: false, suppress_everyone: false, suppress_roles: false };
+}
+
+export async function setNotify(id: string, patch: Partial<NotifyPref>) {
+  const next = { ...notifyPref(id), ...patch, target_id: id };
+  const before = app.notify[id];
+  app.notify[id] = next;
+  if (!(await attempt(api('PUT', `/users/@me/notify/${id}`, next)))) {
+    if (before) app.notify[id] = before;
+    else delete app.notify[id];
+  }
+}
+
+function owner(channelId: string) {
+  for (const g of app.guilds) {
+    const c = g.channels.find((x) => x.id === channelId);
+    if (c) return { g, c };
+  }
+  return null;
+}
+
+export function channelMuted(channelId: string) {
+  if (app.notify[channelId]?.muted) return true;
+  const hit = owner(channelId);
+  if (!hit) return false;
+  return !!(hit.c.parent_id && app.notify[hit.c.parent_id]?.muted) || !!app.notify[hit.g.id]?.muted;
+}
+
+export function channelLevel(channelId: string): NotifyLevel {
+  const own = app.notify[channelId]?.level;
+  if (own) return own;
+  const hit = owner(channelId);
+  if (!hit) return 'all';
+  const cat = hit.c.parent_id ? app.notify[hit.c.parent_id]?.level : null;
+  return cat ?? app.notify[hit.g.id]?.level ?? 'mentions';
+}
+
+export function inheritedLevel(channelId: string): NotifyLevel {
+  const hit = owner(channelId);
+  if (!hit) return 'mentions';
+  if (hit.c.kind !== 'category' && hit.c.parent_id) {
+    const cat = app.notify[hit.c.parent_id]?.level;
+    if (cat) return cat;
+  }
+  return app.notify[hit.g.id]?.level ?? 'mentions';
 }
 
 function signedIn(res: { token?: string; two_factor?: boolean; ticket?: string }) {
@@ -408,6 +469,7 @@ function handle(t: string, d: any) {
       app.guilds = d.guilds;
       app.dms = d.dms;
       app.friends = d.friends;
+      app.notify = Object.fromEntries((d.notify ?? []).map((n: NotifyPref) => [n.target_id, n]));
       app.messages = {};
       app.more = {};
       app.connected = true;
@@ -437,7 +499,7 @@ function handle(t: string, d: any) {
       if (d.channel_id !== app.channelId || document.hidden) {
         if (d.author.id !== app.me?.id) {
           app.unread[d.channel_id] = true;
-          if (app.dms.some((x) => x.id === d.channel_id) && !isBlocked(d.author.id)) play('message');
+          if (app.dms.some((x) => x.id === d.channel_id) && !isBlocked(d.author.id) && !app.notify[d.channel_id]?.muted) play('message');
           if (!isBlocked(d.author.id)) desktopNotice(d);
         }
       }
@@ -469,6 +531,10 @@ function handle(t: string, d: any) {
       break;
     case 'USER_UPDATE':
       patchUser(d.id, d);
+      break;
+    case 'NOTIFY_UPDATE':
+      if (d.level === null && !d.muted && !d.suppress_everyone && !d.suppress_roles) delete app.notify[d.target_id];
+      else app.notify[d.target_id] = d;
       break;
     case 'STATUS_UPDATE':
       if (app.me) {
@@ -639,9 +705,21 @@ function escapeRegex(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
 }
 
-export function encodeMentions(text: string, people: User[]) {
+export function findRole(id: string) {
+  for (const g of app.guilds) {
+    const r = g.roles.find((x) => x.id === id);
+    if (r) return r;
+  }
+  return null;
+}
+
+export function encodeMentions(text: string, people: User[], roles: Role[] = []) {
   const sorted = [...people].sort((a, b) => b.username.length - a.username.length);
   let out = text;
+  for (const r of [...roles].filter((x) => !x.is_default).sort((a, b) => b.name.length - a.name.length)) {
+    const re = new RegExp(`(^|[^\\w@<])@${escapeRegex(r.name)}(?![\\w.-])`, 'gi');
+    out = out.replace(re, (_, pre) => `${pre}<@&${r.id}>`);
+  }
   for (const u of sorted) {
     const re = new RegExp(`(^|[^\\w@<])@${escapeRegex(u.username)}(?![\\w.-])`, 'gi');
     out = out.replace(re, (_, pre) => `${pre}<@${u.id}>`);
@@ -650,10 +728,15 @@ export function encodeMentions(text: string, people: User[]) {
 }
 
 export function decodeMentions(text: string) {
-  return text.replace(/<@([0-9a-f-]{36})>/gi, (all, id) => {
-    const u = findPerson((x) => x.id === id.toLowerCase());
-    return u ? `@${u.username}` : all;
-  });
+  return text
+    .replace(/<@([0-9a-f-]{36})>/gi, (all, id) => {
+      const u = findPerson((x) => x.id === id.toLowerCase());
+      return u ? `@${u.username}` : all;
+    })
+    .replace(/<@&([0-9a-f-]{36})>/gi, (all, id) => {
+      const r = findRole(id.toLowerCase());
+      return r ? `@${r.name}` : all;
+    });
 }
 
 export function plainText(text: string) {
@@ -662,14 +745,20 @@ export function plainText(text: string) {
       const u = findPerson((x) => x.id === id.toLowerCase());
       return u ? `@${u.display_name}` : '@?';
     })
+    .replace(/<@&([0-9a-f-]{36})>/gi, (all, id) => `@${findRole(id.toLowerCase())?.name ?? '?'}`)
     .replace(/<:([a-z0-9_]{2,32}):[a-z0-9]+\.[a-z0-9]+>/gi, ':$1:');
 }
 
-export function mentionsMe(m: Pick<Message, 'content' | 'reply'>, inGuild: boolean) {
+export function mentionsMe(m: Pick<Message, 'content' | 'reply' | 'mention_everyone' | 'mention_roles'>, g: Guild | null, forNotice = false) {
   const me = app.me;
   if (!me) return false;
   if (m.reply?.author?.id === me.id) return true;
-  if (inGuild && /(^|[^\w@])@everyone(?![\w.])/i.test(m.content)) return true;
+  const pref = g ? app.notify[g.id] : undefined;
+  if (g && m.mention_everyone && !(forNotice && pref?.suppress_everyone)) return true;
+  if (g && m.mention_roles?.length && !(forNotice && pref?.suppress_roles)) {
+    const mine = g.members.find((x) => x.id === me.id)?.roles ?? [];
+    if (m.mention_roles.some((r) => mine.includes(r))) return true;
+  }
   if (m.content.toLowerCase().includes(`<@${me.id}>`)) return true;
   return new RegExp(`(^|[^\\w@])@${escapeRegex(me.username)}(?![\\w.-])`, 'i').test(m.content);
 }
@@ -679,7 +768,12 @@ function desktopNotice(m: Message) {
   if (app.me?.status === 'dnd') return;
   const dm = app.dms.find((x) => x.id === m.channel_id);
   const g = dm ? null : app.guilds.find((x) => x.channels.some((c) => c.id === m.channel_id));
-  if (!dm && !(g && mentionsMe(m, true))) return;
+  if (dm && app.notify[dm.id]?.muted) return;
+  if (g) {
+    if (channelMuted(m.channel_id)) return;
+    const level = channelLevel(m.channel_id);
+    if (level === 'none' || (level === 'mentions' && !mentionsMe(m, g, true))) return;
+  }
   const author = g ? memberName(g, m.author) : m.author.display_name;
   const where = dm ? (dm.kind === 'group' ? dmTitle(dm) : '') : `#${g!.channels.find((c) => c.id === m.channel_id)?.name ?? ''}`;
   const title = where ? `${author} (${where})` : author;

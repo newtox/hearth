@@ -32,6 +32,40 @@ async fn check_emojis(st: &AppState, a: &super::channels::Access, content: &str)
     if used.iter().all(|f| own.iter().any(|o| o == f)) { Ok(()) } else { bad("You cannot use emojis from other servers here") }
 }
 
+fn pings_everyone(content: &str) -> bool {
+    let lower = content.to_lowercase();
+    let bytes = lower.as_bytes();
+    ["@everyone", "@here"].iter().any(|word| {
+        lower.match_indices(word).any(|(i, _)| {
+            let before = i == 0 || !matches!(bytes[i - 1], b'a'..=b'z' | b'0'..=b'9' | b'_' | b'@');
+            let end = i + word.len();
+            let after = end >= bytes.len() || !matches!(bytes[end], b'a'..=b'z' | b'0'..=b'9' | b'_' | b'.');
+            before && after
+        })
+    })
+}
+
+fn role_ids(content: &str) -> Vec<Uuid> {
+    content.split("<@&").skip(1).filter_map(|part| Uuid::parse_str(part.split('>').next()?).ok()).collect()
+}
+
+async fn mentions(st: &AppState, a: &super::channels::Access, content: &str) -> Result<(bool, Vec<Uuid>)> {
+    let Some(gid) = a.channel.guild_id else { return Ok((false, Vec::new())) };
+    let all = a.perms & perms::MENTION_EVERYONE != 0;
+    let everyone = all && pings_everyone(content);
+    let ids = role_ids(content);
+    if ids.is_empty() {
+        return Ok((everyone, Vec::new()));
+    }
+    let roles: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM roles WHERE guild_id = $1 AND id = ANY($2) AND NOT is_default AND ($3 OR mentionable)")
+        .bind(gid)
+        .bind(&ids)
+        .bind(all)
+        .fetch_all(&st.db)
+        .await?;
+    Ok((everyone, roles))
+}
+
 async fn to_json(st: &AppState, rows: &[MessageRow]) -> Result<Vec<Value>> {
     let ids: Vec<Uuid> = rows.iter().map(|r| r.id).collect();
     let attachments: Vec<Attachment> = sqlx::query_as("SELECT id, message_id, filename, file, size, is_image FROM attachments WHERE message_id = ANY($1) ORDER BY id")
@@ -239,14 +273,17 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
             return bad("The message you are replying to no longer exists");
         }
     }
+    let (everyone, roles) = mentions(&st, &a, content).await?;
     let id = Uuid::now_v7();
     let mut tx = st.db.begin().await?;
-    sqlx::query("INSERT INTO messages (id, channel_id, author_id, content, reply_to) VALUES ($1, $2, $3, $4, $5)")
+    sqlx::query("INSERT INTO messages (id, channel_id, author_id, content, reply_to, mention_everyone, mention_roles) VALUES ($1, $2, $3, $4, $5, $6, $7)")
         .bind(id)
         .bind(cid)
         .bind(uid)
         .bind(content)
         .bind(b.reply_to)
+        .bind(everyone)
+        .bind(&roles)
         .execute(&mut *tx)
         .await?;
     if !b.attachment_ids.is_empty() {
@@ -289,11 +326,14 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((c
         return bad("Message: 1–4000 characters");
     }
     check_emojis(&st, &a, content).await?;
-    let done = sqlx::query("UPDATE messages SET content = $1, edited_at = now() WHERE id = $2 AND channel_id = $3 AND author_id = $4 AND kind = 'default'")
+    let (everyone, roles) = mentions(&st, &a, content).await?;
+    let done = sqlx::query("UPDATE messages SET content = $1, edited_at = now(), mention_everyone = $5, mention_roles = $6 WHERE id = $2 AND channel_id = $3 AND author_id = $4 AND kind = 'default'")
         .bind(content)
         .bind(mid)
         .bind(cid)
         .bind(uid)
+        .bind(everyone)
+        .bind(&roles)
         .execute(&st.db)
         .await?;
     if done.rows_affected() == 0 {

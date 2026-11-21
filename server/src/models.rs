@@ -83,6 +83,8 @@ pub struct Role {
     pub position: i32,
     pub hoist: bool,
     pub is_default: bool,
+    #[sqlx(default)]
+    pub mentionable: bool,
 }
 
 #[derive(Serialize, FromRow, Clone)]
@@ -132,9 +134,13 @@ pub struct MessageRow {
     pub kind: String,
     pub call_ended_at: Option<DateTime<Utc>>,
     pub call_participants: Vec<Uuid>,
+    #[sqlx(default)]
+    pub mention_everyone: bool,
+    #[sqlx(default)]
+    pub mention_roles: Vec<Uuid>,
 }
 
-pub const MESSAGE_SELECT: &str = "SELECT m.id, m.channel_id, m.content, m.created_at, m.edited_at, u.id AS author_id, u.username, u.display_name, u.avatar, m.reply_to, m.pinned_at, m.kind, m.call_ended_at, m.call_participants FROM messages m JOIN users u ON u.id = m.author_id";
+pub const MESSAGE_SELECT: &str = "SELECT m.id, m.channel_id, m.content, m.created_at, m.edited_at, u.id AS author_id, u.username, u.display_name, u.avatar, m.reply_to, m.pinned_at, m.kind, m.call_ended_at, m.call_participants, m.mention_everyone, m.mention_roles FROM messages m JOIN users u ON u.id = m.author_id";
 
 #[derive(Serialize, FromRow)]
 pub struct Attachment {
@@ -167,6 +173,8 @@ impl MessageRow {
             "reply_to": self.reply_to,
             "pinned": self.pinned_at.is_some(),
             "kind": self.kind,
+            "mention_everyone": self.mention_everyone,
+            "mention_roles": self.mention_roles,
             "call": if self.kind == "call" { serde_json::json!({ "ended_at": self.call_ended_at, "participants": self.call_participants }) } else { serde_json::Value::Null },
         })
     }

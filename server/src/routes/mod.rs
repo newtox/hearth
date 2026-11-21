@@ -8,6 +8,7 @@ pub mod guilds;
 pub mod invites;
 pub mod members;
 pub mod messages;
+pub mod notify;
 pub mod roles;
 pub mod thumbs;
 pub mod stats;

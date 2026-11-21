@@ -12,6 +12,7 @@
   import { sortable, type Place } from '../lib/drag';
   import { pickImage } from '../lib/crop.svelte';
   import SettingsPage from './SettingsPage.svelte';
+  import NotifySettings from './NotifySettings.svelte';
   import UnsavedBar from './UnsavedBar.svelte';
   import { leave as leaveUnsaved } from '../lib/unsaved.svelte';
   import { onDestroy } from 'svelte';
@@ -25,6 +26,7 @@
     [
       { id: 'overview', icon: 'gear', name: t('guild_settings_overview'), group: g.name, show: true },
       { id: 'roles', icon: 'shield', name: w('roles'), group: g.name, show: can(P.MANAGE_ROLES, g) },
+      { id: 'notifications', icon: 'bell', name: t('notify_settings'), group: g.name, show: true },
       { id: 'emojis', icon: 'smile', name: t('common_emojis'), group: g.name, show: can(P.MANAGE_EMOJIS, g) },
       { id: 'members', icon: 'users', name: w('members'), group: t('guild_settings_member_management'), show: true },
       { id: 'invites', icon: 'link', name: w('invites'), group: t('guild_settings_member_management'), show: can(P.CREATE_INVITE, g) },
@@ -95,13 +97,13 @@
 
   let roleId = $state<string | null>(null);
   const role = $derived(g.roles.find((r) => r.id === roleId) ?? null);
-  let draft = $state({ name: '', color: '#8888aa', colored: false, hoist: false, permissions: 0 });
+  let draft = $state({ name: '', color: '#8888aa', colored: false, hoist: false, mentionable: false, permissions: 0 });
 
   function editable(r: Role) {
     return owner || r.position < myTop;
   }
 
-  const roleDirty = $derived(!!role && (draft.name !== role.name || draft.colored !== !!role.color || (draft.colored && draft.color !== role.color) || draft.hoist !== role.hoist || draft.permissions !== role.permissions));
+  const roleDirty = $derived(!!role && (draft.name !== role.name || draft.colored !== !!role.color || (draft.colored && draft.color !== role.color) || draft.hoist !== role.hoist || draft.mentionable !== !!role.mentionable || draft.permissions !== role.permissions));
 
   function resetRole() {
     if (role) pickRole(role);
@@ -113,7 +115,7 @@
 
   function pickRole(r: Role) {
     roleId = r.id;
-    draft = { name: r.name, color: r.color ?? '#8888aa', colored: !!r.color, hoist: r.hoist, permissions: r.permissions };
+    draft = { name: r.name, color: r.color ?? '#8888aa', colored: !!r.color, hoist: r.hoist, mentionable: !!r.mentionable, permissions: r.permissions };
   }
 
   async function addRole() {
@@ -129,7 +131,7 @@
 
   async function saveRoleNow() {
     if (!role) return;
-    const body = { name: draft.name, color: draft.colored ? draft.color : '', hoist: draft.hoist, permissions: draft.permissions };
+    const body = { name: draft.name, color: draft.colored ? draft.color : '', hoist: draft.hoist, mentionable: draft.mentionable, permissions: draft.permissions };
     if (await attempt(api('PATCH', `/guilds/${g.id}/roles/${role.id}`, body))) toast(t('guild_settings_role_saved'));
   }
 
@@ -317,7 +319,9 @@
 <SettingsPage title={t('common_server_settings', { server: w('server') }).replace(/^./, (c) => c.toUpperCase())} sections={tabs} bind:current={tab} list={initial === 'overview'} onclose={() => (app.modal = null)}>
   <div class="layout">
     <div class="pane">
-      {#if tab === 'overview'}
+      {#if tab === 'notifications'}
+        <NotifySettings id={g.id} kind="guild" />
+      {:else if tab === 'overview'}
         <div class="stack">
           {#if can(P.MANAGE_GUILD, g)}
             <form class="stack" onsubmit={saveOverview}>
@@ -369,6 +373,7 @@
                     <label class="row"><input type="checkbox" bind:checked={draft.colored} /> {t('guild_settings_custom_colour')}</label>
                     {#if draft.colored}<input type="color" bind:value={draft.color} aria-label={t('guild_settings_role_colour')} />{/if}
                     <label class="row"><input type="checkbox" bind:checked={draft.hoist} /> {t('guild_settings_show_separately_member_list')}</label>
+                    <label class="row mentionable"><input type="checkbox" bind:checked={draft.mentionable} /> <span>{t('role_mentionable')}<small class="muted">{t('role_mentionable_hint')}</small></span></label>
                   </div>
                 {:else}
                   <p class="muted">{t('guild_settings_every_member_has_role_its')}</p>
@@ -722,5 +727,14 @@
     .chips {
       margin-left: 0;
     }
+  }
+  .mentionable {
+    align-items: flex-start;
+  }
+  .mentionable input {
+    margin-top: 4px;
+  }
+  .mentionable small {
+    display: block;
   }
 </style>

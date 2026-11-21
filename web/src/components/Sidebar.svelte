@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t } from '../lib/i18n.svelte';
-  import { app, attempt, can, dmTitle, guild, partner, select, P, type Channel, presenceOf } from '../lib/store.svelte';
+  import { app, attempt, can, channelMuted, dmTitle, guild, partner, select, P, type Channel, presenceOf } from '../lib/store.svelte';
   import { api, asset } from '../lib/api';
   import { w } from '../lib/theme.svelte';
   import { leaveVoice, toggleMute, voice, voiceMembers } from '../lib/voice.svelte';
@@ -91,7 +91,7 @@
           </div>
         {/if}
         {#each group.items as c (c.id)}
-          <div class="item" class:active={c.id === app.channelId} class:unread={app.unread[c.id]} role="presentation" use:sortable={{ id: c.id, group: 'channels', label: c.name, enabled: manage, place: sortPlace, drop: sortDrop }} oncontextmenu={(e) => openMenu(e, channelMenu(g, c))}>
+          <div class="item" class:active={c.id === app.channelId} class:unread={app.unread[c.id] && !channelMuted(c.id)} class:muted={channelMuted(c.id)} role="presentation" use:sortable={{ id: c.id, group: 'channels', label: c.name, enabled: manage, place: sortPlace, drop: sortDrop }} oncontextmenu={(e) => openMenu(e, channelMenu(g, c))}>
             <button class="main row" onclick={() => select(g.id, c.id)}>
               <Icon name={c.kind === 'voice' ? 'volume' : 'hash'} size={16} />
               <span class="ellipsis">{c.name}</span>
@@ -128,7 +128,7 @@
       </div>
       {#each app.dms as d (d.id)}
         {@const p = partner(d)}
-        <div class="item" class:active={d.id === app.channelId} class:unread={app.unread[d.id]} role="presentation" oncontextmenu={(e) => openMenu(e, d.kind === 'group' ? groupMenu(d) : friendMenu(p.id, d))}>
+        <div class="item" class:active={d.id === app.channelId} class:unread={app.unread[d.id] && !app.notify[d.id]?.muted} class:muted={app.notify[d.id]?.muted} role="presentation" oncontextmenu={(e) => openMenu(e, d.kind === 'group' ? groupMenu(d) : friendMenu(p.id, d))}>
           <button class="main row" onclick={() => select(null, d.id)}>
             {#if d.kind === 'group'}
               <span class="groupicon">{#if d.icon}<StillImg src={asset(d.icon)!} alt="" />{:else}<Icon name="users" size={16} />{/if}</span>
@@ -220,6 +220,9 @@
   }
   .item.active {
     box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .item.muted:not(.active) {
+    opacity: 0.5;
   }
   .item.unread {
     color: var(--ink);

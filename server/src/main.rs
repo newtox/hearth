@@ -12,7 +12,7 @@ mod totp;
 
 use axum::{extract::DefaultBodyLimit, http::{header, HeaderValue}, response::Html, routing::{delete, get, patch, post, put}, Router};
 use hub::Hub;
-use routes::{account, badges, channels, emojis, friends, groups, guilds, invites, members, messages, roles, security, stats, thumbs, users, voice};
+use routes::{account, badges, channels, emojis, friends, groups, guilds, invites, members, messages, notify, roles, security, stats, thumbs, users, voice};
 use sqlx::postgres::PgPoolOptions;
 use std::{env, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tower_http::{cors::CorsLayer, services::ServeDir, set_header::SetResponseHeaderLayer, trace::TraceLayer};
@@ -124,6 +124,7 @@ async fn main() {
         .route("/channels/{cid}/pins", get(messages::pins))
         .route("/channels/{cid}/pins/{mid}", put(messages::pin).delete(messages::unpin))
         .route("/users/@me", get(users::me).patch(users::update_me))
+        .route("/users/@me/notify/{target}", put(notify::set))
         .route("/users/@me/avatar", post(users::set_avatar).delete(users::clear_avatar))
         .route("/users/@me/banner", post(users::set_banner).delete(users::clear_banner))
         .route("/users/@me/channels", post(users::open_dm))

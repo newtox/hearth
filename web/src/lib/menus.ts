@@ -2,13 +2,40 @@ import { ask, askText } from './dialog.svelte';
 import { api, inviteUrl } from './api';
 import { t } from './i18n.svelte';
 import { w } from './theme.svelte';
-import { app, attempt, can, canModerate, isBlocked, isFriend, openDm, select, setStatus, toast, P, type Channel, type Dm, type Guild, type MenuItem, type Status } from './store.svelte';
+import { app, attempt, can, canModerate, inheritedLevel, isBlocked, isFriend, notifyPref, openDm, select, setNotify, setStatus, toast, P, type Channel, type Dm, type Guild, type MenuItem, type NotifyLevel, type Status } from './store.svelte';
 import * as mod from './moderation';
 import { canCall, joinVoice, setInputVolume, setUserVolume, voice } from './voice.svelte';
 
 type Entry = MenuItem | false | null | undefined | 0;
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const LEVELS: { id: NotifyLevel; name: string }[] = [
+  { id: 'all', name: 'notify_all' },
+  { id: 'mentions', name: 'notify_mentions' },
+  { id: 'none', name: 'notify_none' },
+];
+
+export function notifyItems(id: string, kind: 'guild' | 'channel' | 'category' | 'dm'): Entry[] {
+  const pref = () => notifyPref(id);
+  const mute: MenuItem = {
+    label: t(kind === 'guild' ? 'notify_mute_server' : kind === 'category' ? 'notify_mute_category' : kind === 'dm' ? 'notify_mute_conversation' : 'notify_mute_channel', { server: w('server') }),
+    checked: () => pref().muted,
+    keep: true,
+    action: () => setNotify(id, { muted: !pref().muted }),
+  };
+  if (kind === 'dm') return [mute];
+  const levels: MenuItem[] = [
+    ...(kind === 'guild' ? [] : [{ label: t('notify_default', { level: t(LEVELS.find((l) => l.id === inheritedLevel(id))!.name) }), checked: () => pref().level === null, keep: true, action: () => setNotify(id, { level: null }) }]),
+    ...LEVELS.map((l) => ({ label: t(l.name), checked: () => (kind === 'guild' ? (pref().level ?? 'mentions') === l.id : pref().level === l.id), keep: true, action: () => setNotify(id, { level: l.id }) })),
+  ];
+  if (kind === 'guild') {
+    levels.push('sep');
+    levels.push({ label: t('notify_suppress_everyone'), checked: () => pref().suppress_everyone, keep: true, action: () => setNotify(id, { suppress_everyone: !pref().suppress_everyone }) });
+    levels.push({ label: t('notify_suppress_roles'), checked: () => pref().suppress_roles, keep: true, action: () => setNotify(id, { suppress_roles: !pref().suppress_roles }) });
+  }
+  return [mute, { label: t('notify_settings'), icon: 'bell', items: levels }];
+}
 
 function tidy(items: Entry[]): MenuItem[] {
   const out: MenuItem[] = [];
@@ -137,6 +164,7 @@ export function friendMenu(userId: string, dm?: Dm): Entry[] {
     guilds.length > 0 && { label: t('menu_invite_to_server', { server: w('server') }), icon: 'userPlus', items: guilds.map((g) => ({ label: g.name, action: () => inviteTo(g, userId) })) },
     friend && { label: t('common_remove_friend'), icon: 'userMinus', action: () => unfriend(userId) },
     !friend && !blocked && !pending && { label: t('menu_add_friend'), icon: 'userPlus', action: () => addFriend(userId) },
+    ...(dm ? notifyItems(dm.id, 'dm') : []),
     dm && { label: t('menu_close_dm'), icon: 'close', action: () => closeDm(dm) },
     blocked ? { label: t('common_unblock'), icon: 'ban', action: () => attempt(api('DELETE', `/blocks/${userId}`)) } : { label: t('profile_card_block'), icon: 'ban', danger: true, action: () => block(userId) },
     'sep',
@@ -149,6 +177,8 @@ export function groupMenu(dm: Dm): Entry[] {
   return [
     app.unread[dm.id] && { label: t('menu_mark_as_read'), icon: 'check', action: () => delete app.unread[dm.id] },
     { label: t('menu_group_settings'), icon: 'gear', action: () => (app.modal = { kind: 'groupchat', dm }) },
+    'sep',
+    ...notifyItems(dm.id, 'dm'),
     'sep',
     { label: t('menu_copy_channel_id'), icon: 'id', action: () => mod.copy(dm.id) },
   ];
@@ -171,6 +201,8 @@ export function guildMenu(g: Guild): Entry[] {
     can(P.CREATE_INVITE, g) && { label: t('menu_invite_people'), icon: 'userPlus', action: () => invite(g) },
     { label: cap(t('common_server_settings', { server: w('server') })), icon: 'gear', action: () => (app.modal = { kind: 'guild' }) },
     'sep',
+    ...notifyItems(g.id, 'guild'),
+    'sep',
     channels && { label: t('menu_create_channel'), icon: 'hash', action: () => (app.modal = { kind: 'channel', channel: null, parent: null }) },
     channels && { label: t('menu_create_voice_channel'), icon: 'volume', action: () => (app.modal = { kind: 'channel', channel: null, type: 'voice' }) },
     channels && { label: t('menu_create_category'), icon: 'folder', action: () => (app.modal = { kind: 'channel', channel: null, type: 'category' }) },
@@ -186,6 +218,8 @@ export function channelMenu(g: Guild, c: Channel): Entry[] {
   const category = c.kind === 'category';
   return [
     !category && { label: t('menu_mark_as_read'), icon: 'check', action: () => delete app.unread[c.id] },
+    'sep',
+    ...notifyItems(c.id, category ? 'category' : 'channel'),
     'sep',
     manage && { label: category ? t('common_edit_category') : t('common_edit_name', { name: c.name }), icon: 'edit', action: () => (app.modal = { kind: 'channel', channel: c }) },
     manage && category && { label: t('menu_create_channel_category'), icon: 'plus', action: () => (app.modal = { kind: 'channel', channel: null, parent: c.id }) },

@@ -21,7 +21,8 @@ async fn ready(st: &AppState, uid: Uuid) -> Result<Value> {
         dms.push(dm_json(st, d).await?);
     }
     let friends = crate::routes::friends::list_json(st, uid).await?;
-    Ok(json!({ "t": "READY", "d": { "user": me_json(st, uid).await?, "guilds": guilds, "dms": dms, "friends": friends } }))
+    let notify = crate::routes::notify::list(st, uid).await?;
+    Ok(json!({ "t": "READY", "d": { "user": me_json(st, uid).await?, "guilds": guilds, "dms": dms, "friends": friends, "notify": notify } }))
 }
 
 

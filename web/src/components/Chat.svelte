@@ -7,7 +7,7 @@
   import { api, asset, upload } from '../lib/api';
   import { CUSTOM, STICKER } from '../lib/markdown';
   import { has } from '../lib/perms';
-  import { app, attempt, channel, dmTitle, select, findEmoji, guild, loadMessages, memberColor, memberName, partner, toast, P, type Attachment, type Dm, type Emoji, type Message, presenceOf, jumpTo, mentionsMe, runSearch, encodeMentions, decodeMentions, plainText, searchPeople } from '../lib/store.svelte';
+  import { app, attempt, channel, dmTitle, select, findEmoji, guild, loadMessages, memberColor, memberName, partner, toast, P, type Attachment, type User, type Dm, type Emoji, type Message, presenceOf, jumpTo, mentionsMe, runSearch, encodeMentions, decodeMentions, plainText, searchPeople } from '../lib/store.svelte';
   import { GROUP_ROLES, groupMay, groupRole } from '../lib/groups';
   import { isBlocked } from '../lib/store.svelte';
   import CallBar from './CallBar.svelte';
@@ -212,7 +212,7 @@
     pending = [];
     replying = null;
     stick = true;
-    const ok = await attempt(api('POST', `/channels/${ch.id}/messages`, { content: encodeMentions(encode(raw), searchPeople()), attachment_ids: files.map((f) => f.id), reply_to: reply?.id ?? null }));
+    const ok = await attempt(api('POST', `/channels/${ch.id}/messages`, { content: encodeMentions(encode(raw), searchPeople(), g?.roles ?? []), attachment_ids: files.map((f) => f.id), reply_to: reply?.id ?? null }));
     if (!ok) {
       draft = raw;
       pending = files;
@@ -222,7 +222,66 @@
     resize();
   }
 
+  type Suggestion = { key: string; value: string; label: string; hint: string; user?: User; color?: string | null };
+  let suggest = $state<{ start: number; end: number; items: Suggestion[]; index: number } | null>(null);
+
+  function findSuggestions() {
+    if (!input) return (suggest = null);
+    const caret = input.selectionStart ?? draft.length;
+    const m = draft.slice(0, caret).match(/(^|\s)@([^\s@]{0,32})$/);
+    if (!m) return (suggest = null);
+    const q = m[2].toLowerCase();
+    const start = caret - m[2].length - 1;
+    const items: Suggestion[] = [];
+    if (g && has(perms, P.MENTION_EVERYONE)) {
+      for (const word of ['everyone', 'here']) if (word.startsWith(q)) items.push({ key: word, value: word, label: `@${word}`, hint: t(word === 'here' ? 'mention_here_hint' : 'mention_everyone_hint') });
+    }
+    if (g) {
+      for (const role of g.roles) {
+        if (role.is_default || !(role.mentionable || has(perms, P.MENTION_EVERYONE)) || !role.name.toLowerCase().includes(q)) continue;
+        items.push({ key: role.id, value: role.name, label: `@${role.name}`, hint: t('mention_role'), color: role.color ?? 'var(--muted)' });
+      }
+    }
+    const people = searchPeople().filter((u) => {
+      const nick = 'nickname' in u ? ((u as any).nickname ?? '') : '';
+      return u.id !== app.me?.id && [u.username, u.display_name, nick].some((x) => x && x.toLowerCase().includes(q));
+    });
+    people.sort((a, b) => Number(!a.username.toLowerCase().startsWith(q)) - Number(!b.username.toLowerCase().startsWith(q)) || a.username.localeCompare(b.username));
+    for (const u of people.slice(0, 8)) items.push({ key: u.id, value: u.username, label: g ? memberName(g, u) : u.display_name, hint: `@${u.username}`, user: u });
+    suggest = items.length ? { start, end: caret, items: items.slice(0, 8), index: 0 } : null;
+  }
+
+  function pickSuggestion(item: Suggestion) {
+    if (!suggest || !input) return;
+    const text = `@${item.value} `;
+    draft = draft.slice(0, suggest.start) + text + draft.slice(suggest.end);
+    const at = suggest.start + text.length;
+    suggest = null;
+    tick().then(() => {
+      input?.focus();
+      input?.setSelectionRange(at, at);
+    });
+  }
+
   function keydown(e: KeyboardEvent) {
+    if (suggest) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const n = suggest.items.length;
+        suggest.index = (suggest.index + (e.key === 'ArrowDown' ? 1 : -1) + n) % n;
+        return;
+      }
+      if ((e.key === 'Enter' || e.key === 'Tab') && !e.isComposing) {
+        e.preventDefault();
+        pickSuggestion(suggest.items[suggest.index]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        suggest = null;
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       send();
@@ -238,6 +297,7 @@
 
   function oninput() {
     resize();
+    findSuggestions();
     if (ch && draft.trim() && Date.now() - lastTyping > 4000) {
       lastTyping = Date.now();
       api('POST', `/channels/${ch.id}/typing`).catch(() => {});
@@ -250,7 +310,7 @@
   }
 
   async function saveEdit(m: Message) {
-    const content = encodeMentions(encode(editText.trim()), searchPeople());
+    const content = encodeMentions(encode(editText.trim()), searchPeople(), g?.roles ?? []);
     if (content && content !== m.content) await attempt(api('PATCH', `/channels/${m.channel_id}/messages/${m.id}`, { content }));
     editing = null;
   }
@@ -359,7 +419,7 @@
             {#if live && direct && voice.channelId !== direct.id}<button class="btn small primary" onclick={() => joinVoice(direct)}><Icon name="phone" size={14} />{t('common_join')}</button>{/if}
           </div>
         {:else}
-        <article class="msg" class:own class:joined class:mention={!own && mentionsMe(m, !!g)} class:flash={app.highlight === m.id} data-id={m.id} oncontextmenu={(e) => editing !== m.id && messageMenu(e, m)}>
+        <article class="msg" class:own class:joined class:mention={!own && mentionsMe(m, g ?? null)} class:flash={app.highlight === m.id} data-id={m.id} oncontextmenu={(e) => editing !== m.id && messageMenu(e, m)}>
           <button class="face" onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))} aria-label={t('chat_profile_name', { name: m.author.display_name })} tabindex={joined ? -1 : 0}>
             {#if !joined}<Avatar id={m.author.id} name={m.author.display_name} image={m.author.avatar} size={34} />{:else}<time class="side" datetime={m.created_at} title={full.format(new Date(m.created_at))}>{time.format(new Date(m.created_at))}</time>{/if}
           </button>
@@ -439,6 +499,17 @@
       {#if typers.length === 1}{t('chat_name_typing', { name: typers[0] })}{:else if typers.length > 1}{t('chat_names_typing', { names: typers.slice(0, 3).join(', ') })}{/if}
     </p>
     {#if has(perms, P.SEND_MESSAGES)}
+      {#if suggest}
+        <div class="suggest panel" role="listbox" aria-label={t('common_mention')}>
+          {#each suggest.items as item, i (item.key)}
+            <button type="button" class="sug row" class:on={i === suggest.index} role="option" aria-selected={i === suggest.index} onpointerdown={(e) => e.preventDefault()} onclick={() => pickSuggestion(item)} onpointerenter={() => suggest && (suggest.index = i)}>
+              {#if item.user}<Avatar id={item.user.id} name={item.user.display_name} image={item.user.avatar} size={24} />{:else if item.color !== undefined}<span class="roledot" style:background={item.color}></span>{:else}<span class="at">@</span>{/if}
+              <span class="ellipsis grow" style:color={item.user && g ? nameColor(item.user.id) : item.color ?? undefined}>{item.label}</span>
+              <small class="muted ellipsis">{item.hint}</small>
+            </button>
+          {/each}
+        </div>
+      {/if}
       {#if pending.length || uploading}
         <div class="pending">
           {#each pending as a (a.id)}
@@ -465,7 +536,7 @@
             <input type="file" multiple hidden onchange={(e) => (attach(e.currentTarget.files), (e.currentTarget.value = ''))} />
           </label>
         {/if}
-        <textarea class="input" rows="1" maxlength="4000" bind:this={input} bind:value={draft} onkeydown={keydown} {oninput} onpaste={paste} placeholder={t('chat_message_target', { message: w('message'), target: direct ? title : '#' + title })}></textarea>
+        <textarea class="input" rows="1" maxlength="4000" bind:this={input} bind:value={draft} onkeydown={keydown} {oninput} onclick={findSuggestions} onblur={() => setTimeout(() => (suggest = null), 150)} onpaste={paste} placeholder={t('chat_message_target', { message: w('message'), target: direct ? title : '#' + title })}></textarea>
         <button type="button" class="icon tool" onclick={() => (pollOpen = true)} aria-label={t('common_create_poll')} title={t('common_create_poll')}><Icon name="poll" /></button>
         <button type="button" class="icon tool" onclick={() => (picker = { message: null })} aria-label={t('chat_emojis_stickers')}><Icon name="smile" /></button>
         <button class="btn primary" disabled={(!draft.trim() && !pending.length) || uploading > 0} aria-label={w('send')}><Icon name="send" /><span class="send-label">{w('send')}</span></button>
@@ -529,6 +600,42 @@
       animation: none;
       outline: 2px solid var(--accent);
     }
+  }
+  .suggest {
+    margin: 0 12px 6px;
+    padding: 6px;
+    display: grid;
+    gap: 2px;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--panel-2);
+  }
+  .sug {
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: var(--radius-s);
+    text-align: left;
+    min-width: 0;
+  }
+  .sug small {
+    max-width: 45%;
+  }
+  .sug.on {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  .roledot {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    margin: 0 6px;
+    border-radius: 50%;
+  }
+  .at {
+    flex: none;
+    width: 24px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--muted);
   }
   .replying {
     margin: 0 12px;
@@ -892,6 +999,10 @@
     background: var(--bubble);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+  .own .bubble :global(.mention) {
+    color: inherit;
+    background: color-mix(in srgb, currentColor 18%, transparent);
   }
   .mention .bubble {
     background: color-mix(in srgb, var(--accent) 16%, var(--bubble));

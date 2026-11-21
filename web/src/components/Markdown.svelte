@@ -2,7 +2,7 @@
   import { asset } from '../lib/api';
   import { onlyEmoji, parse, type Node } from '../lib/markdown';
   import { t } from '../lib/i18n.svelte';
-  import { app, findPerson } from '../lib/store.svelte';
+  import { app, findPerson, findRole } from '../lib/store.svelte';
 
   function person(name: string) {
     return findPerson((u) => u.username.toLowerCase() === name);
@@ -14,7 +14,7 @@
   const big = $derived(onlyEmoji(nodes));
 </script>
 
-{#snippet render(list: Node[])}{#each list as n}{#if n.t === 'text'}{n.v}{:else if n.t === 'bold'}<strong>{@render render(n.c)}</strong>{:else if n.t === 'italic'}<em>{@render render(n.c)}</em>{:else if n.t === 'strike'}<s>{@render render(n.c)}</s>{:else if n.t === 'code'}<code>{n.v}</code>{:else if n.t === 'block'}<pre>{n.v}</pre>{:else if n.t === 'link'}<a href={n.v} target="_blank" rel="noopener noreferrer nofollow">{n.v}</a>{:else if n.t === 'mention'}{@const who = n.id ? findPerson((u) => u.id === n.id) : n.v === 'everyone' ? null : person(n.v)}{#if n.v === 'everyone'}<span class="mention">@everyone</span>{:else if who}<button class="mention" class:me={who.id === app.me?.id} onclick={() => (app.profile = who.id)}>@{'nickname' in who && who.nickname ? who.nickname : who.display_name}</button>{:else if n.id}<span class="mention gone">@{t('markdown_unknown_user')}</span>{:else}@{n.v}{/if}{:else if n.t === 'emoji'}<img class="emoji" class:big src={asset(n.file)} alt=":{n.name}:" title=":{n.name}:" />{/if}{/each}{/snippet}
+{#snippet render(list: Node[])}{#each list as n}{#if n.t === 'text'}{n.v}{:else if n.t === 'bold'}<strong>{@render render(n.c)}</strong>{:else if n.t === 'italic'}<em>{@render render(n.c)}</em>{:else if n.t === 'strike'}<s>{@render render(n.c)}</s>{:else if n.t === 'code'}<code>{n.v}</code>{:else if n.t === 'block'}<pre>{n.v}</pre>{:else if n.t === 'link'}<a href={n.v} target="_blank" rel="noopener noreferrer nofollow">{n.v}</a>{:else if n.t === 'mention'}{@const who = n.id ? findPerson((u) => u.id === n.id) : n.v === 'everyone' || n.v === 'here' || n.role ? null : person(n.v)}{@const role = n.role ? findRole(n.role) : null}{#if n.v === 'everyone' || n.v === 'here'}<span class="mention">@{n.v}</span>{:else if n.role}{#if role}<span class="mention role" style:--rc={role.color ?? 'var(--accent)'}>@{role.name}</span>{:else}<span class="mention gone">@{t('markdown_unknown_role')}</span>{/if}{:else if who}<button class="mention" class:me={who.id === app.me?.id} onclick={() => (app.profile = who.id)}>@{'nickname' in who && who.nickname ? who.nickname : who.display_name}</button>{:else if n.id}<span class="mention gone">@{t('markdown_unknown_user')}</span>{:else}@{n.v}{/if}{:else if n.t === 'emoji'}<img class="emoji" class:big src={asset(n.file)} alt=":{n.name}:" title=":{n.name}:" />{/if}{/each}{/snippet}
 
 {@render render(nodes)}
 
@@ -27,6 +27,10 @@
     font-weight: 600;
     color: var(--accent);
     background: color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  .mention.role {
+    color: var(--rc);
+    background: color-mix(in srgb, var(--rc) 18%, transparent);
   }
   .mention.gone {
     color: var(--muted);
