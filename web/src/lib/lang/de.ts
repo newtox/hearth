@@ -451,6 +451,8 @@ export const DE: Record<string, string> = {
   guild_settings_valid: 'Gültig',
   markdown_unknown_user: 'Unbekannter Nutzer',
   members_back_chat: 'Zurück zum Chat',
+  members_collapse: 'Mitgliederliste einklappen',
+  members_expand: 'Mitgliederliste ausklappen',
   menu_add_friend: 'Als Freund hinzufügen',
   menu_appear_offline_but_still_use: 'Du wirst als offline angezeigt, kannst aber alles nutzen',
   menu_close_dm: 'Direktnachricht schließen',

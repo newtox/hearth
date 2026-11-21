@@ -287,9 +287,11 @@
 </script>
 
 {#snippet headerTools()}
+  <div class="toolbox">
   <button class="icon headtool" class:on={app.side === 'pins'} onclick={() => ((app.side = app.side === 'pins' ? null : 'pins'), app.side && (app.pane = 'members'))} aria-label={t('chat_pinned_messages')} title={t('chat_pinned_messages')} aria-pressed={app.side === 'pins'}><Icon name="pin" /></button>
   <button class="icon headtool searchtool" class:on={app.side === 'search'} onclick={() => ((app.side = 'search'), (app.pane = 'members'))} aria-label={t('common_search_messages')}><Icon name="search" /></button>
   <span class="searchwrap"><SearchBox /></span>
+  </div>
 {/snippet}
 
 <section class="panel pane-chat">
@@ -314,9 +316,11 @@
         {@render headerTools()}
         <CallBar dm={direct} compact />
       {:else}
-        <Icon name="hash" />
-        <h3 class="ellipsis">{title}</h3>
-        <p class="topic muted grow ellipsis">{(ch as any).topic ?? ''}</p>
+        <span class="hashmark"><Icon name="hash" /></span>
+        <div class="ttl">
+          <h3 class="ellipsis">{title}</h3>
+          <p class="topic muted grow ellipsis">{(ch as any).topic ?? ''}</p>
+        </div>
         {@render headerTools()}
         <button class="icon mobile" onclick={() => (app.pane = 'members')} aria-label={w('members')}><Icon name="users" /></button>
       {/if}
@@ -750,13 +754,106 @@
   :global([data-style='modern']) section {
     background: var(--chat);
   }
+  .toolbox,
+  .ttl,
+  .hashmark {
+    display: contents;
+  }
   :global([data-style='modern']) header {
     border-bottom: 0;
-    padding: 14px 18px 6px;
+    padding: 14px 16px 8px;
+    gap: 10px;
   }
-  :global([data-style='modern']) header :global(h2),
   :global([data-style='modern']) header :global(h3) {
-    font-size: 1.25em;
+    font-size: 1.22em;
+    line-height: 1.2;
+  }
+  :global([data-style='modern']) .hashmark {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
+  }
+  :global([data-style='modern']) .ttl {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+  :global([data-style='modern']) .ttl .topic {
+    padding-left: 0;
+    font-size: 0.85em;
+  }
+  :global([data-style='modern']) .ttl .topic:empty {
+    display: none;
+  }
+  :global([data-style='modern']) .toolbox {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 999px;
+    background: var(--panel-2);
+  }
+  :global([data-style='modern']) .toolbox .icon {
+    border-radius: 999px;
+  }
+  :global([data-style='modern']) .toolbox .headtool.on {
+    background: var(--accent-fill);
+    color: var(--accent-ink);
+  }
+  :global([data-style='modern']) .msg:hover {
+    background: transparent;
+  }
+  :global([data-style='modern']) .msg.joined {
+    margin-top: 3px;
+  }
+  :global([data-style='modern']) .meta {
+    align-items: center;
+    margin-bottom: 5px;
+  }
+  :global([data-style='modern']) .name {
+    padding: 1px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, currentColor 15%, transparent);
+    font-family: var(--font-display);
+    font-weight: 650;
+  }
+  :global([data-style='modern']) .name:hover {
+    text-decoration: none;
+    background: color-mix(in srgb, currentColor 25%, transparent);
+  }
+  :global([data-style='modern']) .bubble {
+    padding: 9px 15px;
+    border-radius: 6px 20px 20px 20px;
+  }
+  :global([data-style='modern']) .msg.joined .bubble {
+    border-radius: 6px 20px 20px 6px;
+  }
+  :global([data-style='modern']) .face :global(.avatar) {
+    margin-top: 2px;
+  }
+  :global([data-style='modern']) .day {
+    justify-content: center;
+    margin: 18px 0 8px;
+  }
+  :global([data-style='modern']) .day::before,
+  :global([data-style='modern']) .day::after {
+    display: none;
+  }
+  :global([data-style='modern']) .day span {
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: var(--panel-2);
+    font-weight: 600;
+  }
+  :global([data-style='modern']) .start {
+    font-size: 1.45em;
+    font-weight: 700;
   }
   :global([data-style='modern']) .composer {
     margin: 0 14px 14px;

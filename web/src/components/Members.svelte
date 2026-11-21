@@ -20,19 +20,35 @@
     if (offline.length) out.push({ name: w('offline'), members: offline });
     return out;
   });
+
+  let slim = $state(read());
+  function read() {
+    try {
+      return localStorage.getItem('hearth_members_slim') === '1';
+    } catch {
+      return false;
+    }
+  }
+  function toggle() {
+    slim = !slim;
+    try {
+      localStorage.setItem('hearth_members_slim', slim ? '1' : '0');
+    } catch {}
+  }
 </script>
 
-<aside class="panel pane-members">
+<aside class="panel pane-members" class:slim>
   <header class="row">
     <button class="icon mobile" onclick={() => (app.pane = 'chat')} aria-label={t('members_back_chat')}><Icon name="close" /></button>
-    <h3>{w('members')}</h3>
-    <span class="muted">{g.members.length}</span>
+    <h3 class="label">{w('members')}</h3>
+    <span class="muted label grow">{g.members.length}</span>
+    <button class="icon fold" onclick={toggle} aria-label={slim ? t('members_expand') : t('members_collapse')} title={slim ? t('members_expand') : t('members_collapse')} aria-expanded={!slim}><Icon name="chevron" size={16} /></button>
   </header>
   <div class="list scroll">
     {#each groups as group (group.name)}
-      <div class="group">{group.name}, {group.members.length}</div>
+      <div class="group"><span class="label">{group.name}, {group.members.length}</span></div>
       {#each group.members as m (m.id)}
-        <button class="member row" class:off={!m.online} onclick={() => (app.profile = m.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.id, g))}>
+        <button class="member row" class:off={!m.online} onclick={() => (app.profile = m.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.id, g))} title={slim ? m.nickname || m.display_name : undefined}>
           <Avatar id={m.id} name={m.display_name} image={m.avatar} size={30} status={presenceOf(m)} />
           <span class="who">
             <span class="ellipsis" style:color={memberColor(g, m.id)}>{m.nickname || m.display_name}</span>
@@ -102,9 +118,70 @@
       width: 190px;
     }
   }
+  .fold {
+    padding: 4px;
+    border-radius: 999px;
+    color: var(--muted);
+    transform: rotate(-90deg);
+    transition: transform 0.18s ease;
+  }
+  .fold:hover {
+    background: var(--panel-2);
+    color: var(--ink);
+  }
+  aside {
+    transition: width 0.18s ease;
+  }
+  @media (min-width: 861px) {
+    .slim {
+      width: 66px;
+    }
+    .slim header {
+      justify-content: center;
+      padding-left: 6px;
+      padding-right: 6px;
+    }
+    .slim .fold {
+      transform: rotate(90deg);
+    }
+    .slim .label,
+    .slim .who,
+    .slim .live,
+    .slim .crown {
+      display: none;
+    }
+    .slim .list {
+      padding: 6px;
+    }
+    .slim .group {
+      height: 1px;
+      margin: 10px 8px 8px;
+      padding: 0;
+      background: var(--line);
+    }
+    .slim .member {
+      justify-content: center;
+      padding: 5px 0;
+    }
+  }
+  :global([data-style='modern']) header {
+    border-bottom: 0;
+  }
+  :global([data-style='modern']) .member {
+    border-radius: 12px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    aside,
+    .fold {
+      transition: none;
+    }
+  }
   @media (max-width: 860px) {
     .mobile {
       display: block;
+    }
+    .fold {
+      display: none;
     }
   }
 </style>

@@ -451,6 +451,8 @@ export const EN: Record<string, string> = {
   guild_settings_valid: 'Valid for',
   markdown_unknown_user: 'Unknown user',
   members_back_chat: 'Back to chat',
+  members_collapse: 'Collapse member list',
+  members_expand: 'Expand member list',
   menu_add_friend: 'Add friend',
   menu_appear_offline_but_still_use: 'You appear offline but can still use everything',
   menu_close_dm: 'Close direct message',

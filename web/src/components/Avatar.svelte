@@ -54,6 +54,9 @@
   .square {
     border-radius: calc(var(--s) * 0.28);
   }
+  :global([data-style='modern']) .avatar {
+    border-radius: calc(var(--s) * 0.34);
+  }
   :global([data-theme='pergament']) .avatar {
     border-radius: 3px;
     box-shadow: 0 0 0 2px #9a7636;

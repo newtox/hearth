@@ -451,6 +451,8 @@ export const DA: Record<string, string> = {
   guild_settings_valid: 'Gyldig i',
   markdown_unknown_user: 'Ukendt bruger',
   members_back_chat: 'Tilbage til chatten',
+  members_collapse: 'Fold medlemslisten sammen',
+  members_expand: 'Fold medlemslisten ud',
   menu_add_friend: 'Tilføj ven',
   menu_appear_offline_but_still_use: 'Du vises som offline, men kan stadig bruge alt',
   menu_close_dm: 'Luk direkte besked',

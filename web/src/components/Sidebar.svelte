@@ -70,12 +70,17 @@
   {#if g}
     <header>
       <button class="title row" class:open={!!app.menu && menuFromHeader} aria-haspopup="menu" onclick={(e) => { menuFromHeader = true; openBelow(e.currentTarget, guildMenu(g)); }} oncontextmenu={(e) => openMenu(e, guildMenu(g))}>
-        <h3 class="grow ellipsis">{g.name}</h3>
+        <span class="gicon"><Avatar id={g.id} name={g.name} image={g.icon} size={40} square /></span>
+        <span class="gname">
+          <h3 class="grow ellipsis">{g.name}</h3>
+          <small class="muted">{g.members.length} {w('members')}</small>
+        </span>
         <Icon name="chevron" size={18} />
       </button>
     </header>
     <div class="list scroll">
       {#each tree as group (group.category?.id ?? 'none')}
+        <div class="group" class:card={!!group.category}>
         {#if group.category}
           <div class="category row" role="presentation" use:sortable={{ id: group.category.id, group: 'channels', label: group.category.name, enabled: manage, place: sortPlace, drop: sortDrop }} oncontextmenu={(e) => openMenu(e, channelMenu(g, group.category!))}>
             <span class="grow ellipsis">{group.category.name}</span>
@@ -104,6 +109,7 @@
             {/each}
           {/if}
         {/each}
+        </div>
       {/each}
     </div>
   {:else}
@@ -232,11 +238,57 @@
   :global([data-style='modern']) .item.active :global(button) {
     color: var(--accent-ink);
   }
+  .group,
+  .gname {
+    display: contents;
+  }
+  .gicon,
+  .gname small {
+    display: none;
+  }
   :global([data-style='modern']) header {
     border-bottom: 0;
   }
+  :global([data-style='modern']) header:has(.title) {
+    margin: 8px 8px 2px;
+    padding: 0;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--panel-2));
+  }
+  :global([data-style='modern']) .title {
+    gap: 11px;
+    padding: 9px 12px 9px 9px;
+    border-radius: 16px;
+  }
+  :global([data-style='modern']) .title:hover,
+  :global([data-style='modern']) .title.open {
+    background: color-mix(in srgb, var(--accent) 22%, var(--panel-2));
+  }
+  :global([data-style='modern']) .gicon {
+    display: flex;
+  }
+  :global([data-style='modern']) .gname {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+  :global([data-style='modern']) .gname small {
+    display: block;
+    font-size: 0.8em;
+  }
   :global([data-style='modern']) .title h3 {
-    font-size: 1.12em;
+    font-size: 1.08em;
+  }
+  :global([data-style='modern']) .group.card {
+    display: block;
+    margin-bottom: 8px;
+    padding: 2px 4px 4px;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--panel-2) 42%, var(--panel));
+  }
+  :global([data-style='modern']) .group.card .category {
+    padding: 8px 4px 4px 8px;
   }
   .main {
     flex: 1;
