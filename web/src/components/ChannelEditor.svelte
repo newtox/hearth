@@ -27,7 +27,12 @@
   let topic = $state(modal.channel?.topic ?? '');
   let parent = $state<string>(modal.channel?.parent_id ?? modal.parent ?? '');
 
-  const dirty = $derived(existing ? name !== existing.name || topic !== (existing.topic ?? '') || parent !== (existing.parent_id ?? '') : !!name.trim() || !!topic.trim());
+  type Rule = { target_id: string; kind: string; allow: number; deny: number };
+  let draft = $state<Rule[]>(untrack(() => (modal.channel ? (guild()!.channels.find((c) => c.id === modal.channel!.id) ?? modal.channel).overwrites.map((o) => ({ ...o })) : [])));
+  const key = (list: Rule[]) => JSON.stringify([...list].filter((o) => o.allow || o.deny).sort((x, y) => x.target_id.localeCompare(y.target_id)).map((o) => [o.target_id, o.kind, o.allow, o.deny]));
+  const rulesDirty = $derived(!!existing && key(draft) !== key(existing.overwrites));
+  const dirty = $derived(existing ? name !== existing.name || topic !== (existing.topic ?? '') || parent !== (existing.parent_id ?? '') || rulesDirty : !!name.trim() || !!topic.trim());
+  let saving = $state(false);
 
   function close() {
     app.modal = null;
@@ -39,9 +44,46 @@
 
   async function save(e: SubmitEvent) {
     e.preventDefault();
-    const body = { name, topic, kind, parent_id: kind !== 'category' ? parent || null : null };
-    const ok = existing ? await attempt(api('PATCH', `/channels/${existing.id}`, body)) : await attempt(api('POST', `/guilds/${g.id}/channels`, body));
-    if (ok) close();
+    if (saving) return;
+    saving = true;
+    try {
+      const body = { name, topic, kind, parent_id: kind !== 'category' ? parent || null : null };
+      if (!existing) {
+        if (await attempt(api('POST', `/guilds/${g.id}/channels`, body))) close();
+        return;
+      }
+      if ((name !== existing.name || topic !== (existing.topic ?? '') || parent !== (existing.parent_id ?? '')) && !(await attempt(api('PATCH', `/channels/${existing.id}`, body)))) return;
+      if (rulesDirty && !(await saveRules(existing))) return;
+      close();
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function saveRules(ch: Channel) {
+    const cat = kind !== 'category' && parent ? g.channels.find((c) => c.id === parent) : undefined;
+    if (cat && key(draft) === key(cat.overwrites)) return !!(await attempt(api('POST', `/channels/${ch.id}/sync`)));
+    const before = new Map(ch.overwrites.map((o) => [o.target_id, o]));
+    const after = new Map(draft.filter((o) => o.allow || o.deny).map((o) => [o.target_id, o]));
+    for (const id of before.keys()) {
+      if (!after.has(id) && !(await attempt(api('DELETE', `/channels/${ch.id}/overwrites/${id}`)))) return false;
+    }
+    for (const [id, o] of after) {
+      const old = before.get(id);
+      if (old && old.allow === o.allow && old.deny === o.deny) continue;
+      if (!(await attempt(api('PUT', `/channels/${ch.id}/overwrites/${id}`, { kind: o.kind, allow: o.allow, deny: o.deny })))) return false;
+    }
+    return true;
+  }
+
+  function reset() {
+    if (!existing) return;
+    name = existing.name;
+    topic = existing.topic ?? '';
+    parent = existing.parent_id ?? '';
+    draft = existing.overwrites.map((o) => ({ ...o }));
+    extra = [];
+    selected = everyone.id;
   }
 
   async function remove() {
@@ -53,16 +95,14 @@
 
   const everyone = $derived(g.roles.find((r) => r.is_default)!);
   const parentCat = $derived(existing?.parent_id ? g.channels.find((c) => c.id === existing!.parent_id) : undefined);
-  const key = (list: { target_id: string; kind: string; allow: number; deny: number }[]) =>
-    JSON.stringify([...list].filter((o) => o.allow || o.deny).sort((x, y) => x.target_id.localeCompare(y.target_id)).map((o) => [o.target_id, o.kind, o.allow, o.deny]));
-  const synced = $derived(!!existing && !!parentCat && key(existing.overwrites) === key(parentCat.overwrites));
+  const synced = $derived(!!existing && !!parentCat && key(draft) === key(parentCat.overwrites));
 
   let extra = $state<{ id: string; kind: 'role' | 'member' }[]>([]);
   let selected = $state('');
   const targets = $derived.by(() => {
     const set = new Map<string, 'role' | 'member'>();
     set.set(everyone.id, 'role');
-    for (const o of existing?.overwrites ?? []) set.set(o.target_id, o.kind as 'role' | 'member');
+    for (const o of draft) set.set(o.target_id, o.kind as 'role' | 'member');
     for (const x of extra) set.set(x.id, x.kind);
     const roles = g.roles.filter((r) => set.get(r.id) === 'role').sort((x, y) => y.position - x.position);
     const members = g.members.filter((m) => set.get(m.id) === 'member');
@@ -83,19 +123,20 @@
   );
 
   function rule(targetId: string, bit: number) {
-    const o = existing?.overwrites.find((x) => x.target_id === targetId);
+    const o = draft.find((x) => x.target_id === targetId);
     return o && o.allow & bit ? 1 : o && o.deny & bit ? -1 : 0;
   }
 
-  async function setState(targetId: string, bit: number, value: number, kind: 'role' | 'member' = 'role') {
-    if (!existing) return;
-    const o = existing.overwrites.find((x) => x.target_id === targetId);
+  function setState(targetId: string, bit: number, value: number, kind: 'role' | 'member' = 'role') {
+    const o = draft.find((x) => x.target_id === targetId);
     let allow = (o?.allow ?? 0) & ~bit;
     let deny = (o?.deny ?? 0) & ~bit;
     if (value === 1) allow |= bit;
     if (value === -1) deny |= bit;
-    if (!allow && !deny) await attempt(api('DELETE', `/channels/${existing.id}/overwrites/${targetId}`));
-    else await attempt(api('PUT', `/channels/${existing.id}/overwrites/${targetId}`, { kind, allow, deny }));
+    if (o) {
+      o.allow = allow;
+      o.deny = deny;
+    } else draft.push({ target_id: targetId, kind, allow, deny });
   }
 
   function pick(id: string, kind: 'role' | 'member') {
@@ -113,16 +154,19 @@
     ]);
   }
 
-  async function removeTarget() {
-    if (!existing || !current || current.id === everyone.id) return;
-    if (existing.overwrites.some((o) => o.target_id === current.id)) await attempt(api('DELETE', `/channels/${existing.id}/overwrites/${current.id}`));
-    extra = extra.filter((x) => x.id !== current.id);
+  function removeTarget() {
+    if (!current || current.id === everyone.id) return;
+    const id = current.id;
+    draft = draft.filter((o) => o.target_id !== id);
+    extra = extra.filter((x) => x.id !== id);
     selected = everyone.id;
   }
 
   async function syncNow() {
-    if (existing && parentCat && (await ask({ title: t('channel_editor_sync_title'), text: t('channel_editor_sync_text', { name: parentCat.name }), confirm: t('channel_editor_sync_now') }))) {
-      await attempt(api('POST', `/channels/${existing.id}/sync`));
+    if (parentCat && (await ask({ title: t('channel_editor_sync_title'), text: t('channel_editor_sync_text', { name: parentCat.name }), confirm: t('channel_editor_sync_now') }))) {
+      draft = parentCat.overwrites.map((o) => ({ ...o }));
+      extra = [];
+      selected = everyone.id;
     }
   }
 
@@ -135,7 +179,7 @@
 
 <Modal title={existing ? t(kind === 'category' ? 'common_edit_category' : kind === 'voice' ? 'channel_editor_edit_voice_channel' : 'channel_editor_edit_channel') : t(kind === 'category' ? 'channel_editor_create_category' : kind === 'voice' ? 'channel_editor_create_voice_channel' : 'common_create_channel')} onclose={dismiss} wide={!!existing && can(P.MANAGE_ROLES)}>
   <div class="stack">
-    <form class="stack" onsubmit={save}>
+    <form class="stack" id="channel-form" onsubmit={save}>
       {#if !existing && kind !== 'category'}
         <div class="field" role="radiogroup" aria-label={t('channel_editor_channel_type')}>
           <span>{t('channel_editor_channel_type')}</span>
@@ -167,10 +211,11 @@
           </select>
         </label>
       {/if}
-      <div class="row">
-        <button class="btn primary">{existing ? t('common_save_changes') : t('channel_editor_create')}</button>
-        {#if existing}<button type="button" class="btn danger" onclick={remove}>{t('common_delete')}</button>{/if}
-      </div>
+      {#if !existing}
+        <div class="row">
+          <button class="btn primary">{t('channel_editor_create')}</button>
+        </div>
+      {/if}
     </form>
 
     {#if existing && can(P.MANAGE_ROLES)}
@@ -227,6 +272,14 @@
         </div>
       </section>
     {/if}
+    {#if existing}
+      <div class="row actions">
+        <button class="btn primary" form="channel-form" disabled={!dirty || saving}>{t('common_save_changes')}</button>
+        <button type="button" class="btn" disabled={!dirty || saving} onclick={reset}>{t('unsaved_reset')}</button>
+        <span class="grow"></span>
+        <button type="button" class="btn danger" onclick={remove}>{t('common_delete')}</button>
+      </div>
+    {/if}
   </div>
 </Modal>
 
@@ -253,6 +306,15 @@
     accent-color: var(--accent);
     width: 18px;
     height: 18px;
+  }
+  .actions {
+    position: sticky;
+    bottom: -1px;
+    padding: 10px 0 2px;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 24px 0 var(--panel);
+    z-index: 1;
   }
   .perms {
     display: grid;
