@@ -147,6 +147,7 @@
 {/snippet}
 
 {#if menu}
+  <div class="veil" role="presentation"></div>
   <div class="menu panel" role="menu" tabindex="-1" bind:this={root} style:left="{pos.x}px" style:top="{pos.y}px" onkeydown={(e) => keys(e, false)} oncontextmenu={(e) => e.preventDefault()}>
     {#each menu.items as item, i}{@render entry(item, i, false)}{/each}
   </div>
@@ -221,14 +222,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .item:hover:not(:disabled),
   .item:focus-visible,
   .item.open {
     background: var(--accent-fill);
     color: var(--accent-ink);
     outline: none;
   }
-  .item:hover:not(:disabled) :global(svg),
   .item:focus-visible :global(svg),
   .item.open :global(svg) {
     color: inherit;
@@ -239,12 +238,10 @@
   .item.danger :global(svg) {
     color: var(--danger);
   }
-  .item.danger:hover:not(:disabled),
   .item.danger:focus-visible {
     background: var(--danger);
     color: #fff;
   }
-  .item.danger:hover:not(:disabled) :global(svg),
   .item.danger:focus-visible :global(svg) {
     color: #fff;
   }
@@ -275,7 +272,6 @@
   .box.on :global(svg) {
     color: var(--accent-ink);
   }
-  .item:hover:not(:disabled) .box,
   .item:focus-visible .box {
     border-color: currentColor;
   }
@@ -283,5 +279,81 @@
     border: 0;
     border-top: 1px solid var(--line);
     margin: 5px 4px;
+  }
+  @media (hover: hover) {
+    .item:hover:not(:disabled) {
+      background: var(--accent-fill);
+      color: var(--accent-ink);
+    }
+    .item:hover:not(:disabled) :global(svg) {
+      color: inherit;
+    }
+    .item.danger:hover:not(:disabled) {
+      background: var(--danger);
+      color: #fff;
+    }
+    .item.danger:hover:not(:disabled) :global(svg) {
+      color: #fff;
+    }
+    .item:hover:not(:disabled) .box {
+      border-color: currentColor;
+    }
+  }
+  .veil {
+    display: none;
+  }
+  @media (max-width: 860px) {
+    .veil {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 79;
+      background: rgb(0 0 0 / 0.45);
+      animation: fade-in 0.15s ease-out;
+    }
+    .menu {
+      left: 0 !important;
+      right: 0;
+      top: auto !important;
+      bottom: 0;
+      min-width: 0;
+      max-width: none;
+      max-height: 75dvh;
+      padding: 8px 10px max(14px, env(safe-area-inset-bottom));
+      border-radius: calc(var(--radius) + 6px) calc(var(--radius) + 6px) 0 0;
+      transform-origin: bottom center;
+      animation: sheet-up 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+    .menu::before {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 4px;
+      margin: 2px auto 10px;
+      border-radius: 99px;
+      background: var(--line);
+    }
+    .sub {
+      z-index: 81;
+    }
+    .item {
+      padding: 13px 12px;
+      font-size: 1em;
+      gap: 14px;
+    }
+    hr {
+      margin: 6px 2px;
+    }
+  }
+  @keyframes sheet-up {
+    from {
+      transform: translateY(40%);
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .menu {
+      animation: none;
+    }
   }
 </style>

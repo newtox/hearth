@@ -12,6 +12,7 @@
 </script>
 
 <script lang="ts">
+  import { backLayer } from '../lib/back.svelte';
   import { tick } from 'svelte';
   import { t, lang } from '../lib/i18n.svelte';
   import { asset } from '../lib/api';
@@ -103,7 +104,7 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
-<div class="veil" onclick={onclose} role="presentation"></div>
+<div class="veil" use:backLayer={onclose} onclick={onclose} role="presentation"></div>
 <div class="panel picker" role="dialog" aria-label={t('emoji_picker_pick_emoji')}>
   {#if stickers}
     <div class="row tabs">

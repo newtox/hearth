@@ -377,6 +377,10 @@ button {
   gap: 0.9em;
 }
 
+.stack > * {
+  min-width: 0;
+}
+
 .ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -523,4 +527,19 @@ optgroup {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--danger);
+}
+
+@media (hover: none) {
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable='true'] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }

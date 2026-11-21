@@ -27,8 +27,16 @@
   import UpdateBanner from './components/UpdateBanner.svelte';
   import { untrack } from 'svelte';
   import { watchUpdates } from './lib/update.svelte';
+  import { onBack } from './lib/back.svelte';
+  import { crop } from './lib/crop.svelte';
+  import { dialog } from './lib/dialog.svelte';
 
   watchUpdates();
+
+  onBack(() => (app.pane = app.pane === 'members' ? 'chat' : 'side'), 0, () => !!app.me && narrow() && app.pane !== 'side');
+  onBack(() => (app.menu = null), 30, () => !!app.menu);
+  onBack(() => crop.current?.resolve(null), 40, () => !!crop.current);
+  onBack(() => dialog.current?.resolve(null), 50, () => !!dialog.current);
 
   let cols = $state<HTMLElement>();
   const order = { side: 0, chat: 1, members: 2 } as const;

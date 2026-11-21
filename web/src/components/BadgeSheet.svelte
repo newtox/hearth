@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { backLayer } from '../lib/back.svelte';
   import { TRACKS, amount, badgeLabel } from '../lib/activity';
   import { locale, t } from '../lib/i18n.svelte';
   import type { Badge } from '../lib/store.svelte';
@@ -48,7 +49,7 @@
 
 <svelte:window onkeydown={key} />
 
-<div class="veil" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
+<div class="veil" use:backLayer={onclose} onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
   <div class="sheet" role="dialog" aria-modal="true" aria-label={title}>
     <span class="grip" aria-hidden="true"></span>
     <button class="x" onclick={onclose} aria-label={t('common_close')}><Icon name="close" /></button>

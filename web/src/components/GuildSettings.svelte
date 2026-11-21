@@ -23,14 +23,14 @@
   const myTop = $derived(topPosition(g, app.me!.id));
   const tabs = $derived(
     [
-      { id: 'overview', name: t('guild_settings_overview'), group: g.name, show: true },
-      { id: 'roles', name: w('roles'), group: g.name, show: can(P.MANAGE_ROLES, g) },
-      { id: 'emojis', name: t('common_emojis'), group: g.name, show: can(P.MANAGE_EMOJIS, g) },
-      { id: 'members', name: w('members'), group: t('guild_settings_member_management'), show: true },
-      { id: 'invites', name: w('invites'), group: t('guild_settings_member_management'), show: can(P.CREATE_INVITE, g) },
-      { id: 'bans', name: t('guild_settings_bans'), group: t('guild_settings_member_management'), show: can(P.BAN_MEMBERS, g) },
-      { id: 'audit', name: t('guild_settings_audit_log'), group: t('guild_settings_moderation'), show: can(P.MANAGE_GUILD, g) },
-      { id: 'leave', name: owner ? t('guild_settings_delete_server_named', { server: w('server') }) : t('common_leave_server', { server: w('server') }), danger: true, show: true, action: () => (owner ? destroy() : leave()) },
+      { id: 'overview', icon: 'gear', name: t('guild_settings_overview'), group: g.name, show: true },
+      { id: 'roles', icon: 'shield', name: w('roles'), group: g.name, show: can(P.MANAGE_ROLES, g) },
+      { id: 'emojis', icon: 'smile', name: t('common_emojis'), group: g.name, show: can(P.MANAGE_EMOJIS, g) },
+      { id: 'members', icon: 'users', name: w('members'), group: t('guild_settings_member_management'), show: true },
+      { id: 'invites', icon: 'link', name: w('invites'), group: t('guild_settings_member_management'), show: can(P.CREATE_INVITE, g) },
+      { id: 'bans', icon: 'ban', name: t('guild_settings_bans'), group: t('guild_settings_member_management'), show: can(P.BAN_MEMBERS, g) },
+      { id: 'audit', icon: 'list', name: t('guild_settings_audit_log'), group: t('guild_settings_moderation'), show: can(P.MANAGE_GUILD, g) },
+      { id: 'leave', icon: 'leave', name: owner ? t('guild_settings_delete_server_named', { server: w('server') }) : t('common_leave_server', { server: w('server') }), danger: true, show: true, action: () => (owner ? destroy() : leave()) },
     ].filter((x) => x.show),
   );
   let tab = $state(untrack(() => initial));
@@ -314,7 +314,7 @@
   const date = new Intl.DateTimeFormat(locale(), { dateStyle: 'medium', timeStyle: 'short' });
 </script>
 
-<SettingsPage title={t('common_server_settings', { server: w('server') }).replace(/^./, (c) => c.toUpperCase())} sections={tabs} bind:current={tab} onclose={() => (app.modal = null)}>
+<SettingsPage title={t('common_server_settings', { server: w('server') }).replace(/^./, (c) => c.toUpperCase())} sections={tabs} bind:current={tab} list={initial === 'overview'} onclose={() => (app.modal = null)}>
   <div class="layout">
     <div class="pane">
       {#if tab === 'overview'}

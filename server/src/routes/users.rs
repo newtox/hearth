@@ -80,6 +80,7 @@ pub async fn update_me(State(st): State<AppState>, AuthUser(uid): AuthUser, Json
             st.hub.status.insert(uid, status.clone());
         }
         super::stats::broadcast(&st, uid).await;
+        st.hub.send(&[uid], "STATUS_UPDATE", json!({ "status": status }));
     }
     announce(&st, uid).await?;
     Ok(Json(me_json(&st, uid).await?))

@@ -185,16 +185,16 @@
     else toast(t('voice_no_access_microphone'));
   }
   const sections = $derived<Section[]>([
-    { id: 'account', name: t('user_settings_my_account'), group: t('user_settings_user_settings') },
-    { id: 'profile', name: t('common_profile'), group: t('user_settings_user_settings') },
-    { id: 'devices', name: t('user_settings_devices'), group: t('user_settings_user_settings') },
-    { id: 'appearance', name: t('user_settings_appearance'), group: t('user_settings_app_settings') },
-    { id: 'language', name: t('user_settings_language'), group: t('user_settings_app_settings') },
-    { id: 'voice', name: t('user_settings_voice'), group: t('user_settings_app_settings') },
-    { id: 'notifications', name: t('user_settings_notifications'), group: t('user_settings_app_settings') },
-    ...(app.me!.is_admin ? [{ id: 'badges', name: t('user_settings_global_badges'), group: t('user_settings_instance') }] : []),
-    { id: 'help', name: t('user_settings_help') },
-    { id: 'logout', name: t('user_settings_sign_out'), danger: true, action: async () => (await ask({ title: t('user_settings_sign_out'), text: t('user_settings_do_really_want_log_out'), confirm: t('user_settings_sign_out'), danger: true })) && logout() },
+    { id: 'account', icon: 'user', name: t('user_settings_my_account'), group: t('user_settings_user_settings') },
+    { id: 'profile', icon: 'id', name: t('common_profile'), group: t('user_settings_user_settings') },
+    { id: 'devices', icon: 'monitor', name: t('user_settings_devices'), group: t('user_settings_user_settings') },
+    { id: 'appearance', icon: 'image', name: t('user_settings_appearance'), group: t('user_settings_app_settings') },
+    { id: 'language', icon: 'message', name: t('user_settings_language'), group: t('user_settings_app_settings') },
+    { id: 'voice', icon: 'mic', name: t('user_settings_voice'), group: t('user_settings_app_settings') },
+    { id: 'notifications', icon: 'bell', name: t('user_settings_notifications'), group: t('user_settings_app_settings') },
+    ...(app.me!.is_admin ? [{ id: 'badges', icon: 'shield', name: t('user_settings_global_badges'), group: t('user_settings_instance') }] : []),
+    { id: 'help', icon: 'bulb', name: t('user_settings_help') },
+    { id: 'logout', icon: 'leave', name: t('user_settings_sign_out'), danger: true, action: async () => (await ask({ title: t('user_settings_sign_out'), text: t('user_settings_do_really_want_log_out'), confirm: t('user_settings_sign_out'), danger: true })) && logout() },
   ]);
 
   let showEmail = $state(false);

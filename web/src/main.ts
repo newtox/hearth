@@ -2,6 +2,7 @@ import './lib/tooltip';
 import './lib/verify';
 import './lib/external';
 import './lib/validation';
+import './lib/longpress';
 import '@fontsource-variable/figtree';
 import '@fontsource-variable/bricolage-grotesque';
 import '@fontsource-variable/alegreya';

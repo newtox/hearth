@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { backLayer } from '../lib/back.svelte';
   import { t } from '../lib/i18n.svelte';
-  import type { Snippet } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import Icon from './Icon.svelte';
   import { leave } from '../lib/unsaved.svelte';
 
@@ -9,10 +10,14 @@
     name: string;
     group?: string;
     danger?: boolean;
+    icon?: string;
     action?: () => void;
   }
 
-  let { title, sections, current = $bindable(), onclose, children }: { title: string; sections: Section[]; current: string; onclose: () => void; children: Snippet } = $props();
+  let { title, sections, current = $bindable(), onclose, list = true, children }: { title: string; sections: Section[]; current: string; onclose: () => void; list?: boolean; children: Snippet } = $props();
+
+  const narrow = () => matchMedia('(max-width: 860px)').matches;
+  let listing = $state(untrack(() => list));
 
   const groups = $derived.by(() => {
     const out: { name: string; items: Section[] }[] = [];
@@ -28,15 +33,25 @@
   let main = $state<HTMLElement>();
 
   async function pick(s: Section) {
-    if (s.id === current && !s.action) return;
+    if (s.id === current && !s.action) {
+      listing = false;
+      return;
+    }
     if (!(await leave())) return;
     if (s.action) return s.action();
     current = s.id;
+    listing = false;
     main?.scrollTo({ top: 0 });
   }
 
   async function close() {
     if (await leave()) onclose();
+  }
+
+  async function back() {
+    if (narrow() && !listing) {
+      if (await leave()) listing = true;
+    } else close();
   }
 
   function key(e: KeyboardEvent) {
@@ -46,9 +61,10 @@
 
 <svelte:window onkeydown={key} />
 
-<div class="settings" role="dialog" aria-modal="true" aria-label={title}>
+<div class="settings" class:listing use:backLayer={back} role="dialog" aria-modal="true" aria-label={title}>
   <div class="mobilebar">
-    <strong class="ellipsis">{title}</strong>
+    {#if !listing}<button class="icon" onclick={back} aria-label={t('common_back')}><Icon name="chevron" /></button>{/if}
+    <strong class="ellipsis grow">{listing ? title : (active?.name ?? title)}</strong>
     <button class="icon" onclick={close} aria-label={t('common_close')}><Icon name="close" /></button>
   </div>
   <nav class="nav scroll" aria-label={title}>
@@ -56,9 +72,15 @@
       <p class="title ellipsis">{title}</p>
       {#each groups as g (g.name)}
         {#if g.name}<h4>{g.name}</h4>{/if}
+        <div class="grp">
         {#each g.items as s (s.id)}
-          <button class="item" class:on={s.id === current} class:danger={s.danger} aria-current={s.id === current ? 'page' : undefined} onclick={() => pick(s)}>{s.name}</button>
+          <button class="item" class:on={s.id === current} class:danger={s.danger} aria-current={s.id === current ? 'page' : undefined} onclick={() => pick(s)}>
+            {#if s.icon}<span class="ic"><Icon name={s.icon} size={18} /></span>{/if}
+            <span class="grow ellipsis">{s.name}</span>
+            {#if !s.action}<span class="go"><Icon name="chevron" size={16} /></span>{/if}
+          </button>
         {/each}
+        </div>
         <hr />
       {/each}
     </div>
@@ -112,7 +134,9 @@
     color: var(--muted);
   }
   .item {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     width: 100%;
     padding: 7px 10px;
     margin-bottom: 2px;
@@ -153,7 +177,9 @@
   .content h2 {
     margin: 0 0 20px;
   }
-  .mobilebar {
+  .mobilebar,
+  .ic,
+  .go {
     display: none;
   }
   @media (min-width: 861px) {
@@ -211,31 +237,65 @@
       flex-direction: column;
     }
     .nav {
-      flex: none;
+      flex: 1;
+      display: none;
       justify-content: flex-start;
-      overflow: hidden;
-      border-bottom: 1px solid var(--line);
+      background: var(--bg, var(--panel));
+    }
+    .listing .nav {
+      display: block;
+    }
+    .listing .content {
+      display: none;
     }
     .nav .inner {
       width: auto;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 4px;
-      padding: 6px 10px 10px;
+      padding: 8px 14px 40px;
     }
     .title,
-    h4,
     hr {
       display: none;
     }
+    h4 {
+      margin: 18px 6px 8px;
+    }
     .item {
-      width: auto;
-      white-space: nowrap;
       margin: 0;
+      padding: 14px 16px;
+      border-radius: 0;
+      background: var(--panel);
+      color: var(--ink);
+      font-weight: 500;
+      border-bottom: 1px solid var(--line);
+    }
+    .grp {
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .item:last-child {
+      border-bottom: 0;
+    }
+    .item.on {
+      background: var(--panel);
+    }
+    .ic,
+    .go {
+      display: grid;
+      place-items: center;
+      flex: none;
+      color: var(--muted);
+    }
+    .go {
+      transform: rotate(-90deg);
+    }
+    .item.danger .ic {
+      color: var(--danger);
     }
     .content .inner {
-      padding: 20px 16px 60px;
+      padding: 16px 16px 60px;
+    }
+    .content h2 {
+      display: none;
     }
     .close {
       display: none;
@@ -243,11 +303,24 @@
     .mobilebar {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 10px 12px 4px 16px;
+      gap: 8px;
+      padding: 10px 12px;
       background: var(--panel-2);
       font-family: var(--font-display);
+      font-size: 1.08em;
+    }
+    .mobilebar .icon {
+      display: grid;
+      place-items: center;
+      padding: 6px;
+      border-radius: var(--radius-s);
+      color: var(--muted);
+    }
+    .mobilebar .icon:first-child:not(:last-child) :global(svg) {
+      transform: rotate(90deg);
+    }
+    :global([data-style='modern']) .item.on {
+      background: var(--panel);
     }
   }
 </style>

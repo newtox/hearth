@@ -470,6 +470,12 @@ function handle(t: string, d: any) {
     case 'USER_UPDATE':
       patchUser(d.id, d);
       break;
+    case 'STATUS_UPDATE':
+      if (app.me) {
+        app.me.status = d.status;
+        setQuiet(d.status === 'dnd');
+      }
+      break;
     case 'DM_CREATE':
       if (!app.dms.some((x) => x.id === d.id)) app.dms.unshift(d);
       break;

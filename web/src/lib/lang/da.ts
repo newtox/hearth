@@ -139,6 +139,7 @@ export const DA: Record<string, string> = {
   common_accept: 'Accepter',
   common_add_friends: 'Tilføj venner',
   common_administrator: 'Administrator',
+  common_back: 'Tilbage',
   common_ban: 'Udeluk',
   common_ban_name: 'Udeluk {name}',
   common_call_progress: 'Opkald i gang',

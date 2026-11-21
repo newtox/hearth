@@ -85,7 +85,7 @@
           <div class="category row" role="presentation" use:sortable={{ id: group.category.id, group: 'channels', label: group.category.name, enabled: manage, place: sortPlace, drop: sortDrop }} oncontextmenu={(e) => openMenu(e, channelMenu(g, group.category!))}>
             <span class="grow ellipsis">{group.category.name}</span>
             {#if manage}
-              <button class="icon" onclick={() => (app.modal = { kind: 'channel', channel: group.category })} aria-label={t('common_edit_category')}><Icon name="edit" size={14} /></button>
+              <button class="icon edit-cat" onclick={() => (app.modal = { kind: 'channel', channel: group.category })} aria-label={t('common_edit_category')}><Icon name="edit" size={14} /></button>
               <button class="icon" onclick={() => (app.modal = { kind: 'channel', channel: null, parent: group.category!.id })} aria-label={t('common_create_channel')}><Icon name="plus" size={15} /></button>
             {/if}
           </div>
@@ -364,8 +364,9 @@
     padding: 10px;
   }
   @media (hover: none) {
-    .edit {
-      opacity: 1;
+    .edit,
+    .edit-cat {
+      display: none;
     }
   }
   .inside :global(.avatar) {

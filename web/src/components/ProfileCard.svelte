@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { backLayer } from '../lib/back.svelte';
   import { ask, askText } from '../lib/dialog.svelte';
   import { fromEnglish, locale, t } from '../lib/i18n.svelte';
   import { api } from '../lib/api';
@@ -92,7 +93,7 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && !progressTrack && !openBadge && close()} />
 
-<div class="backdrop" onclick={(e) => e.target === e.currentTarget && close()} role="presentation">
+<div class="backdrop" use:backLayer={close} onclick={(e) => e.target === e.currentTarget && close()} role="presentation">
   <div class="panel card" data-hover role="dialog" aria-modal="true" aria-label={t('common_profile')}>
     <div class="banner" use:hoverHost={(on) => (moving = on)} style:background-color={user?.accent_color ?? 'var(--panel-2)'} style:background-image={backdrop(user?.banner, moving)}>
       <button class="x" onclick={close} aria-label={t('common_close')}><Icon name="close" /></button>

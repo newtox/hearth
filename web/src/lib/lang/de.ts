@@ -139,6 +139,7 @@ export const DE: Record<string, string> = {
   common_accept: 'Annehmen',
   common_add_friends: 'Freunde hinzufügen',
   common_administrator: 'Administrator',
+  common_back: 'Zurück',
   common_ban: 'Bannen',
   common_ban_name: '{name} bannen',
   common_call_progress: 'Anruf läuft',

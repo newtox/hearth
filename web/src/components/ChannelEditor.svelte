@@ -308,6 +308,7 @@
     height: 18px;
   }
   .actions {
+    flex-wrap: wrap;
     position: sticky;
     bottom: -1px;
     padding: 10px 0 2px;
@@ -319,6 +320,15 @@
   .perms {
     display: grid;
     gap: 12px;
+    min-width: 0;
+  }
+  .perms > *,
+  .perm > .grow {
+    min-width: 0;
+  }
+  .perm strong,
+  .perm small {
+    overflow-wrap: anywhere;
   }
   .perms h3 {
     margin: 0 0 4px;
@@ -327,6 +337,7 @@
     margin: 0;
   }
   .sync {
+    flex-wrap: wrap;
     gap: 10px;
     padding: 10px 12px;
     border-radius: var(--radius-s);
@@ -338,6 +349,7 @@
     color: var(--ok);
   }
   .sync span {
+    flex: 1 1 180px;
     color: var(--ink);
   }
   .split {

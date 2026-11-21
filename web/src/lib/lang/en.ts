@@ -139,6 +139,7 @@ export const EN: Record<string, string> = {
   common_accept: 'Accept',
   common_add_friends: 'Add friends',
   common_administrator: 'Administrator',
+  common_back: 'Back',
   common_ban: 'Ban',
   common_ban_name: 'Ban {name}',
   common_call_progress: 'Call in progress',

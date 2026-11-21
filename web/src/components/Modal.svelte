@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { backLayer } from '../lib/back.svelte';
   import { t } from '../lib/i18n.svelte';
   import type { Snippet } from 'svelte';
   import Icon from './Icon.svelte';
@@ -12,7 +13,7 @@
 
 <svelte:window onkeydown={key} />
 
-<div class="backdrop" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
+<div class="backdrop" use:backLayer={onclose} onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
   <div class="panel dialog" class:wide role="dialog" aria-modal="true" aria-label={title}>
     <header class="row">
       <h2 class="grow">{title}</h2>

@@ -18,9 +18,15 @@ export function sortable(node: HTMLElement, initial: SortOptions) {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let ghost: HTMLElement | null = null;
   let target: { el: HTMLElement; id: string; place: Place } | null = null;
+  let moved = false;
 
-  node.dataset.sortGroup = opts.group;
-  node.dataset.sortId = opts.id;
+  function mark() {
+    node.dataset.sortGroup = opts.group;
+    node.dataset.sortId = opts.id;
+    if (opts.enabled === false) delete node.dataset.sortLive;
+    else node.dataset.sortLive = '';
+  }
+  mark();
 
   function clearMark() {
     target?.el.classList.remove(...MARKS);
@@ -34,6 +40,7 @@ export function sortable(node: HTMLElement, initial: SortOptions) {
     ghost = document.createElement('div');
     ghost.className = 'drag-ghost';
     ghost.textContent = opts.label;
+    if (start?.touch) ghost.style.opacity = '0';
     document.body.append(ghost);
   }
 
@@ -57,6 +64,10 @@ export function sortable(node: HTMLElement, initial: SortOptions) {
       begin();
     }
     e.preventDefault();
+    if (dist > 10 && !moved) {
+      moved = true;
+      ghost!.style.opacity = '';
+    }
     ghost!.style.transform = `translate(${e.clientX + 12}px, ${e.clientY + 8}px)`;
     scrollNear(e.clientY);
     const el = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest(`[data-sort-group="${opts.group}"]`) as HTMLElement | null;
@@ -99,26 +110,36 @@ export function sortable(node: HTMLElement, initial: SortOptions) {
 
   function up(e: PointerEvent) {
     if (!start || e.pointerId !== start.id) return;
+    if (start.touch && dragging && !moved) {
+      const at = { x: start.x, y: start.y };
+      cancel();
+      swallowClick();
+      node.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: at.x, clientY: at.y }));
+      return;
+    }
     const done = dragging ? target : null;
     const was = dragging;
     clearMark();
     finish();
     dragging = false;
-    if (was) {
-      const swallow = (ev: Event) => {
-        ev.stopPropagation();
-        ev.preventDefault();
-      };
-      node.addEventListener('click', swallow, { capture: true, once: true });
-      setTimeout(() => node.removeEventListener('click', swallow, { capture: true }), 0);
-    }
+    if (was) swallowClick();
     if (done) opts.drop(opts.id, done.id, done.place);
+  }
+
+  function swallowClick() {
+    const swallow = (ev: Event) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+    };
+    node.addEventListener('click', swallow, { capture: true, once: true });
+    setTimeout(() => node.removeEventListener('click', swallow, { capture: true }), 0);
   }
 
   function down(e: PointerEvent) {
     if (opts.enabled === false || e.button !== 0 || start) return;
     if ((e.target as HTMLElement).closest('input, textarea, select, [data-no-drag]')) return;
     start = { x: e.clientX, y: e.clientY, id: e.pointerId, touch: e.pointerType !== 'mouse' };
+    moved = false;
     window.addEventListener('pointermove', move, { passive: false });
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', cancel);
@@ -135,8 +156,7 @@ export function sortable(node: HTMLElement, initial: SortOptions) {
   return {
     update(next: SortOptions) {
       opts = next;
-      node.dataset.sortGroup = opts.group;
-      node.dataset.sortId = opts.id;
+      mark();
     },
     destroy() {
       cancel();
