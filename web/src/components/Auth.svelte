@@ -4,6 +4,14 @@
   import { login, loginSecondFactor, resetPassword } from '../lib/store.svelte';
   import { THEMES, applyTheme, theme, w } from '../lib/theme.svelte';
 
+  const TAGLINES: Record<string, string> = {
+    pergament: 'auth_step_up_fire_traveller',
+    nordland: 'auth_tagline_nordland',
+    neon: 'auth_tagline_neon',
+    aurum: 'auth_tagline_aurum',
+    hain: 'auth_tagline_grove',
+  };
+
   const tokenFromHash = () => location.hash.match(/^#\/reset\/([0-9a-f]{64})/)?.[1] ?? '';
   let resetToken = $state(tokenFromHash());
   let mode = $state<'login' | 'register' | 'forgot' | 'reset'>(tokenFromHash() ? 'reset' : 'login');
@@ -62,7 +70,7 @@
   <form class="panel stack" onsubmit={submit}>
     <div>
       <h1>Hearth</h1>
-      <p class="muted">{theme.id === 'pergament' ? t('auth_step_up_fire_traveller') : t('auth_place_fire')}</p>
+      <p class="muted">{t(TAGLINES[theme.id] ?? 'auth_place_fire')}</p>
     </div>
     {#if ticket}
       <h2>{t('auth_two_factor_title')}</h2>

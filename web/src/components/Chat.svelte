@@ -784,6 +784,9 @@
     flex: 1;
     min-width: 0;
   }
+  :global([data-style='modern']) .ttl > h3 {
+    flex: none;
+  }
   :global([data-style='modern']) .ttl .topic {
     padding-left: 0;
     font-size: 0.85em;
@@ -959,8 +962,8 @@
     .topic {
       display: none;
     }
-    .topic + .mobile {
-      margin-left: auto;
+    .ttl > h3 {
+      flex: 1 1 auto;
     }
   }
   @media (hover: none) {
