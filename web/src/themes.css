@@ -324,8 +324,8 @@ html[data-theme='neon'] .pane-chat .day span {
 html[data-theme='aurum'] .panel {
   background-color: var(--panel);
   background-image: linear-gradient(var(--gold), var(--gold)), linear-gradient(var(--gold), var(--gold)), linear-gradient(var(--gold), var(--gold)), linear-gradient(var(--gold), var(--gold)), linear-gradient(var(--gold), var(--gold)), linear-gradient(var(--gold), var(--gold)), linear-gradient(var(--gold), var(--gold)), linear-gradient(var(--gold), var(--gold));
-  background-size: 22px 2px, 2px 22px, 22px 2px, 2px 22px, 22px 2px, 2px 22px, 22px 2px, 2px 22px;
-  background-position: left 8px top 8px, left 8px top 8px, right 8px top 8px, right 8px top 8px, left 8px bottom 8px, left 8px bottom 8px, right 8px bottom 8px, right 8px bottom 8px;
+  background-size: 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px;
+  background-position: left 2px top 2px, left 2px top 2px, right 2px top 2px, right 2px top 2px, left 2px bottom 2px, left 2px bottom 2px, right 2px bottom 2px, right 2px bottom 2px;
   background-repeat: no-repeat;
 }
 
@@ -575,4 +575,11 @@ html[data-theme='hain'] .pane-chat .day span {
   font-family: var(--font-display);
   font-style: italic;
   font-size: 1.1em;
+}
+
+html[data-theme='nordland'] .dock,
+html[data-theme='neon'] .dock,
+html[data-theme='aurum'] .dock,
+html[data-theme='hain'] .dock {
+  padding: 8px 14px;
 }

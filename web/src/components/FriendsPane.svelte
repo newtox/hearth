@@ -41,17 +41,19 @@
 </script>
 
 <section class="panel pane-chat">
-  <header class="row">
-    <button class="icon mobile" onclick={() => (app.pane = 'side')} aria-label={t('common_channel_list')}><Icon name="menu" /></button>
-    <Icon name="users" />
-    <h3>{t('common_friends')}</h3>
-    <nav class="tabs row" aria-label={t('common_friends')}>
+  <header>
+    <div class="top row">
+      <button class="icon mobile" onclick={() => (app.pane = 'side')} aria-label={t('common_channel_list')}><Icon name="menu" /></button>
+      <Icon name="users" />
+      <h3 class="grow">{t('common_friends')}</h3>
+      <button class="btn small primary addbtn" class:on={tab === 'add'} aria-current={tab === 'add' ? 'page' : undefined} onclick={() => choose('add')}><Icon name="userPlus" size={16} /><span class="addlabel">{t('friends_pane_add_friend')}</span></button>
+    </div>
+    <nav class="tabs" aria-label={t('common_friends')}>
       {#each tabs as x (x.id)}
         <button class="tab" class:on={tab === x.id} aria-current={tab === x.id ? 'page' : undefined} onclick={() => choose(x.id)}>
-          {x.label}{#if x.count}<span class="count">{x.count}</span>{/if}
+          <span class="ellipsis">{x.label}</span>{#if x.count}<span class="count">{x.count}</span>{/if}
         </button>
       {/each}
-      <button class="tab add" class:on={tab === 'add'} aria-current={tab === 'add' ? 'page' : undefined} onclick={() => choose('add')}>{t('friends_pane_add_friend')}</button>
     </nav>
   </header>
   <div class="body scroll">
@@ -114,6 +116,9 @@
             <p class="muted empty">
               {#if query.trim()}{t('friends_pane_no_match')}{:else if tab === 'online'}{t('friends_pane_nobody_online')}{:else if tab === 'blocked'}{t('friends_pane_nobody_blocked')}{:else}{t('friends_pane_no_friends_yet_send_request')}{/if}
             </p>
+            {#if !query.trim() && tab !== 'blocked' && !app.friends.friends.length}
+              <button class="btn primary cta" onclick={() => choose('add')}><Icon name="userPlus" size={16} />{t('friends_pane_add_friend')}</button>
+            {/if}
           {/each}
         {/if}
       </div>
@@ -129,26 +134,45 @@
     flex-direction: column;
   }
   header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 14px;
     padding: 10px 16px;
     border-bottom: 1px solid var(--line);
     min-height: 54px;
-    gap: 10px;
+  }
+  .top {
+    display: contents;
   }
   header h3 {
     margin: 0;
-    padding-right: 10px;
-    border-right: 1px solid var(--line);
+    flex: 0 1 auto;
+  }
+  .addbtn {
+    order: 3;
+    margin-left: auto;
+  }
+  .addbtn.on {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
   }
   .tabs {
-    gap: 4px;
+    order: 2;
+    display: flex;
+    gap: 2px;
     min-width: 0;
-    flex-wrap: wrap;
+    padding: 3px;
+    border-radius: calc(var(--radius-s) + 3px);
+    background: color-mix(in srgb, var(--panel-2) 60%, transparent);
   }
   .tab {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
-    padding: 4px 10px;
+    min-width: 0;
+    padding: 5px 12px;
     border-radius: var(--radius-s);
     color: var(--muted);
     font-weight: 600;
@@ -157,20 +181,14 @@
   }
   .tab:hover {
     color: var(--ink);
-    background: var(--panel-2);
   }
   .tab.on {
     color: var(--ink);
-    background: var(--panel-2);
+    background: var(--panel);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
   }
-  .tab.add {
-    margin-left: 4px;
-    color: #fff;
-    background: var(--accent);
-  }
-  .tab.add.on {
-    color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 16%, transparent);
+  .cta {
+    margin-top: 12px;
   }
   .count {
     min-width: 18px;
@@ -246,11 +264,41 @@
     .mobile {
       display: block;
     }
-    header h3 {
-      display: none;
+    header {
+      padding: 8px 10px 10px;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+    .top h3 {
+      flex: 1;
+    }
+    .addbtn {
+      margin-left: 0;
+    }
+    .tabs {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .tab {
+      padding: 7px 2px;
+      font-size: 0.84em;
+      letter-spacing: 0;
+    }
+    .body {
+      padding: 12px;
     }
     form {
       flex-wrap: wrap;
+    }
+  }
+  @media (max-width: 420px) {
+    .addlabel {
+      display: none;
     }
   }
 </style>
