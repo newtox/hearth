@@ -1,5 +1,5 @@
 use super::{clean_color, clean_name, users::announce};
-use crate::{auth::AuthUser, error::{bad, AppError, Result}, models::Badge, AppState};
+use crate::{auth::AuthUser, error::{bad, AppError, Result}, models::{Badge, ADMIN_EXPR}, AppState};
 use axum::{extract::{Path, State}, Json};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -9,12 +9,12 @@ use uuid::Uuid;
 pub const ICONS: [&str; 13] = ["crown", "wrench", "shield", "gem", "star", "heart", "bolt", "flame", "leaf", "gamepad", "broadcast", "mic", "calendar"];
 
 async fn require_admin(st: &AppState, uid: Uuid) -> Result<()> {
-    let admin: bool = sqlx::query_scalar("SELECT is_admin FROM users WHERE id = $1").bind(uid).fetch_one(&st.db).await?;
+    let admin: bool = sqlx::query_scalar(&format!("SELECT {ADMIN_EXPR} FROM users WHERE id = $1")).bind(uid).fetch_one(&st.db).await?;
     if admin { Ok(()) } else { Err(AppError::Forbidden) }
 }
 
 pub async fn list(State(st): State<AppState>, AuthUser(_): AuthUser) -> Result<Json<Vec<Badge>>> {
-    Ok(Json(sqlx::query_as("SELECT id, name, description, icon, color, translations FROM badges ORDER BY position, name").fetch_all(&st.db).await?))
+    Ok(Json(sqlx::query_as("SELECT id, name, description, icon, color, translations, grants_admin FROM badges ORDER BY position, name").fetch_all(&st.db).await?))
 }
 
 const LANGS: [&str; 2] = ["de", "da"];
@@ -36,6 +36,8 @@ pub struct BadgeBody {
     color: Option<String>,
     #[serde(default)]
     translations: HashMap<String, Text>,
+    #[serde(default)]
+    grants_admin: bool,
 }
 
 struct Clean {
@@ -44,6 +46,7 @@ struct Clean {
     icon: String,
     color: String,
     translations: Value,
+    grants_admin: bool,
 }
 
 async fn deepl(texts: &[&str], lang: &str) -> Option<Vec<String>> {
@@ -99,7 +102,7 @@ async fn clean(b: BadgeBody) -> Result<Clean> {
             out.insert(lang.into(), json!({ "name": t_name, "description": t_desc }));
         }
     }
-    Ok(Clean { name, description, icon, color, translations: Value::Object(out) })
+    Ok(Clean { name, description, icon, color, translations: Value::Object(out), grants_admin: b.grants_admin })
 }
 
 pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b): Json<BadgeBody>) -> Result<Json<Badge>> {
@@ -107,7 +110,7 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b)
     let c = clean(b).await?;
     Ok(Json(
         sqlx::query_as(
-            "INSERT INTO badges (id, name, description, icon, color, translations, position) VALUES ($1, $2, $3, $4, $5, $6, (SELECT COALESCE(max(position), 0) + 1 FROM badges)) RETURNING id, name, description, icon, color, translations",
+            "INSERT INTO badges (id, name, description, icon, color, translations, grants_admin, position) VALUES ($1, $2, $3, $4, $5, $6, $7, (SELECT COALESCE(max(position), 0) + 1 FROM badges)) RETURNING id, name, description, icon, color, translations, grants_admin",
         )
         .bind(Uuid::now_v7())
         .bind(c.name)
@@ -115,6 +118,7 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b)
         .bind(c.icon)
         .bind(c.color)
         .bind(c.translations)
+        .bind(c.grants_admin)
         .fetch_one(&st.db)
         .await?,
     ))
@@ -123,13 +127,14 @@ pub async fn create(State(st): State<AppState>, AuthUser(uid): AuthUser, Json(b)
 pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(bid): Path<Uuid>, Json(b): Json<BadgeBody>) -> Result<Json<Badge>> {
     require_admin(&st, uid).await?;
     let c = clean(b).await?;
-    let badge: Badge = sqlx::query_as("UPDATE badges SET name = $2, description = $3, icon = $4, color = $5, translations = $6 WHERE id = $1 RETURNING id, name, description, icon, color, translations")
+    let badge: Badge = sqlx::query_as("UPDATE badges SET name = $2, description = $3, icon = $4, color = $5, translations = $6, grants_admin = $7 WHERE id = $1 RETURNING id, name, description, icon, color, translations, grants_admin")
         .bind(bid)
         .bind(c.name)
         .bind(c.description)
         .bind(c.icon)
         .bind(c.color)
         .bind(c.translations)
+        .bind(c.grants_admin)
         .fetch_optional(&st.db)
         .await?
         .ok_or(AppError::NotFound)?;
@@ -142,7 +147,11 @@ pub async fn update(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(bi
 
 pub async fn delete(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(bid): Path<Uuid>) -> Result<Json<Value>> {
     require_admin(&st, uid).await?;
+    let holders: Vec<Uuid> = sqlx::query_scalar("SELECT user_id FROM user_badges WHERE badge_id = $1").bind(bid).fetch_all(&st.db).await?;
     sqlx::query("DELETE FROM badges WHERE id = $1").bind(bid).execute(&st.db).await?;
+    for h in holders {
+        let _ = announce(&st, h).await;
+    }
     Ok(Json(json!({})))
 }
 

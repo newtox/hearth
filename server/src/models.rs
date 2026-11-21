@@ -3,8 +3,11 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-pub const USER_COLS: &str = "id, username, display_name, avatar, banner, bio, accent_color, created_at, is_admin, \
-    (SELECT COALESCE(json_agg(json_build_object('id', b.id, 'name', b.name, 'description', b.description, 'icon', b.icon, 'color', b.color, 'translations', b.translations, 'granted_at', ub.granted_at) ORDER BY b.position), '[]'::json) \
+pub const ADMIN_EXPR: &str = "(users.is_admin OR EXISTS(SELECT 1 FROM user_badges ab JOIN badges bb ON bb.id = ab.badge_id WHERE ab.user_id = users.id AND bb.grants_admin))";
+
+pub const USER_COLS: &str = "id, username, display_name, avatar, banner, bio, accent_color, created_at, \
+    (users.is_admin OR EXISTS(SELECT 1 FROM user_badges ab JOIN badges bb ON bb.id = ab.badge_id WHERE ab.user_id = users.id AND bb.grants_admin)) AS is_admin, \
+    (SELECT COALESCE(json_agg(json_build_object('id', b.id, 'name', b.name, 'description', b.description, 'icon', b.icon, 'color', b.color, 'translations', b.translations, 'grants_admin', b.grants_admin, 'granted_at', ub.granted_at) ORDER BY b.position), '[]'::json) \
      FROM user_badges ub JOIN badges b ON b.id = ub.badge_id WHERE ub.user_id = users.id) AS badges";
 
 #[derive(Serialize, Deserialize, FromRow, Clone)]
@@ -29,6 +32,9 @@ pub struct Badge {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[sqlx(default)]
     pub granted_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    #[sqlx(default)]
+    pub grants_admin: bool,
 }
 
 #[derive(Serialize, FromRow, Clone)]

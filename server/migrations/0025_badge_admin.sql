@@ -1,0 +1,1 @@
+ALTER TABLE badges ADD COLUMN grants_admin BOOLEAN NOT NULL DEFAULT false;
