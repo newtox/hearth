@@ -1,8 +1,9 @@
 type Layer = { id: number; prio: number; active: () => boolean; close: () => void };
 
-const state = $state<{ layers: Layer[]; pushed: boolean }>({ layers: [], pushed: false });
+const state = $state<{ layers: Layer[]; tick: number }>({ layers: [], tick: 0 });
 let seq = 0;
-let skip = 0;
+let leaving = false;
+let timer: ReturnType<typeof setTimeout> | undefined;
 
 function top() {
   let best: Layer | null = null;
@@ -11,6 +12,25 @@ function top() {
     if (!best || l.prio > best.prio || (l.prio === best.prio && l.id > best.id)) best = l;
   }
   return best;
+}
+
+const onSentinel = () => history.state?.hearth === 'back';
+
+function sync() {
+  clearTimeout(timer);
+  timer = undefined;
+  if (leaving) return;
+  const open = !!top();
+  if (open && !onSentinel()) {
+    history.pushState({ hearth: 'back' }, '');
+  } else if (!open && onSentinel()) {
+    timer = setTimeout(() => {
+      timer = undefined;
+      if (leaving || top() || !onSentinel()) return;
+      leaving = true;
+      history.back();
+    }, 120);
+  }
 }
 
 export function onBack(close: () => void, prio = 10, active: () => boolean = () => true) {
@@ -34,23 +54,21 @@ export function backLayer(node: HTMLElement, close: () => void) {
 
 $effect.root(() => {
   $effect(() => {
-    const open = !!top();
-    if (open && !state.pushed) {
-      history.pushState({ hearth: 'back' }, '');
-      state.pushed = true;
-    } else if (!open && state.pushed) {
-      state.pushed = false;
-      skip++;
-      history.back();
-    }
+    state.tick;
+    top();
+    sync();
   });
 });
 
 addEventListener('popstate', () => {
-  if (skip) {
-    skip--;
+  if (leaving) {
+    leaving = false;
+    sync();
     return;
   }
-  state.pushed = false;
   top()?.close();
+  queueMicrotask(() => {
+    state.tick++;
+    sync();
+  });
 });

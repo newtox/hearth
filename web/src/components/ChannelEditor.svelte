@@ -281,7 +281,7 @@
 {/snippet}
 
 {#if existing}
-  <SettingsPage title={t(kind === 'category' ? 'category_settings_title' : 'channel_settings_title') + ' · ' + existing.name} {sections} bind:current={section} list={false} onclose={dismiss}>
+  <SettingsPage title={t(kind === 'category' ? 'category_settings_title' : 'channel_settings_title') + ' · ' + existing.name} {sections} bind:current={section} onclose={dismiss}>
     {#if section === 'overview'}
       <form class="stack" id="channel-form" onsubmit={save}>
         {@render fields()}
