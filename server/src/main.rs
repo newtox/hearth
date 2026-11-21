@@ -166,6 +166,7 @@ async fn main() {
         .route("/invites/{code}", get(invites::preview).post(invites::join))
         .route("/channels/{cid}", patch(channels::update).delete(channels::delete))
         .route("/channels/{cid}/overwrites/{target}", put(channels::put_overwrite).delete(channels::delete_overwrite))
+        .route("/channels/{cid}/sync", post(channels::sync))
         .route("/channels/{cid}/messages", get(messages::list).post(messages::create))
         .route("/channels/{cid}/messages/{mid}", patch(messages::update).delete(messages::delete))
         .route("/channels/{cid}/typing", post(messages::typing));

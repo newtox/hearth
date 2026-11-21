@@ -306,6 +306,7 @@ button {
 
 .scroll {
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
 }

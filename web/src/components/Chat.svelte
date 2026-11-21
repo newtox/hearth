@@ -95,6 +95,18 @@
 
   const time = new Intl.DateTimeFormat(locale(), { hour: '2-digit', minute: '2-digit' });
   const day = new Intl.DateTimeFormat(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const shortDate = new Intl.DateTimeFormat(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const full = new Intl.DateTimeFormat(locale(), { dateStyle: 'full', timeStyle: 'short' });
+
+  function stamp(iso: string) {
+    const d = new Date(iso);
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const at = time.format(d);
+    if (d >= start) return t('chat_today_at', { time: at });
+    if (d >= new Date(start.getTime() - 86400000)) return t('chat_yesterday_at', { time: at });
+    return `${shortDate.format(d)} ${at}`;
+  }
 
   function fileSize(n: number) {
     return n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`;
@@ -344,16 +356,14 @@
           </div>
         {:else}
         <article class="msg" class:own class:joined class:mention={!own && mentionsMe(m, !!g)} class:flash={app.highlight === m.id} data-id={m.id} oncontextmenu={(e) => editing !== m.id && messageMenu(e, m)}>
-          {#if !own}
-            <button class="face" onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))} aria-label={t('chat_profile_name', { name: m.author.display_name })} tabindex={joined ? -1 : 0}>
-              {#if !joined}<Avatar id={m.author.id} name={m.author.display_name} image={m.author.avatar} size={34} />{/if}
-            </button>
-          {/if}
+          <button class="face" onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))} aria-label={t('chat_profile_name', { name: m.author.display_name })} tabindex={joined ? -1 : 0}>
+            {#if !joined}<Avatar id={m.author.id} name={m.author.display_name} image={m.author.avatar} size={34} />{:else}<time class="side" datetime={m.created_at} title={full.format(new Date(m.created_at))}>{time.format(new Date(m.created_at))}</time>{/if}
+          </button>
           <div class="content">
             {#if !joined}
               <div class="meta">
-                {#if !own}<button class="name" style:color={nameColor(m.author.id)} onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))}>{memberName(g, m.author)}</button>{/if}
-                <time datetime={m.created_at}>{time.format(new Date(m.created_at))}</time>
+                <button class="name" style:color={nameColor(m.author.id)} onclick={() => (app.profile = m.author.id)} oncontextmenu={(e) => openMenu(e, memberMenu(m.author.id, g))}>{memberName(g, m.author)}</button>
+                <time datetime={m.created_at} title={full.format(new Date(m.created_at))}>{stamp(m.created_at)}</time>
                 {#if m.pinned}<span class="pinmark" title={t('common_pinned')}><Icon name="pin" size={12} /></span>{/if}
               </div>
             {/if}
@@ -563,9 +573,6 @@
     gap: 6px;
     margin-top: 5px;
   }
-  .own .files {
-    align-items: flex-end;
-  }
   .shot {
     display: block;
     max-width: min(360px, 100%);
@@ -590,9 +597,6 @@
     flex-wrap: wrap;
     gap: 4px;
     margin-top: 4px;
-  }
-  .own .reactions {
-    justify-content: flex-end;
   }
   .reaction {
     display: inline-flex;
@@ -715,12 +719,19 @@
   .msg.joined {
     margin-top: 1px;
   }
-  .msg.own {
-    flex-direction: row-reverse;
-  }
   .face {
     width: 34px;
     flex: none;
+    text-align: center;
+  }
+  .side {
+    display: block;
+    padding-top: 9px;
+    font-size: 0.68em;
+    opacity: 0;
+  }
+  .msg:hover .side {
+    opacity: 1;
   }
   .content {
     min-width: 0;
@@ -732,9 +743,6 @@
     gap: 8px;
     margin-bottom: 3px;
     font-size: 0.88em;
-  }
-  .own .meta {
-    justify-content: flex-end;
   }
   .name {
     font-weight: 600;
@@ -764,13 +772,6 @@
   .own .bubble {
     background: var(--bubble-own);
     color: var(--bubble-own-ink);
-    border-radius: var(--radius) 4px var(--radius) var(--radius);
-  }
-  .own .content {
-    text-align: right;
-  }
-  .own .bubble {
-    text-align: left;
   }
   :global([data-theme='pergament']) .bubble {
     border: 1px solid var(--line);
@@ -778,8 +779,7 @@
     border-radius: 2px;
   }
   :global([data-theme='pergament']) .own .bubble {
-    border-left: 1px solid var(--line);
-    border-right: 4px solid #9a7636;
+    border-left-color: #9a7636;
   }
   .edited {
     opacity: 0.65;

@@ -48,8 +48,8 @@
   pre {
     margin: 4px 0;
     padding: 8px 10px;
-    overflow-x: auto;
-    white-space: pre;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
   .emoji {
     width: 1.4em;

@@ -205,6 +205,52 @@ pub async fn delete(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(ci
     Ok(Json(json!({})))
 }
 
+type Rule = (Uuid, String, i64, i64);
+
+async fn rules_of(st: &AppState, cid: Uuid) -> Result<Vec<Rule>> {
+    Ok(sqlx::query_as("SELECT target_id, kind, allow, deny FROM overwrites WHERE channel_id = $1 ORDER BY target_id").bind(cid).fetch_all(&st.db).await?)
+}
+
+async fn synced_children(st: &AppState, ch: &Channel) -> Result<Vec<Uuid>> {
+    if ch.kind != "category" {
+        return Ok(vec![]);
+    }
+    let mine = rules_of(st, ch.id).await?;
+    let kids: Vec<Uuid> = sqlx::query_scalar("SELECT id FROM channels WHERE parent_id = $1").bind(ch.id).fetch_all(&st.db).await?;
+    let mut out = vec![];
+    for k in kids {
+        if rules_of(st, k).await? == mine {
+            out.push(k);
+        }
+    }
+    Ok(out)
+}
+
+pub async fn sync(State(st): State<AppState>, AuthUser(uid): AuthUser, Path(cid): Path<Uuid>) -> Result<Json<Value>> {
+    let (ch, gid, ctx) = guild_channel(&st, uid, cid).await?;
+    ctx.require(perms::MANAGE_ROLES)?;
+    let Some(parent) = ch.parent_id else {
+        return bad("This channel is not in a category");
+    };
+    let from = rules_of(&st, parent).await?;
+    let old = rules_of(&st, cid).await?;
+    let touched = from.iter().chain(old.iter()).fold(0, |acc, r| acc | r.2 | r.3);
+    if ctx.base & perms::ADMINISTRATOR == 0 && touched & !ctx.base != 0 {
+        return Err(AppError::Forbidden);
+    }
+    let mut tx = st.db.begin().await?;
+    sqlx::query("DELETE FROM overwrites WHERE channel_id = $1").bind(cid).execute(&mut *tx).await?;
+    sqlx::query("INSERT INTO overwrites (channel_id, target_id, kind, allow, deny) SELECT $1, target_id, kind, allow, deny FROM overwrites WHERE channel_id = $2")
+        .bind(cid)
+        .bind(parent)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    audit(&st, gid, uid, "channel_rules", &ch.name, "").await;
+    refresh_parts(&st, gid, &["channels"]).await?;
+    Ok(Json(json!({})))
+}
+
 #[derive(Deserialize)]
 pub struct OverwriteBody {
     kind: String,
@@ -213,7 +259,7 @@ pub struct OverwriteBody {
 }
 
 pub async fn put_overwrite(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((cid, target)): Path<(Uuid, Uuid)>, Json(b): Json<OverwriteBody>) -> Result<Json<Value>> {
-    let (_, gid, ctx) = guild_channel(&st, uid, cid).await?;
+    let (ch, gid, ctx) = guild_channel(&st, uid, cid).await?;
     ctx.require(perms::MANAGE_ROLES)?;
     if (b.allow | b.deny) & !perms::ALL != 0 || b.allow < 0 || b.deny < 0 || b.allow & b.deny != 0 {
         return bad("Invalid permissions");
@@ -235,24 +281,27 @@ pub async fn put_overwrite(State(st): State<AppState>, AuthUser(uid): AuthUser, 
     if !valid {
         return bad("Unknown target");
     }
-    sqlx::query(
-        "INSERT INTO overwrites (channel_id, target_id, kind, allow, deny) VALUES ($1, $2, $3, $4, $5) \
-         ON CONFLICT (channel_id, target_id) DO UPDATE SET allow = EXCLUDED.allow, deny = EXCLUDED.deny",
-    )
-    .bind(cid)
-    .bind(target)
-    .bind(&b.kind)
-    .bind(b.allow)
-    .bind(b.deny)
-    .execute(&st.db)
-    .await?;
+    let follow = synced_children(&st, &ch).await?;
+    for id in std::iter::once(cid).chain(follow) {
+        sqlx::query(
+            "INSERT INTO overwrites (channel_id, target_id, kind, allow, deny) VALUES ($1, $2, $3, $4, $5) \
+             ON CONFLICT (channel_id, target_id) DO UPDATE SET allow = EXCLUDED.allow, deny = EXCLUDED.deny",
+        )
+        .bind(id)
+        .bind(target)
+        .bind(&b.kind)
+        .bind(b.allow)
+        .bind(b.deny)
+        .execute(&st.db)
+        .await?;
+    }
     audit(&st, gid, uid, "channel_rules", "", "").await;
     refresh_parts(&st, gid, &["channels"]).await?;
     Ok(Json(json!({})))
 }
 
 pub async fn delete_overwrite(State(st): State<AppState>, AuthUser(uid): AuthUser, Path((cid, target)): Path<(Uuid, Uuid)>) -> Result<Json<Value>> {
-    let (_, gid, ctx) = guild_channel(&st, uid, cid).await?;
+    let (ch, gid, ctx) = guild_channel(&st, uid, cid).await?;
     ctx.require(perms::MANAGE_ROLES)?;
     let old: Option<(i64, i64)> = sqlx::query_as("SELECT allow, deny FROM overwrites WHERE channel_id = $1 AND target_id = $2")
         .bind(cid)
@@ -264,7 +313,10 @@ pub async fn delete_overwrite(State(st): State<AppState>, AuthUser(uid): AuthUse
             return Err(AppError::Forbidden);
         }
     }
-    sqlx::query("DELETE FROM overwrites WHERE channel_id = $1 AND target_id = $2").bind(cid).bind(target).execute(&st.db).await?;
+    let follow = synced_children(&st, &ch).await?;
+    for id in std::iter::once(cid).chain(follow) {
+        sqlx::query("DELETE FROM overwrites WHERE channel_id = $1 AND target_id = $2").bind(id).bind(target).execute(&st.db).await?;
+    }
     refresh_parts(&st, gid, &["channels"]).await?;
     Ok(Json(json!({})))
 }

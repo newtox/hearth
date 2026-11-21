@@ -2,7 +2,9 @@
   import { ask, askText } from '../lib/dialog.svelte';
   import { fromEnglish, locale, t } from '../lib/i18n.svelte';
   import { api } from '../lib/api';
-  import { app, attempt, canModerate, guild, isBlocked, isFriend, openDm, P, type Badge, type User, presenceOf } from '../lib/store.svelte';
+  import { app, attempt, can, canModerate, guild, isBlocked, isFriend, openDm, P, topPosition, type Badge, type User, presenceOf } from '../lib/store.svelte';
+  import { openBelow } from '../lib/menus';
+  import { hasRole, toggleRole } from '../lib/moderation';
   import { badgeLabel } from '../lib/activity';
   import Avatar from './Avatar.svelte';
   import BadgeIcon from './BadgeIcon.svelte';
@@ -15,7 +17,18 @@
 
   const g = $derived(guild());
   const member = $derived(g?.members.find((m) => m.id === userId) ?? null);
-  const roles = $derived(g && member ? g.roles.filter((r) => member.roles.includes(r.id)) : []);
+  const roles = $derived(g && member ? g.roles.filter((r) => member.roles.includes(r.id)).sort((a, b) => b.position - a.position) : []);
+  const myTop = $derived(g && app.me ? topPosition(g, app.me.id) : 0);
+  const assignable = $derived(g && member && can(P.MANAGE_ROLES, g) ? g.roles.filter((r) => !r.is_default && r.position < myTop).sort((a, b) => b.position - a.position) : []);
+  const canAssign = (roleId: string) => assignable.some((r) => r.id === roleId);
+
+  function addRole(e: MouseEvent) {
+    if (!g) return;
+    openBelow(
+      e.currentTarget as HTMLElement,
+      assignable.map((r) => ({ label: r.name, color: r.color ?? 'var(--muted)', checked: () => hasRole(g!, userId, r.id), keep: true, action: () => toggleRole(g!, userId, r.id) })),
+    );
+  }
   let user = $state<User | null>(null);
   let allBadges = $state<Badge[]>([]);
   let progressTrack = $state<string | null>(null);
@@ -109,9 +122,15 @@
             <textarea rows="1" maxlength="256" bind:value={note} placeholder={t('menu_note_placeholder')} onblur={saveNote} onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), e.currentTarget.blur())}></textarea>
           </label>
         {/if}
-        {#if roles.length}
+        {#if roles.length || assignable.length}
           <div class="roles">
-            {#each roles as r (r.id)}<span class="role" style:--c={r.color ?? 'var(--muted)'}>{r.name}</span>{/each}
+            {#each roles as r (r.id)}
+              <span class="role" style:--c={r.color ?? 'var(--muted)'}>
+                {r.name}
+                {#if canAssign(r.id)}<button class="drop" onclick={() => toggleRole(g!, userId, r.id)} aria-label={t('profile_card_remove_role', { role: r.name })} title={t('profile_card_remove_role', { role: r.name })}><Icon name="close" size={11} /></button>{/if}
+              </span>
+            {/each}
+            {#if assignable.length}<button class="role add" onclick={addRole} aria-haspopup="menu" aria-label={t('profile_card_add_role')} title={t('profile_card_add_role')}><Icon name="plus" size={12} /></button>{/if}
           </div>
         {/if}
         <p class="muted small">{t('profile_card_joined_date', { date: since.format(new Date(user.created_at!)) })}{member ? t('profile_card_here_since_date', { date: since.format(new Date(member.joined_at)) }) : ''}</p>
@@ -251,6 +270,34 @@
     border: 1px solid var(--c);
     font-size: 0.85em;
     font-weight: 600;
+  }
+  .role {
+    display: inline-flex;
+    align-items: center;
+  }
+  .drop {
+    display: grid;
+    place-items: center;
+    margin: 0 -5px 0 4px;
+    padding: 2px;
+    border-radius: 50%;
+    color: var(--muted);
+  }
+  .drop:hover {
+    color: var(--ink);
+    background: var(--panel-2);
+  }
+  .role.add {
+    --c: var(--line);
+    padding: 2px 8px;
+    color: var(--muted);
+  }
+  .role.add::before {
+    display: none;
+  }
+  .role.add:hover {
+    color: var(--ink);
+    border-color: var(--muted);
   }
   .role::before {
     content: '';

@@ -187,13 +187,13 @@
     .nav {
       flex: none;
       justify-content: flex-start;
-      overflow-x: auto;
-      overflow-y: hidden;
+      overflow: hidden;
       border-bottom: 1px solid var(--line);
     }
     .nav .inner {
       width: auto;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 4px;
       padding: 6px 10px 10px;

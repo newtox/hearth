@@ -142,8 +142,7 @@
   .tabs {
     gap: 4px;
     min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
+    flex-wrap: wrap;
   }
   .tab {
     display: inline-flex;
