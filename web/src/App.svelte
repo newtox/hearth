@@ -31,6 +31,44 @@
   watchUpdates();
 
   let cols = $state<HTMLElement>();
+  const order = { side: 0, chat: 1, members: 2 } as const;
+  const narrow = () => matchMedia('(max-width: 860px)').matches;
+  let swipe: { x: number; y: number; t: number } | null = null;
+  let lastPane = app.pane;
+
+  function touchStart(e: TouchEvent) {
+    swipe = null;
+    if (!narrow() || e.touches.length !== 1 || app.modal || app.profile || app.menu) return;
+    if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"], .no-swipe')) return;
+    const p = e.touches[0];
+    swipe = { x: p.clientX, y: p.clientY, t: Date.now() };
+  }
+
+  function touchEnd(e: TouchEvent) {
+    if (!swipe) return;
+    const p = e.changedTouches[0];
+    const dx = p.clientX - swipe.x;
+    const dy = p.clientY - swipe.y;
+    const quick = Date.now() - swipe.t < 700;
+    swipe = null;
+    if (!quick || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const right = !!guild() || (!!app.side && !!channel());
+    if (dx > 0) app.pane = app.pane === 'members' ? 'chat' : 'side';
+    else if (app.pane === 'side') app.pane = 'chat';
+    else if (app.pane === 'chat' && right) app.pane = 'members';
+  }
+
+  $effect(() => {
+    const pane = app.pane;
+    untrack(() => {
+      const from = lastPane;
+      lastPane = pane;
+      if (from === pane || !cols || !narrow() || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const shown = cols.querySelector<HTMLElement>(`:scope > .pane-${pane}`);
+      const shift = order[pane] > order[from] ? 28 : -28;
+      shown?.animate([{ opacity: 0.4, transform: `translateX(${shift}px)` }, { opacity: 1, transform: 'none' }], { duration: 180, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)' });
+    });
+  });
   const view = $derived(`${app.guildId ?? ''}:${app.channelId ?? ''}`);
   $effect(() => {
     view;
@@ -62,7 +100,7 @@
     <UpdateBanner />
     <div class="window">
       <Dock />
-      <div class="cols" data-pane={app.pane} bind:this={cols}>
+      <div class="cols" role="presentation" data-pane={app.pane} bind:this={cols} ontouchstart={touchStart} ontouchend={touchEnd} ontouchcancel={() => (swipe = null)}>
         <Sidebar />
         {#if channel()?.kind === 'voice'}<VoiceStage />{:else if !app.guildId && !app.channelId}<FriendsPane />{:else}<Chat />{/if}
         {#if app.side && channel() && channel()?.kind !== 'voice'}<SidePanel />{:else if guild()}<Members />{/if}
