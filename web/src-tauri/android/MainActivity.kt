@@ -3,6 +3,7 @@ package de.newtox.hearth
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
+import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -24,6 +25,17 @@ class MainActivity : TauriActivity() {
       )
       view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
       WindowInsetsCompat.CONSUMED
+    }
+  }
+
+  override fun onWebViewCreate(webView: WebView) {
+    super.onWebViewCreate(webView)
+    val info = packageManager.getPackageInfo(packageName, 0)
+    val build = "${info.versionName}:${info.lastUpdateTime}"
+    val prefs = getSharedPreferences("hearth", MODE_PRIVATE)
+    if (prefs.getString("build", null) != build) {
+      webView.clearCache(true)
+      prefs.edit().putString("build", build).apply()
     }
   }
 }
