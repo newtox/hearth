@@ -390,8 +390,15 @@ button {
 .scroll {
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+* {
   scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+  scrollbar-color: var(--scroll-thumb, color-mix(in srgb, var(--muted) 45%, transparent)) transparent;
+}
+
+*:hover {
+  scrollbar-color: var(--scroll-thumb-hover, color-mix(in srgb, var(--muted) 70%, transparent)) transparent;
 }
 
 @keyframes pop-in {

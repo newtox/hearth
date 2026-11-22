@@ -1,4 +1,6 @@
 [data-theme='nordland'] {
+  --scroll-thumb: #6b5135;
+  --scroll-thumb-hover: #9a7048;
   color-scheme: dark;
   --bg: #140e09;
   --bg-image: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 3px, transparent 3px 140px), repeating-linear-gradient(90deg, rgba(255, 210, 160, 0.025) 0 2px, transparent 2px 11px), radial-gradient(ellipse at 50% 110%, rgba(240, 138, 44, 0.16), transparent 60%);
@@ -126,6 +128,8 @@ html[data-theme='nordland'] .pane-chat .day span {
 }
 
 [data-theme='neon'] {
+  --scroll-thumb: rgba(0, 240, 255, 0.4);
+  --scroll-thumb-hover: #00f0ff;
   color-scheme: dark;
   --bg: #05060b;
   --bg-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 3px), radial-gradient(ellipse at 0% 0%, rgba(255, 42, 109, 0.14), transparent 45%), radial-gradient(ellipse at 100% 100%, rgba(0, 240, 255, 0.12), transparent 50%);
@@ -291,6 +295,8 @@ html[data-theme='neon'] .pane-chat .day span {
 }
 
 [data-theme='aurum'] {
+  --scroll-thumb: rgba(201, 162, 74, 0.5);
+  --scroll-thumb-hover: #c9a24a;
   color-scheme: dark;
   --bg: #12100c;
   --bg-image: repeating-linear-gradient(118deg, rgba(201, 162, 74, 0.05) 0 1px, transparent 1px 97px), repeating-linear-gradient(62deg, rgba(201, 162, 74, 0.035) 0 1px, transparent 1px 131px), radial-gradient(ellipse at 50% 0%, rgba(201, 162, 74, 0.12), transparent 55%);
@@ -434,6 +440,8 @@ html[data-theme='aurum'] .pane-chat .day span {
 }
 
 [data-theme='hain'] {
+  --scroll-thumb: rgba(216, 183, 106, 0.35);
+  --scroll-thumb-hover: rgba(216, 183, 106, 0.7);
   color-scheme: dark;
   --bg: #121a15;
   --bg-image: radial-gradient(ellipse at 15% 0%, rgba(132, 168, 104, 0.22), transparent 55%), radial-gradient(ellipse at 90% 100%, rgba(201, 166, 90, 0.14), transparent 50%), radial-gradient(ellipse at 60% 40%, rgba(70, 110, 90, 0.18), transparent 60%);

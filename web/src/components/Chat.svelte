@@ -293,6 +293,21 @@
     if (!input) return;
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 180) + 'px';
+    input.style.overflowY = input.scrollHeight > 180 ? 'auto' : 'hidden';
+  }
+
+  function grow(node: HTMLTextAreaElement) {
+    const fit = () => {
+      const max = Math.round(innerHeight * 0.5);
+      node.style.height = 'auto';
+      node.style.height = Math.min(node.scrollHeight + 2, max) + 'px';
+      node.style.overflowY = node.scrollHeight + 2 > max ? 'auto' : 'hidden';
+    };
+    fit();
+    node.focus();
+    node.setSelectionRange(node.value.length, node.value.length);
+    node.addEventListener('input', fit);
+    return { destroy: () => node.removeEventListener('input', fit) };
   }
 
   function oninput() {
@@ -444,7 +459,7 @@
               {/if}
             {/if}
             {#if editing === m.id}
-              <textarea class="input" bind:value={editText} onkeydown={(e) => editKey(e, m)} rows="2"></textarea>
+              <textarea class="input editbox" bind:value={editText} onkeydown={(e) => editKey(e, m)} rows="1" use:grow></textarea>
               <div class="row hint">
                 <button class="btn small primary" onclick={() => saveEdit(m)}>{t('common_save')}</button>
                 <button class="btn small" onclick={() => (editing = null)}>{t('common_cancel')}</button>
@@ -848,6 +863,17 @@
     min-width: 0;
     max-width: min(78%, 720px);
   }
+  .content:has(.editbox) {
+    flex: 1;
+    max-width: 100%;
+  }
+  .editbox {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    resize: none;
+    line-height: 1.45;
+  }
   .meta {
     display: flex;
     align-items: baseline;
@@ -1047,6 +1073,7 @@
   .composer textarea {
     resize: none;
     max-height: 180px;
+    overflow-y: hidden;
   }
   .readonly {
     padding: 8px 18px 16px;
